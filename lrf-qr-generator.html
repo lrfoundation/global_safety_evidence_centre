@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Generator · Lloyd's Register Foundation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+  :root {
+    --lrf-pink: #e5006e;
+    --lrf-pink-dark: #b00055;
+    --lrf-pink-light: #fce6f0;
+    --lrf-ink: #0a0a14;
+    --lrf-ink-soft: #2a2a35;
+    --lrf-muted: #6c6c78;
+    --lrf-line: #e4e4ea;
+    --lrf-bg: #fafaf7;
+    --lrf-cream: #f4f1e8;
+    --lrf-white: #ffffff;
+    --shadow-lg: 0 12px 40px rgba(10,10,20,0.18);
+    --r: 4px; /* slightly rounded — within LRF's 4px ceiling */
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--lrf-bg); color: var(--lrf-ink); line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header.site {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1.25rem 2rem; border-bottom: 1px solid var(--lrf-line);
+    background: var(--lrf-white);
+  }
+  .brand-logo { height: 64px; width: auto; display: block; }
+  .brand-text { display: flex; flex-direction: column; }
+  .brand-text .name { font-weight: 800; font-size: 15px; letter-spacing: -0.01em; line-height: 1.1; }
+  .brand-text .unit { font-size: 12px; color: var(--lrf-muted); letter-spacing: 0.02em; }
+
+  .hero { padding: 3.5rem 2rem 2.5rem; }
+  .hero-inner { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1.4fr 1fr; gap: 3rem; align-items: end; }
+  .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; color: var(--lrf-pink); margin-bottom: 0.6rem; }
+  h1 { font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 800; line-height: 1.0; letter-spacing: -0.035em; }
+  h1 .accent, h1 .period { color: var(--lrf-pink); }
+  p.lede { font-family: 'Source Serif 4', Georgia, serif; font-size: 19px; line-height: 1.55; color: var(--lrf-ink-soft); margin-top: 1.5rem; max-width: 560px; }
+  .hero-stats { display: flex; gap: 2rem; }
+  .stat { border-top: 1px solid var(--lrf-ink); padding-top: 0.75rem; flex: 1; }
+  .stat-num { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; color: var(--lrf-pink); font-variant-numeric: tabular-nums; }
+  .stat-lbl { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--lrf-muted); margin-top: 0.4rem; font-weight: 500; }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 1rem 2rem 4rem; }
+  .stage-head { margin-bottom: 2rem; padding-bottom: 1.25rem; border-bottom: 2px solid var(--lrf-ink); }
+  .stage-head h2 { font-size: 2rem; font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; }
+  .stage-head .sub { margin-top: 0.4rem; font-size: 14px; color: var(--lrf-muted); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--lrf-white); border: 1px solid var(--lrf-line); border-radius: var(--r); padding: 1.8rem; }
+  .card-cream { background: var(--lrf-cream); }
+
+  .subhead { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; color: var(--lrf-pink); margin: 0.5rem 0 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+  .subhead::after { content: ""; flex: 1; height: 1px; background: var(--lrf-line); }
+
+  .field { margin-bottom: 1.4rem; }
+  .field label { display: flex; align-items: center; gap: 0.4rem; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; color: var(--lrf-muted); margin-bottom: 0.5rem; }
+  textarea, .field select, input[type=text] {
+    width: 100%; font-family: inherit; font-size: 16px; font-weight: 500;
+    padding: 0.8rem 1rem; background: var(--lrf-white); border: 1.5px solid var(--lrf-ink);
+    border-radius: var(--r); color: var(--lrf-ink);
+  }
+  textarea { resize: vertical; min-height: 80px; font-size: 15px; }
+  input[type=text] { font-size: 15px; }
+  textarea:focus, .field select:focus, input[type=text]:focus { outline: none; border-color: var(--lrf-pink); box-shadow: 0 0 0 3px var(--lrf-pink-light); }
+  .field select {
+    cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%230a0a14' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem;
+  }
+
+  .row { display: flex; gap: 1rem; }
+  .row .field { flex: 1; }
+
+  .swatches { display: flex; gap: 0.5rem; }
+  .swatch {
+    width: 38px; height: 38px; border-radius: var(--r); cursor: pointer;
+    border: 1.5px solid var(--lrf-line); position: relative; transition: all 0.15s;
+  }
+  .swatch:hover { transform: translateY(-1px); }
+  .swatch.active { border-color: var(--lrf-pink); box-shadow: 0 0 0 3px var(--lrf-pink-light); }
+  .swatch.active::after {
+    content: ""; position: absolute; inset: 0; border-radius: 2px;
+    background-image: url("data:image/svg+xml,%3Csvg width='14' height='11' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 5l4 4 8-8' stroke='%23ffffff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: center; mix-blend-mode: difference;
+  }
+
+  input[type=range] { width: 100%; accent-color: var(--lrf-pink); }
+  .rangeval { color: var(--lrf-pink); font-weight: 800; font-variant-numeric: tabular-nums; }
+
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.2rem 0; }
+  .toggle-row .lbl { font-size: 14px; font-weight: 600; }
+  .switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--lrf-line); border-radius: var(--r); transition: 0.15s; cursor: pointer; }
+  .slider::before { content: ""; position: absolute; height: 18px; width: 18px; left: 4px; top: 4px; background: var(--lrf-white); border-radius: 2px; transition: 0.15s; }
+  .switch input:checked + .slider { background: var(--lrf-pink); }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+
+  .help {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; border-radius: 50%; border: 1.2px solid var(--lrf-muted);
+    color: var(--lrf-muted); font-size: 10px; font-weight: 700; cursor: help;
+    position: relative; line-height: 1; flex-shrink: 0;
+  }
+  .help:hover { border-color: var(--lrf-pink); color: var(--lrf-pink); }
+  .help .tip {
+    visibility: hidden; opacity: 0; position: absolute; bottom: calc(100% + 8px); left: 0;
+    width: 230px; background: var(--lrf-ink); color: var(--lrf-white);
+    padding: 0.7rem 0.85rem; border-radius: var(--r); font-size: 12px; font-weight: 400;
+    line-height: 1.45; letter-spacing: 0; text-transform: none; z-index: 10;
+    box-shadow: var(--shadow-lg); transition: opacity 0.15s; pointer-events: none;
+  }
+  .help .tip::after { content: ""; position: absolute; top: 100%; left: 7px; border: 6px solid transparent; border-top-color: var(--lrf-ink); }
+  .help .tip b { color: var(--lrf-pink-light); font-weight: 700; }
+  .help .tip code { background: rgba(255,255,255,0.14); padding: 0 3px; border-radius: 2px; font-size: 11px; }
+  .help:hover .tip { visibility: visible; opacity: 1; }
+
+  .urlout {
+    font-size: 12px; word-break: break-all; background: var(--lrf-white); border: 1px dashed var(--lrf-line);
+    border-radius: var(--r); padding: 0.7rem 0.85rem; color: var(--lrf-ink-soft); line-height: 1.5;
+  }
+  .urlout .q { color: var(--lrf-pink); font-weight: 700; }
+
+  .preview-wrap { display: flex; flex-direction: column; align-items: center; position: sticky; top: 1.5rem; }
+  .qrstage { background: var(--lrf-white); padding: 24px; border: 1px solid var(--lrf-line); border-radius: var(--r); min-height: 300px; display: flex; align-items: center; justify-content: center; }
+  .qrstage canvas { display: block; }
+  .empty { color: var(--lrf-muted); font-size: 14px; text-align: center; }
+
+  .note { margin-top: 1.25rem; width: 100%; font-size: 13px; line-height: 1.5; padding: 0.85rem 1rem; border-radius: var(--r); border: 1px solid var(--lrf-line); }
+  .note.ok { background: var(--lrf-cream); color: var(--lrf-ink-soft); }
+  .note.warn { background: var(--lrf-pink-light); border-color: var(--lrf-pink); color: var(--lrf-ink); }
+  .note strong { font-weight: 700; }
+
+  .actions { display: flex; gap: 0.8rem; margin-top: 1.5rem; width: 100%; }
+  .btn { flex: 1; font-family: inherit; font-weight: 700; font-size: 15px; padding: 0.85rem 1.25rem; border-radius: var(--r); border: 1.5px solid var(--lrf-ink); cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: var(--lrf-pink); color: white; border-color: var(--lrf-pink); }
+  .btn-primary:hover:not(:disabled) { background: var(--lrf-pink-dark); border-color: var(--lrf-pink-dark); }
+  .btn-secondary { background: white; color: var(--lrf-ink); }
+  .btn-secondary:hover:not(:disabled) { background: var(--lrf-ink); color: white; }
+  .btn:disabled { background: #d4d4d4; border-color: #d4d4d4; color: #fff; cursor: not-allowed; }
+
+  .dl-caption { margin-top: 0.9rem; font-size: 12px; line-height: 1.45; color: var(--lrf-muted); text-align: center; max-width: 320px; }
+
+  footer { border-top: 1px solid var(--lrf-line); background: var(--lrf-white); padding: 2rem; margin-top: 2rem; }
+  .footer-inner { max-width: 1400px; margin: 0 auto; font-size: 13px; color: var(--lrf-muted); }
+
+  @media (max-width: 900px) {
+    header.site { padding: 1rem 1.25rem; }
+    .hero { padding: 2.5rem 1.25rem 2rem; }
+    .hero-inner { grid-template-columns: 1fr; gap: 2rem; }
+    main { padding: 1rem 1.25rem 3rem; }
+    .preview-wrap { position: static; }
+  }
+  @media (max-width: 640px) {
+    .brand-logo { height: 52px; }
+    .hero h1 { font-size: 2.5rem; }
+    .hero p.lede { font-size: 16px; }
+    .hero-stats { gap: 1rem; }
+    .stat-num { font-size: 2rem; }
+    .help .tip { width: 180px; }
+  }
+</style>
+</head>
+<body>
+  <header class="site">
+    <svg class="brand-logo" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 376.09 532.11" aria-label="Lloyd's Register Foundation">
+      <path fill="#e5006e" d="M209.54,493.54c0,5.04,2.31,7.78,6.9,7.78s7.13-3.33,7.13-8.05v-6.2c-1.76-1.34-3.89-1.94-6.66-1.94-5.09,0-7.36,3.1-7.36,8.42Z"/>
+      <path fill="#e5006e" d="M281.69,485.3c-5.65,0-7.77,3.15-7.77,8.01s2.13,8.01,7.77,8.01,7.78-3.15,7.78-8.01-2.13-8.01-7.78-8.01Z"/>
+      <path fill="#e5006e" d="M178.49,493.86c0,4.95,2.31,7.91,6.71,7.91,4.72,0,7.31-3.79,7.31-8.51v-7.41c-1.48-.79-3.19-1.16-6.02-1.16-5.6,0-8.01,3.79-8.01,9.16Z"/>
+      <path fill="#e5006e" d="M95.75,485.3c-5.65,0-7.77,3.15-7.77,8.01s2.13,8.01,7.77,8.01,7.77-3.15,7.77-8.01-2.13-8.01-7.77-8.01Z"/>
+      <path fill="#e5006e" d="M0,444.32v87.78h376.09v-87.78H0ZM79.63,477.62h-18.05v8.28h16.48v5.65h-16.48v14.67h-5.83v-34.25h23.88v5.65ZM96.01,506.77c-9.26,0-13.7-5.46-13.7-13.47s4.44-13.47,13.7-13.47,13.7,5.46,13.7,13.47-4.44,13.47-13.7,13.47ZM138.21,494.6c0,7.73-4.44,12.17-11.85,12.17s-11.8-4.44-11.8-12.17v-14.21h5.65v14.21c0,4.67,2.31,6.71,6.16,6.71s6.2-2.04,6.2-6.71v-14.21h5.65v14.21ZM167.97,506.22h-5.65v-14.86c0-4.07-2.13-6.06-5.88-6.06-4.54,0-6.9,2.64-6.9,7.87v13.05h-5.65v-25.82h4.91l.46,4.49c1.9-3.56,4.72-5.09,8.84-5.09,5.92,0,9.86,3.84,9.86,11.57v14.86ZM194.11,506.77c-.46-1.43-.88-2.92-1.06-4.77-1.99,3.52-5.6,4.77-8.7,4.77-6.66,0-11.52-4.54-11.52-12.91s5.65-14.07,14.12-14.07c1.9,0,3.93.37,5.83.97v-7.87l5.65-1.48v25.73c0,3.75.05,6.16.79,9.63h-5.09ZM234.42,505.15c-.65.79-2.36,1.62-4.44,1.62s-5.04-.97-5.92-4.54c-1.48,2.36-4.12,4.54-8.28,4.54-7.08,0-11.89-4.54-11.89-13.24s5.42-13.7,12.82-13.7c3.1,0,5.69.88,7.78,2.41l.65-1.85h4.35v18.23c0,2.08.74,2.68,2.36,2.68.74,0,1.53-.28,2.59-1.2v5.04ZM252.98,485.67h-8.42v11.57c0,3.15,1.25,4.17,4.12,4.17,1.43,0,2.59-.23,3.84-.79v5.04c-1.11.69-3.52,1.11-5.18,1.11-4.58,0-8.42-2.36-8.42-9.44v-11.66h-3.75v-3.93l3.75-1.34,1.39-5.46h4.26v5.46h8.42v5.28ZM263.25,506.22h-5.65v-25.82h5.65v25.82ZM263.57,477.2h-6.34v-5.79h6.34v5.79ZM281.94,506.77c-9.26,0-13.7-5.46-13.7-13.47s4.44-13.47,13.7-13.47,13.7,5.46,13.7,13.47-4.44,13.47-13.7,13.47ZM324.7,506.22h-5.65v-14.86c0-4.07-2.13-6.06-5.88-6.06-4.54,0-6.9,2.64-6.9,7.87v13.05h-5.65v-25.82h4.91l.46,4.49c1.9-3.56,4.72-5.09,8.84-5.09,5.92,0,9.86,3.84,9.86,11.57v14.86Z"/>
+      <path fill="#e5006e" d="M234.24,243.22l106.51,131.23h-47.24l-130.78-160.51h44.18c49.73,0,78.95-22.92,78.95-63.01s-27.73-62.56-77.46-62.56h-45.54v-32.28h49.22c70.54,0,112.26,35.46,112.26,94.85,0,50.73-33.96,87.56-90.09,92.28M94.22,341.98h139.57v32.39H55.49V56.12h38.73v285.86ZM376.09,0H0v430.73h376.09V0Z"/>
+    </svg>
+    <div class="brand-text">
+      <span class="name">Lloyd's Register Foundation</span>
+      <span class="unit">World Risk Poll · Tools</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="eyebrow">Internal tool</div>
+        <h1>QR code <span class="accent">generator</span><span class="period">.</span></h1>
+        <p class="lede">Create branded QR codes for campaigns, reports and events. Add UTM tags so visits show up in your analytics, drop the Foundation mark into the centre, and export print-ready files. Everything runs in your browser.</p>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-num" id="statVersion">—</div>
+          <div class="stat-lbl">QR version</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="statModules">—</div>
+          <div class="stat-lbl">Modules</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <div class="stage-head">
+      <h2>Build a code</h2>
+      <div class="sub">Enter a URL, add tracking and branding, then download as PNG or SVG.</div>
+    </div>
+
+    <div class="grid">
+      <div class="card card-cream">
+        <div class="field">
+          <label for="content">Destination URL or text</label>
+          <textarea id="content" placeholder="https://wrp.lrfoundation.org.uk">https://wrp.lrfoundation.org.uk</textarea>
+        </div>
+
+        <div class="subhead">Campaign tracking (UTM)</div>
+        <div class="field">
+          <label for="utm_source">
+            utm_source
+            <span class="help">?<span class="tip"><b>Where the traffic comes from.</b> The referrer or platform that sent the visitor. Example: <code>print_report</code>, <code>linkedin</code>, <code>newsletter</code>.</span></span>
+          </label>
+          <input type="text" id="utm_source" placeholder="print_report">
+        </div>
+        <div class="field">
+          <label for="utm_medium">
+            utm_medium
+            <span class="help">?<span class="tip"><b>The marketing channel or format.</b> How the link reached them. Example: <code>qr</code>, <code>social</code>, <code>email</code>.</span></span>
+          </label>
+          <input type="text" id="utm_medium" placeholder="qr">
+        </div>
+        <div class="field">
+          <label for="utm_campaign">
+            utm_campaign
+            <span class="help">?<span class="tip"><b>The specific campaign.</b> Names the activity so its visits group together in analytics. Example: <code>wrp2025_launch</code>, <code>davos_event</code>.</span></span>
+          </label>
+          <input type="text" id="utm_campaign" placeholder="wrp2025_launch">
+        </div>
+
+        <div class="field">
+          <label>Encoded URL</label>
+          <div class="urlout" id="urlout">—</div>
+        </div>
+
+        <div class="subhead">Appearance</div>
+
+        <div class="field">
+          <label for="ecc">Error correction level</label>
+          <select id="ecc">
+            <option value="L">L — 7% recovery (smallest)</option>
+            <option value="M">M — 15% recovery</option>
+            <option value="Q">Q — 25% recovery</option>
+            <option value="H" selected>H — 30% recovery (best for logos)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Code colour</label>
+          <div class="swatches" id="fgSwatches"></div>
+        </div>
+
+        <div class="field">
+          <label>Corner rounding — <span class="rangeval" id="roundval">35</span>%</label>
+          <input type="range" id="rounding" min="0" max="50" step="5" value="35">
+        </div>
+
+        <div class="field" style="margin-bottom:0.8rem">
+          <div class="toggle-row">
+            <span class="lbl">Embed Foundation logo</span>
+            <label class="switch">
+              <input type="checkbox" id="uselogo" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field" id="logoControls" style="margin-bottom:1.4rem">
+          <label>Logo area — <span class="rangeval" id="logoval">22</span>%</label>
+          <input type="range" id="logosize" min="10" max="35" step="1" value="22">
+        </div>
+
+        <div class="field" style="margin-bottom:0">
+          <label>Export size — <span class="rangeval" id="sizeval">800</span>px</label>
+          <input type="range" id="size" min="256" max="1600" step="64" value="800">
+        </div>
+      </div>
+
+      <div class="preview-wrap">
+        <div class="qrstage" id="stage">
+          <div class="empty">Enter a URL to generate a code</div>
+        </div>
+        <div class="note ok" id="note">Level H with a logo under 25% is a safe combination. Always scan-test before publishing.</div>
+        <div class="actions">
+          <button class="btn btn-primary" id="dlpng" disabled>Download PNG</button>
+          <button class="btn btn-secondary" id="dlsvg" disabled>Download SVG</button>
+        </div>
+        <p class="dl-caption">Downloads have a transparent background, so the code drops cleanly onto any colour. The preview shows it on white for clarity.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      Encoding and rendering happen locally in your browser. No content is transmitted or stored. Built as a single self-contained HTML file.
+    </div>
+  </footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const PALETTE = { ink: '#0a0a14', white: '#ffffff', pink: '#e5006e' };
+const NAMES = { '#0a0a14': 'Black', '#ffffff': 'White', '#e5006e': 'Pink' };
+
+const state = {
+  content: $('content').value,
+  utm_source: '', utm_medium: '', utm_campaign: '',
+  ecc: 'H', fg: '#0a0a14',
+  size: 800, uselogo: true, logosize: 22, rounding: 35
+};
+
+// Preview-only background: white behind a black or pink code, black behind a white code.
+// Exports are always transparent; this is purely so the on-screen preview stays legible.
+function previewBg() { return state.fg === '#ffffff' ? '#0a0a14' : '#ffffff'; }
+// The logo letters use a colour that contrasts with the code colour: white code
+// gets dark letters, black or pink code gets white letters.
+function contrastColor() { return state.fg === '#ffffff' ? '#0a0a14' : '#ffffff'; }
+
+const LOGO_PATH = 'M234.24,243.22l106.51,131.23h-47.24l-130.78-160.51h44.18c49.73,0,78.95-22.92,78.95-63.01s-27.73-62.56-77.46-62.56h-45.54v-32.28h49.22c70.54,0,112.26,35.46,112.26,94.85,0,50.73-33.96,87.56-90.09,92.28M94.22,341.98h139.57v32.39H55.49V56.12h38.73v285.86ZM376.09,0H0v430.73h376.09V0Z';
+
+// The logo is a single vector path, so we draw it straight onto the canvas with
+// Path2D. This avoids the cross-browser quirks of rasterizing an SVG <img> to
+// canvas (Chrome can fail to draw an SVG image with no intrinsic size), and it
+// removes the async image-load race entirely. The path is in a 376.09 x 430.73
+// coordinate space; we translate and scale it to fit the requested logo box.
+const LOGO_PATH2D = new Path2D(LOGO_PATH);
+const LOGO_VW = 376.09, LOGO_VH = 430.73;
+
+function buildSwatches(containerId, current, onPick) {
+  const c = $(containerId);
+  c.innerHTML = '';
+  Object.values(PALETTE).forEach(col => {
+    const s = document.createElement('div');
+    s.className = 'swatch' + (col === current ? ' active' : '');
+    s.style.background = col;
+    s.dataset.c = col;
+    s.title = NAMES[col];
+    s.onclick = () => {
+      [...c.children].forEach(x => x.classList.remove('active'));
+      s.classList.add('active');
+      onPick(col);
+    };
+    c.appendChild(s);
+  });
+}
+buildSwatches('fgSwatches', state.fg, col => { state.fg = col; render(); });
+
+function buildURL() {
+  const base = state.content.trim();
+  const params = [];
+  if (state.utm_source) params.push(['utm_source', state.utm_source]);
+  if (state.utm_medium) params.push(['utm_medium', state.utm_medium]);
+  if (state.utm_campaign) params.push(['utm_campaign', state.utm_campaign]);
+  if (!params.length) return base;
+  const looksLikeUrl = /^https?:\/\//i.test(base) || /^[\w-]+(\.[\w-]+)+/.test(base);
+  if (!looksLikeUrl) return base;
+  const sep = base.includes('?') ? '&' : '?';
+  const query = params.map(([k, v]) => k + '=' + encodeURIComponent(v.trim())).join('&');
+  return base + sep + query;
+}
+
+function renderURLPreview() {
+  const out = $('urlout');
+  const base = state.content.trim();
+  if (!base) { out.textContent = '—'; return; }
+  const full = buildURL();
+  if (full === base) { out.textContent = base; return; }
+  const marker = base.includes('?') ? '&utm_' : '?utm_';
+  const qIdx = full.indexOf(marker);
+  const head = full.slice(0, qIdx).replace(/</g, '&lt;');
+  const tail = full.slice(qIdx).replace(/</g, '&lt;');
+  out.innerHTML = head + '<span class="q">' + tail + '</span>';
+}
+
+function buildQR() {
+  const data = buildURL();
+  if (!data.trim()) return null;
+  const qr = qrcode(0, state.ecc);
+  qr.addData(data);
+  qr.make();
+  return qr;
+}
+
+function roundRect(ctx, x, y, w, h, tl, tr, br, bl) {
+  ctx.beginPath();
+  ctx.moveTo(x + tl, y);
+  ctx.lineTo(x + w - tr, y);
+  ctx.arcTo(x + w, y, x + w, y + tr, tr);
+  ctx.lineTo(x + w, y + h - br);
+  ctx.arcTo(x + w, y + h, x + w - br, y + h, br);
+  ctx.lineTo(x + bl, y + h);
+  ctx.arcTo(x, y + h, x, y + h - bl, bl);
+  ctx.lineTo(x, y + tl);
+  ctx.arcTo(x, y, x + tl, y, tl);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function paint(cv, px, qr, transparent) {
+  const count = qr.getModuleCount(), quiet = 4, total = count + quiet * 2;
+  const cell = px / total;
+  const ctx = cv.getContext('2d');
+  cv.width = px; cv.height = px;
+  ctx.clearRect(0, 0, px, px);
+  // Preview background goes on the canvas element via CSS, not as a fillRect
+  // inside the canvas. That way, when we punch the logo hole with clearRect,
+  // the preview bg shows through the hole (instead of the page background).
+  // For exports (transparent=true) the canvas style is cleared so the PNG
+  // really is transparent.
+  cv.style.background = transparent ? 'transparent' : previewBg();
+  ctx.fillStyle = state.fg;
+
+  const dark = (r, c) => r >= 0 && c >= 0 && r < count && c < count && qr.isDark(r, c);
+  const radius = (cell / 2) * (state.rounding / 50);
+
+  // Compute backdrop zone first (if logo enabled) so the module loop can skip
+  // modules that fall inside it — prevents the +0.6 overdraw seam-fix from
+  // bleeding pink slivers into the white backdrop at adjacent edges.
+  let bgZone = null;
+  if (state.uselogo) {
+    const aspect = LOGO_VH / LOGO_VW;
+    const frac = state.logosize / 100;
+    const targetWmod = total * frac;
+    let bgWmod = Math.max(2, Math.round(targetWmod));
+    if (bgWmod % 2 !== count % 2) bgWmod += 1;
+    let bgHmod = Math.max(2, Math.round(bgWmod * aspect));
+    if (bgHmod % 2 !== count % 2) bgHmod += 1;
+    const centreMod = quiet + count / 2;
+    bgZone = {
+      bgWmod, bgHmod,
+      // module-space edges (for the loop skip test)
+      x0: centreMod - bgWmod / 2,
+      y0: centreMod - bgHmod / 2,
+      x1: centreMod + bgWmod / 2,
+      y1: centreMod + bgHmod / 2,
+      // pixel-space rectangle (for fillRect later)
+      px: (centreMod - bgWmod / 2) * cell,
+      py: (centreMod - bgHmod / 2) * cell,
+      pw: bgWmod * cell,
+      ph: bgHmod * cell
+    };
+  }
+  const inBgZone = (modX, modY) => bgZone
+    && (modX + 0.5) > bgZone.x0 && (modX + 0.5) < bgZone.x1
+    && (modY + 0.5) > bgZone.y0 && (modY + 0.5) < bgZone.y1;
+
+  for (let r = 0; r < count; r++) {
+    for (let c = 0; c < count; c++) {
+      if (!dark(r, c)) continue;
+      const modX = c + quiet, modY = r + quiet;
+      if (inBgZone(modX, modY)) continue; // skip; backdrop covers this area
+      const x = modX * cell, y = modY * cell;
+      const tl = (!dark(r-1, c) && !dark(r, c-1)) ? radius : 0;
+      const tr = (!dark(r-1, c) && !dark(r, c+1)) ? radius : 0;
+      const br = (!dark(r+1, c) && !dark(r, c+1)) ? radius : 0;
+      const bl = (!dark(r+1, c) && !dark(r, c-1)) ? radius : 0;
+      roundRect(ctx, x, y, cell + 0.6, cell + 0.6, tl, tr, br, bl);
+    }
+  }
+
+  if (state.uselogo && bgZone) {
+    // Punch a transparent hole through the QR where the backdrop sits — the
+    // surface beneath the code shows through. Then draw the logo art in the
+    // code colour on top of the hole.
+    ctx.clearRect(bgZone.px, bgZone.py, bgZone.pw, bgZone.ph);
+
+    // Fit logo inside the hole with 1 module padding, aspect preserved.
+    const pad = 1;
+    const innerW = (bgZone.bgWmod - 2 * pad) * cell;
+    const innerH = (bgZone.bgHmod - 2 * pad) * cell;
+    const s = Math.min(innerW / LOGO_VW, innerH / LOGO_VH);
+    const logoW = LOGO_VW * s;
+    const logoH = LOGO_VH * s;
+    const logoX = bgZone.px + (bgZone.pw - logoW) / 2;
+    const logoY = bgZone.py + (bgZone.ph - logoH) / 2;
+
+    ctx.save();
+    ctx.translate(logoX, logoY);
+    ctx.scale(s, s);
+    ctx.fillStyle = state.fg;
+    ctx.fill(LOGO_PATH2D, 'evenodd');
+    ctx.restore();
+  }
+}
+
+function render() {
+  renderURLPreview();
+  const stage = $('stage');
+  const qr = buildQR();
+  if (!qr) {
+    stage.innerHTML = '<div class="empty">Enter a URL to generate a code</div>';
+    $('dlpng').disabled = true; $('dlsvg').disabled = true;
+    $('statVersion').textContent = '—'; $('statModules').textContent = '—';
+    return;
+  }
+  const count = qr.getModuleCount();
+  $('statVersion').textContent = (count - 17) / 4;
+  $('statModules').textContent = count + '×' + count;
+
+  const cv = document.createElement('canvas');
+  paint(cv, 300, qr, false);
+  stage.innerHTML = '';
+  stage.appendChild(cv);
+  $('dlpng').disabled = false; $('dlsvg').disabled = false;
+  updateNote();
+}
+
+function updateNote() {
+  const note = $('note');
+  const msgs = []; let warn = false;
+
+  if (state.uselogo) {
+    if (state.ecc !== 'H' && state.ecc !== 'Q') { warn = true; msgs.push('With a logo, use level <strong>Q or H</strong> so the code survives the obscured centre.'); }
+    if (state.logosize > 28) { warn = true; msgs.push('A logo over <strong>~25%</strong> risks corrupting too many modules to scan.'); }
+  }
+  if (state.rounding >= 45) { warn = true; msgs.push('High rounding looks soft but can reduce scan reliability at small sizes. Test it.'); }
+
+  if (warn) {
+    note.className = 'note warn';
+    note.innerHTML = msgs.join(' ');
+  } else {
+    note.className = 'note ok';
+    note.innerHTML = defaultNote();
+  }
+}
+function defaultNote() {
+  const colourName = NAMES[state.fg].toLowerCase();
+  const base = state.uselogo
+    ? 'A ' + colourName + ' code at level ' + state.ecc + ' with the mark at ' + state.logosize + '% is a safe combination.'
+    : 'A ' + colourName + ' code at level ' + state.ecc + ' should scan reliably.';
+  return base + ' Because the background is transparent, place it on a surface that contrasts with the code colour, then scan-test before publishing.';
+}
+
+function downloadPNG() {
+  const qr = buildQR(); if (!qr) return;
+  const cv = document.createElement('canvas');
+  paint(cv, state.size, qr, true);
+  const a = document.createElement('a');
+  a.download = 'lrf-qr.png'; a.href = cv.toDataURL('image/png'); a.click();
+}
+
+function downloadSVG() {
+  const qr = buildQR(); if (!qr) return;
+  const count = qr.getModuleCount(), quiet = 4, total = count + quiet * 2;
+  const dark = (r, c) => r >= 0 && c >= 0 && r < count && c < count && qr.isDark(r, c);
+  const radius = 0.5 * (state.rounding / 50);
+
+  // Backdrop snapped to whole modules; logo art fits inside with 1 module padding.
+  // Clear-zone and contrast backdrop are the SAME rectangle so they can't drift apart.
+  let zone = null;
+  let bgRect = null;
+  if (state.uselogo) {
+    const aspect = LOGO_VH / LOGO_VW;
+    const frac = state.logosize / 100;
+    const targetWmod = total * frac;
+    let bgWmod = Math.max(2, Math.round(targetWmod));
+    if (bgWmod % 2 !== count % 2) bgWmod += 1;
+    let bgHmod = Math.max(2, Math.round(bgWmod * aspect));
+    if (bgHmod % 2 !== count % 2) bgHmod += 1;
+    const c0 = total / 2;
+    const x0 = c0 - bgWmod / 2, y0 = c0 - bgHmod / 2;
+    const x1 = c0 + bgWmod / 2, y1 = c0 + bgHmod / 2;
+    zone = { x0, y0, x1, y1 };
+    bgRect = { x: x0, y: y0, w: bgWmod, h: bgHmod, bgWmod, bgHmod };
+  }
+  const inZone = (x, y) => zone && (x + 0.5) >= zone.x0 && (x + 0.5) <= zone.x1 && (y + 0.5) >= zone.y0 && (y + 0.5) <= zone.y1;
+
+  let paths = '';
+  for (let r = 0; r < count; r++) {
+    for (let c = 0; c < count; c++) {
+      if (!dark(r, c)) continue;
+      const x = c + quiet, y = r + quiet;
+      if (inZone(x, y)) continue;
+      const tl = (!dark(r-1, c) && !dark(r, c-1)) ? radius : 0;
+      const tr = (!dark(r-1, c) && !dark(r, c+1)) ? radius : 0;
+      const br = (!dark(r+1, c) && !dark(r, c+1)) ? radius : 0;
+      const bl = (!dark(r+1, c) && !dark(r, c-1)) ? radius : 0;
+      paths += `M${x+tl},${y}h${1-tl-tr}a${tr},${tr} 0 0 1 ${tr},${tr}v${1-tr-br}a${br},${br} 0 0 1 ${-br},${br}h${-(1-br-bl)}a${bl},${bl} 0 0 1 ${-bl},${-bl}v${-(1-bl-tl)}a${tl},${tl} 0 0 1 ${tl},${-tl}z`;
+    }
+  }
+  let logo = '';
+  if (state.uselogo && bgRect) {
+    // Logo fitted inside the snapped hole with 1-module padding, aspect preserved.
+    // No backdrop rect — the cut-out is left transparent so the surface beneath
+    // the code shows through.
+    const pad = 1;
+    const innerW = bgRect.bgWmod - 2 * pad;
+    const innerH = bgRect.bgHmod - 2 * pad;
+    const s = Math.min(innerW / LOGO_VW, innerH / LOGO_VH);
+    const logoW = LOGO_VW * s, logoH = LOGO_VH * s;
+    const logoX = bgRect.x + (bgRect.w - logoW) / 2;
+    const logoY = bgRect.y + (bgRect.h - logoH) / 2;
+    logo = `<g transform="translate(${logoX}, ${logoY}) scale(${s})">`
+      + `<path fill="${state.fg}" fill-rule="evenodd" d="${LOGO_PATH}"/></g>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}">`
+    + `<path fill="${state.fg}" d="${paths}"/>${logo}</svg>`;
+  const a = document.createElement('a');
+  a.download = 'lrf-qr.svg';
+  a.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  a.click();
+}
+
+$('content').addEventListener('input', e => { state.content = e.target.value; render(); });
+['utm_source','utm_medium','utm_campaign'].forEach(id => {
+  $(id).addEventListener('input', e => { state[id] = e.target.value; render(); });
+});
+$('ecc').addEventListener('change', e => { state.ecc = e.target.value; render(); });
+$('rounding').addEventListener('input', e => { state.rounding = +e.target.value; $('roundval').textContent = e.target.value; render(); });
+$('uselogo').addEventListener('change', e => { state.uselogo = e.target.checked; $('logoControls').style.opacity = e.target.checked ? '1' : '0.4'; render(); });
+$('logosize').addEventListener('input', e => { state.logosize = +e.target.value; $('logoval').textContent = e.target.value; render(); });
+$('size').addEventListener('input', e => { state.size = +e.target.value; $('sizeval').textContent = e.target.value; });
+$('dlpng').addEventListener('click', downloadPNG);
+$('dlsvg').addEventListener('click', downloadSVG);
+
+render();
+</script>
+</body>
+</html>
