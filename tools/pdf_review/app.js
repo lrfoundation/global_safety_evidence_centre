@@ -24,6 +24,8 @@ if (!DOC_ID) {
 // ====================================================
 // Index page — list all docs from manifest.json
 // ====================================================
+// Index page — list all docs from manifest.json
+// ====================================================
 async function initIndex() {
     try {
         const res = await fetch('docs/manifest.json?t=' + Date.now());
@@ -31,6 +33,16 @@ async function initIndex() {
         const data = await res.json();
 
         const docs = data.docs || [];
+
+        // Hero stat callouts
+        $('statDocs').textContent = docs.length || '—';
+        if (docs.length > 0) {
+            const latestDoc = [...docs].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))[0];
+            $('statLatest').textContent = formatStatDate(latestDoc.created_at);
+        } else {
+            $('statLatest').textContent = '—';
+        }
+
         if (docs.length === 0) {
             $('docs-empty').style.display = 'block';
             return;
@@ -504,6 +516,15 @@ function formatDate(iso) {
     try {
         const d = new Date(iso);
         return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch (_) { return iso; }
+}
+
+// Compact format for the hero stat callout (e.g. "27 May")
+function formatStatDate(iso) {
+    if (!iso) return '—';
+    try {
+        const d = new Date(iso);
+        return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
     } catch (_) { return iso; }
 }
 
