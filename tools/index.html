@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Review</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+    <a href="./" class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <circle cx="12" cy="14" r="2.5" fill="currentColor"/>
+        </svg>
+        <span>Review</span>
+    </a>
+    <div id="header-right"></div>
+</header>
+
+<!-- =================== INDEX PAGE (list of docs) =================== -->
+<!-- Only shown if no ?doc= param. Lists docs from manifest.json. -->
+<main id="index-page" class="page" style="display:none;">
+    <div class="hero">
+        <h1>Documents under review</h1>
+        <p class="lede">Pick a document to read and comment on. New documents are added by the maintainer.</p>
+    </div>
+
+    <div id="docs-list" class="docs-list"></div>
+    <div id="docs-empty" class="empty-state" style="display:none;">
+        <p>No documents have been added yet.</p>
+    </div>
+    <div id="docs-error" class="error-msg" style="display:none;"></div>
+</main>
+
+<!-- =================== REVIEW PAGE =================== -->
+<main id="review-page" class="page review-layout" style="display:none;">
+    <div class="review-toolbar">
+        <div class="toolbar-left">
+            <h1 id="doc-title">Loading…</h1>
+            <p class="doc-meta" id="doc-meta"></p>
+        </div>
+        <div class="toolbar-right">
+            <div class="user-chip" id="user-chip">
+                <span id="user-chip-name">Not signed in</span>
+                <button type="button" id="change-name-btn" class="link-btn">change</button>
+            </div>
+            <div class="zoom-controls">
+                <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+                <span id="zoom-label">100%</span>
+                <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="review-body">
+        <div id="pdf-viewport" class="pdf-viewport">
+            <div id="pdf-pages"></div>
+            <div id="pdf-loading" class="pdf-loading">Loading document…</div>
+        </div>
+
+        <aside class="comments-pane">
+            <div class="comments-header">
+                <h2>Comments <span id="comment-count">0</span></h2>
+                <div class="filter-row">
+                    <button class="filter-btn is-active" data-filter="open">Open</button>
+                    <button class="filter-btn" data-filter="resolved">Resolved</button>
+                    <button class="filter-btn" data-filter="all">All</button>
+                </div>
+            </div>
+            <div id="comments-list"></div>
+            <div id="comments-empty" class="comments-empty">
+                <p>No comments yet.</p>
+                <p class="hint">Click anywhere on the document to add one.</p>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Admin bar, shown only with valid admin token in URL -->
+    <div id="admin-bar" class="admin-bar" style="display:none;">
+        <div class="admin-bar-inner">
+            <span class="admin-bar-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Admin mode — delete buttons enabled on each comment
+            </span>
+        </div>
+    </div>
+</main>
+
+<!-- =================== NAME PROMPT MODAL =================== -->
+<div id="name-modal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <h3>What's your name?</h3>
+        <p class="hint">This appears on your comments. You can change it anytime.</p>
+        <input type="text" id="name-input" maxlength="80" placeholder="Your name">
+        <div class="modal-actions">
+            <button type="button" id="name-cancel" class="btn-secondary">Cancel</button>
+            <button type="button" id="name-save" class="btn-primary">Continue</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
