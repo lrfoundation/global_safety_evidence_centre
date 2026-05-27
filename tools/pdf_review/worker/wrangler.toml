@@ -1,0 +1,10 @@
+name = "pdf-review-comments"
+main = "src/index.js"
+compatibility_date = "2024-09-01"
+
+# After running `wrangler d1 create pdf-review-comments`, paste the printed
+# database_id here.
+[[d1_databases]]
+binding = "DB"
+database_name = "pdf-review-comments"
+database_id = "PASTE_DATABASE_ID_HERE"
