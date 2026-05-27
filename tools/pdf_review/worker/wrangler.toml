@@ -7,4 +7,4 @@ compatibility_date = "2024-09-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "pdf-review-comments"
-database_id = "PASTE_DATABASE_ID_HERE"
+database_id = "728ac17c-2b54-41e1-b107-e56e1e286316"
