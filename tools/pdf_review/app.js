@@ -171,7 +171,7 @@ async function initReview() {
 
     // ----- 3: Render PDF -----
     try {
-        const pdfUrl = `docs/${DOC_ID}/document.pdf`;
+        const pdfUrl = `docs/${DOC_ID}/document.pdf?v=${state.docMeta.file_size}`;
         state.pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
         loadingEl.style.display = 'none';
         await renderAllPages();
