@@ -401,7 +401,7 @@
 
     // Personal access token (optional — increases GitHub API rate limit from 60 to 5,000/hr)
     // Leave as empty string '' if the repo is public and low-traffic
-    token: '',
+    token: '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',
 
     // Branch to read from
     branch: 'main',
@@ -507,6 +507,10 @@
     <div id="cards-output"></div>
   </div>
   <div id="error-state" hidden></div>
+  <details id="debug-panel" style="margin-top:2rem;border:1.5px solid var(--lrf-line);border-radius:2px;background:var(--lrf-white);">
+    <summary style="padding:.75rem 1rem;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--lrf-muted);cursor:pointer;">Debug log</summary>
+    <pre id="debug-output" style="padding:1rem;font-size:11px;font-family:'Courier New',monospace;color:var(--lrf-ink-soft);white-space:pre-wrap;word-break:break-all;border-top:1px solid var(--lrf-line);"></pre>
+  </details>
 </main>
 
 <!-- Footer -->
@@ -558,6 +562,8 @@
   }
 
   // ── Data loading ─────────────────────────────────────────────
+  const debugLog = [];
+
   async function loadAllFiles() {
     const files = [];
 
@@ -565,35 +571,36 @@
       const yearPath = CONFIG.rootFolder ? `${CONFIG.rootFolder}/${year}` : year;
 
       if (!cfg.themes) {
-        // No subfolders — load PDFs directly from year folder
+        debugLog.push(`Fetching: ${yearPath}`);
         try {
           const items = await fetchTree(yearPath);
-          for (const item of items) {
-            if (item.type === 'file' && item.name.toLowerCase().endsWith('.pdf')) {
-              files.push({ name: item.name, path: item.path, url: rawUrl(item.path), year, theme: null });
-            }
+          const pdfs = Array.isArray(items) ? items.filter(i => i.type === 'file' && i.name.toLowerCase().endsWith('.pdf')) : [];
+          debugLog.push(`  OK: ${Array.isArray(items) ? items.length : 0} items, ${pdfs.length} PDFs`);
+          for (const item of pdfs) {
+            files.push({ name: item.name, path: item.path, url: rawUrl(item.path), year, theme: null });
           }
         } catch (e) {
-          console.warn(`Could not load ${yearPath}:`, e.message);
+          debugLog.push(`  ERROR: ${e.message}`);
         }
       } else {
-        // Load PDFs from each theme subfolder
         for (const theme of cfg.themes) {
           const themePath = `${yearPath}/${theme}`;
+          debugLog.push(`Fetching: ${themePath}`);
           try {
             const items = await fetchTree(themePath);
-            for (const item of items) {
-              if (item.type === 'file' && item.name.toLowerCase().endsWith('.pdf')) {
-                files.push({ name: item.name, path: item.path, url: rawUrl(item.path), year, theme });
-              }
+            const pdfs = Array.isArray(items) ? items.filter(i => i.type === 'file' && i.name.toLowerCase().endsWith('.pdf')) : [];
+            debugLog.push(`  OK: ${Array.isArray(items) ? items.length : 0} items, ${pdfs.length} PDFs`);
+            for (const item of pdfs) {
+              files.push({ name: item.name, path: item.path, url: rawUrl(item.path), year, theme });
             }
           } catch (e) {
-            console.warn(`Could not load ${themePath}:`, e.message);
+            debugLog.push(`  ERROR: ${e.message}`);
           }
         }
       }
     }
 
+    debugLog.push(`Total files found: ${files.length}`);
     return files;
   }
 
@@ -755,10 +762,12 @@
       loadingEl.hidden  = true;
       resultsEl.hidden  = false;
       errorEl.hidden    = true;
+      document.getElementById('debug-output').textContent = debugLog.join('\n');
       render();
     } catch (err) {
       loadingEl.hidden = true;
       errorEl.hidden   = false;
+      document.getElementById('debug-output').textContent = debugLog.join('\n');
       errorEl.innerHTML = `
         <div class="error-state">
           <h3>Could not load documents</h3>
