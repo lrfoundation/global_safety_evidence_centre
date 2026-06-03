@@ -409,6 +409,8 @@
     // Folder structure definition
     // Set themes to null for years with no subfolders
     // Folder names must match exactly (case-sensitive on GitHub)
+    yearOrder: ['2023', '2021', '2019'],
+
     structure: {
       '2023': { themes: ['osh', 'resilience', 'risk', 'waste'],     label: '2023' },
       '2021': { themes: ['ai', 'resi', 'trended', 'v_and_h'],       label: '2021' },
@@ -567,7 +569,8 @@
   async function loadAllFiles() {
     const files = [];
 
-    for (const [year, cfg] of Object.entries(CONFIG.structure)) {
+    for (const year of CONFIG.yearOrder) {
+      const cfg = CONFIG.structure[year];
       const yearPath = CONFIG.rootFolder ? `${CONFIG.rootFolder}/${year}` : year;
 
       if (!cfg.themes) {
@@ -658,7 +661,7 @@
     }
 
     // Sort groups: by year asc, then theme order from CONFIG
-    const yearOrder = Object.keys(CONFIG.structure);
+    const yearOrder = CONFIG.yearOrder;
     const sortedKeys = Object.keys(groups).sort((a, b) => {
       const [ay, at] = a.split('|||');
       const [by, bt] = b.split('|||');
