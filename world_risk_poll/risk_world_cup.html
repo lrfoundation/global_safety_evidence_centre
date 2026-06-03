@@ -36,7 +36,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---------- Header ---------- AIG To Adjust*/
+/* ---------- Header ---------- */
 header.site {
   background: var(--lrf-white);
   border-bottom: 1px solid var(--lrf-line);
@@ -567,6 +567,23 @@ main {
   color: var(--lrf-pink-dark) !important;
   font-weight: 600;
 }
+
+/* ---------- "Make them win" multi-step path ---------- */
+.rig-path {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.92rem;
+}
+.rig-path li { line-height: 1.4; }
+.rig-q {
+  color: var(--lrf-muted);
+  font-size: 0.82rem;
+  display: block;
+}
+.rig-working { color: var(--lrf-muted); font-style: italic; }
 
 /* ---------- Round-summary modal (less intrusive than before) ---------- */
 .summary-list {
@@ -1222,13 +1239,159 @@ function solveForTeam(team) {
     out.innerHTML = `🏆 <strong>${team}</strong> are world champions! With <em>${state.questionLabel}</em> → “${state.answerLabel}”, ${team} top the planet at <strong>${(w.score*100).toFixed(1)}%</strong>` +
       (w.runnerUp >= 0 ? ` (next best ${(w.runnerUp*100).toFixed(1)}%).` : `.`) +
       (wins.length > 1 ? ` They can win ${wins.length} different scenarios — this is their most commanding.` : ``);
-  } else if (bestFinish) {
-    applyScenario(bestFinish.qvar, bestFinish.code);
-    out.innerHTML = `😬 No path to the trophy for <strong>${team}</strong> in this data. Their strongest showing is <strong>#${bestFinish.rank} of ${bestFinish.field}</strong> — <em>${state.questionLabel}</em> → “${state.answerLabel}” at ${(bestFinish.score*100).toFixed(1)}% (shown above).`;
-  } else {
-    out.innerHTML = `<strong>${team}</strong> weren’t surveyed in these waves, so they can’t take the pitch.`;
+    return;
   }
+
+  // No single question crowns them — try carrying them via a different question each round.
+  out.innerHTML = `<span class="rig-working">Searching for a round-by-round path for <strong>${team}</strong>…</span>`;
+  setTimeout(() => {
+    const path = findWinningPath(team);
+    if (path) {
+      playMixedPath(path);
+      out.innerHTML = `😈 No single question crowns <strong>${team}</strong> — but switch the question each round and they lift the trophy! Their rigged run (shown above):${describePath(team, path)}`;
+    } else if (bestFinish) {
+      applyScenario(bestFinish.qvar, bestFinish.code);
+      out.innerHTML = `😬 Even switching the question every round, there’s no path to the trophy for <strong>${team}</strong> in this data. Their strongest single-question showing is <strong>#${bestFinish.rank} of ${bestFinish.field}</strong> — <em>${state.questionLabel}</em> → “${state.answerLabel}” at ${(bestFinish.score*100).toFixed(1)}% (shown above).`;
+    } else {
+      out.innerHTML = `<strong>${team}</strong> weren’t surveyed in these waves, so they can’t take the pitch.`;
+    }
+  }, 20);
 }
+
+// ---- Multi-step "make them win": a different question each round -------------
+// A team that can't top the world on any single question can often still be
+// carried to the trophy by switching questions round by round, because it only
+// needs to beat its specific opponent each round, not the whole field.
+let ALL_QA_CACHE = null;
+function allQA() {
+  if (ALL_QA_CACHE) return ALL_QA_CACHE;
+  const list = [];
+  for (const qvar of DATA.question_order) {
+    const raw = (DATA.question_meta && DATA.question_meta[qvar] && DATA.question_meta[qvar].label) || qvar;
+    const qLabel = prettifyQuestion(raw);
+    for (const a of buildAnswerOptions(qvar)) list.push({ q: qvar, code: a.code, qLabel, aLabel: a.label });
+  }
+  ALL_QA_CACHE = list;
+  return list;
+}
+function setActiveQA(qa) {
+  state.question = qa.q; state.answerCode = qa.code;
+  state.questionLabel = qa.qLabel; state.answerLabel = qa.aLabel;
+}
+function qaRec(qa) { return { q: qa.q, qLabel: qa.qLabel, a: qa.code, aLabel: qa.aLabel }; }
+
+const KO_LIST = {
+  r32: () => state.r32, r16: () => state.r16, qf: () => state.qf,
+  sf: () => state.sf, final: () => [state.final],
+};
+
+// Search for a per-round question path that carries `team` to the title.
+// Returns { group, r32, r16, qf, sf, final } of qa objects, or null. Budget-bounded.
+function findWinningPath(team) {
+  const grpEntry = Object.entries(GROUPS).find(([g, ts]) => ts.includes(team));
+  if (!grpEntry) return null;
+  const groupTeams = grpEntry[1];
+  const QA = allQA();
+
+  // Group candidates: team finishes top-2 in its group (guarantees a R32 place).
+  // Group rank equals score rank, since a higher score beats every lower one.
+  const groupCands = QA.filter(qa => {
+    const mine = getScore(team, qa.q, qa.code);
+    if (mine.missing || mine.score <= FORFEIT_SCORE) return false;
+    let better = 0;
+    for (const t of groupTeams) {
+      if (t === team) continue;
+      const s = getScore(t, qa.q, qa.code).score;
+      if (s > mine.score || (s === mine.score && t.localeCompare(team) < 0)) better++;
+    }
+    return better <= 1;
+  });
+
+  let budget = 400000;
+  function dfs(roundKey, used) {
+    if (budget <= 0) return null;
+    const compute = COMPUTE_FN[roundKey];
+    const getList = KO_LIST[roundKey];
+    // Two passes: prefer a question NOT yet used in this path; only fall back to
+    // reusing a question (with a different answer) when nothing fresh can win.
+    for (let pass = 0; pass < 2; pass++) {
+      for (const qa of QA) {
+        const reused = used.has(qa.q);
+        if (pass === 0 && reused) continue;   // pass 0: fresh questions only
+        if (pass === 1 && !reused) continue;   // pass 1: reused questions only
+        if (budget-- <= 0) return null;
+        setActiveQA(qa);
+        compute();
+        const matches = getList();
+        const mi = matches.findIndex(m => m && (m.teamA === team || m.teamB === team));
+        if (mi < 0) return null;                  // team not in this round (shouldn't happen)
+        if (matches[mi].winner !== team) continue; // team loses under this question
+        if (roundKey === 'final') return { final: qa };
+        const nextUsed = new Set(used); nextUsed.add(qa.q);
+        const sub = dfs(nextRoundOf(roundKey), nextUsed);
+        if (sub) { sub[roundKey] = qa; return sub; }
+      }
+    }
+    return null;
+  }
+
+  for (const gqa of groupCands) {
+    setActiveQA(gqa);
+    computeGroupStage();              // freeze group results under this question
+    const sub = dfs('r32', new Set([gqa.q]));
+    if (sub) { sub.group = gqa; return sub; }
+  }
+  return null;
+}
+
+// Compute the whole bracket from a path, reveal it all, and jump to the champion view.
+function playMixedPath(path) {
+  clearAnimTimers();
+  setActiveQA(path.group); computeGroupStage();
+  setActiveQA(path.r32);   computeR32();
+  setActiveQA(path.r16);   computeR16();
+  setActiveQA(path.qf);    computeQF();
+  setActiveQA(path.sf);    computeSF();
+  setActiveQA(path.final); computeFinal();
+  state.roundQA = {
+    group: qaRec(path.group), r32: qaRec(path.r32), r16: qaRec(path.r16),
+    qf: qaRec(path.qf), sf: qaRec(path.sf), final: qaRec(path.final),
+  };
+  state.r32.forEach(m => m.revealed = true);
+  state.r16.forEach(m => m.revealed = true);
+  state.qf.forEach(m => m.revealed = true);
+  state.sf.forEach(m => m.revealed = true);
+  state.final.revealed = true;
+  state.champion = state.final.winner;
+  state.phase = 'champion';
+  setActiveQA(path.final);   // champion banner reflects the final's question
+  document.getElementById('main-content').innerHTML = renderMainContent();
+  const ww = document.getElementById('win-wrap'); if (ww) ww.style.display = '';
+}
+
+// Describe the team's run round by round, for the result panel.
+function describePath(team, path) {
+  const grpEntry = Object.entries(GROUPS).find(([g, ts]) => ts.includes(team));
+  const grp = grpEntry ? grpEntry[0] : '?';
+  const gRes = state.groupResults[grp] || [];
+  const gRank = gRes.findIndex(r => r.team === team) + 1;
+  const ord = ['1st', '2nd', '3rd', '4th'][gRank - 1] || `${gRank}th`;
+
+  const rows = [];
+  rows.push(`<li><strong>Group ${grp}</strong>: finished ${ord} on “${path.group.aLabel}” <span class="rig-q">${path.group.qLabel}</span></li>`);
+  const labels = { r32: 'Round of 32', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final' };
+  for (const rk of ['r32', 'r16', 'qf', 'sf', 'final']) {
+    const matches = KO_LIST[rk]();
+    const m = matches.find(x => x && (x.teamA === team || x.teamB === team));
+    if (!m) continue;
+    const opp = m.teamA === team ? m.teamB : m.teamA;
+    const my = m.teamA === team ? m.scoreA : m.scoreB;
+    const ot = m.teamA === team ? m.scoreB : m.scoreA;
+    rows.push(`<li><strong>${labels[rk]}</strong>: beat ${opp} ${(my*100).toFixed(1)}%–${(ot*100).toFixed(1)}% on “${path[rk].aLabel}” <span class="rig-q">${path[rk].qLabel}</span></li>`);
+  }
+  return `<ol class="rig-path">${rows.join('')}</ol>`;
+}
+
 
 // SPSS variable labels are abbreviated headline-case. Rewrite to natural English.
 function prettifyQuestion(label) {
