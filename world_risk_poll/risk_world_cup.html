@@ -483,16 +483,89 @@ main {
   margin-top: 0.35rem;
 }
 
-/* ---------- Advance button (inline between phases) ---------- */
+/* ---------- Advance options (inline between phases) ---------- */
 .advance-wrap {
   margin: 2.5rem 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
 }
 .advance-btn {
   font-size: 16px;
   padding: 1rem 2.25rem;
   box-shadow: var(--shadow-md);
+}
+.advance-alt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.advance-alt-label {
+  font-size: 13px;
+  color: var(--lrf-muted);
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+.advance-mini {
+  font-size: 13px;
+  padding: 0.6rem 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Round-summary: scored-on caption + stacked choices ---------- */
+.scored-on {
+  font-size: 13px;
+  color: var(--lrf-ink-soft);
+  background: var(--lrf-cream);
+  border-left: 3px solid var(--lrf-pink);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+.modal-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+.modal-choices .btn { width: 100%; }
+
+/* ---------- In-round question picker ---------- */
+.picker-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 0.5rem;
+}
+.picker-blurb {
+  font-size: 14px;
+  color: var(--lrf-muted);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+.picker-field { margin-bottom: 1rem; }
+.picker-field select { width: 100%; }
+
+/* ---------- Per-round question captions (mixed bracket) ---------- */
+.q-cap {
+  font-size: 10px;
+  color: var(--lrf-pink-dark);
+  font-weight: 700;
+  text-align: center;
+  margin: -0.1rem 0 0.35rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stage-qa {
+  margin-top: 0.5rem;
+  color: var(--lrf-pink-dark) !important;
+  font-weight: 600;
 }
 
 /* ---------- Round-summary modal (less intrusive than before) ---------- */
@@ -1044,6 +1117,8 @@ let state = {
   groupResults: {},          // {A: [{team, score, played, won, points}], ...}
   r32: [], r16: [], qf: [], sf: [], final: null,
   champion: null,
+  roundQA: {},               // {group:{q,qLabel,a,aLabel}, r32:{…}, …} — question used per round
+  modalMode: null,           // 'summary' | 'picker' — what the modal is currently showing
   // Phase-based flow:
   //   'group'  : group stage visible, button to reveal R32
   //   'r32'    : R32 also visible, button to begin knockouts
@@ -1348,12 +1423,10 @@ function populateQuestions() {
 }
 
 // ---- Populate answer dropdown when question selected ------------------------
-function populateAnswers(qvar) {
-  const aSelect = document.getElementById('a-select');
-  aSelect.innerHTML = '<option value="">Choose an answer…</option>';
-  if (!qvar) { aSelect.disabled = true; return; }
-  // Pick the most common country to get the canonical answer list
-  // (some countries may lack an answer code if it wasn't asked there)
+// Build the canonical, prettified answer list for a question.
+// Shared by the main controls and the in-round question picker.
+function buildAnswerOptions(qvar) {
+  if (!qvar) return [];
   const codeCounts = {};
   for (const country of Object.values(DATA.countries)) {
     const block = country[qvar];
@@ -1363,23 +1436,27 @@ function populateAnswers(qvar) {
       codeCounts[key] = (codeCounts[key] || 0) + 1;
     }
   }
-  const answers = Object.entries(codeCounts)
-    .map(([k, count]) => {
+  return Object.entries(codeCounts)
+    .map(([k]) => {
       const [code, label] = k.split('|||');
-      return { code: parseFloat(code), label, count };
+      return { code: parseFloat(code), label: prettifyAnswer(label, parseFloat(code)) };
     })
     .sort((a, b) => {
-      // composites (negative codes) first, then by code
       if (a.code < 0 && b.code >= 0) return -1;
       if (b.code < 0 && a.code >= 0) return 1;
       return a.code - b.code;
     });
-  for (const a of answers) {
-    const prettyLabel = prettifyAnswer(a.label, a.code);
+}
+
+function populateAnswers(qvar) {
+  const aSelect = document.getElementById('a-select');
+  aSelect.innerHTML = '<option value="">Choose an answer…</option>';
+  if (!qvar) { aSelect.disabled = true; return; }
+  for (const a of buildAnswerOptions(qvar)) {
     const opt = document.createElement('option');
     opt.value = a.code;
-    opt.textContent = prettyLabel + (a.code < 0 ? ' (any)' : '');
-    opt.dataset.label = prettyLabel;
+    opt.textContent = a.label + (a.code < 0 ? ' (any)' : '');
+    opt.dataset.label = a.label;
     aSelect.appendChild(opt);
   }
   aSelect.disabled = false;
@@ -1501,6 +1578,7 @@ function renderGroups() {
     <div class="eyebrow">Stage 1</div>
     <h2>Group stage <span class="light">— 12 groups, 72 matches</span></h2>
     <div class="sub">Top two from each group qualify automatically. The eight best third-placed teams join them in the Round of 32.</div>
+    ${stageQACaption('group')}
   </div>
   <div class="groups-grid">`;
   for (const [grp, results] of Object.entries(state.groupResults)) {
@@ -1532,6 +1610,7 @@ function renderR32() {
     <div class="eyebrow">Stage 2</div>
     <h2>Round of 32 <span class="light">— 16 matches</span></h2>
     <div class="sub">The 24 group qualifiers join the eight best third-placed teams. Computed in one go — the round-by-round drama begins below.</div>
+    ${stageQACaption('r32')}
   </div>
   <div class="r32-grid">`;
   state.r32.forEach(m => {
@@ -1557,21 +1636,21 @@ function renderBracket() {
     <div class="sub">Matches play out one at a time, live inside the bracket. A summary pops up at the end of each round.</div>
   </div>
   <div class="bracket-overview" id="bracket-overview">
-    <div class="bracket-col"><h4>Round of 16</h4>${[0,1,2,3].map(i => bracketMatch(r16[i], `bm-r16-${i}`, 'r16')).join('')}</div>
-    <div class="bracket-col"><h4>Quarter-finals</h4>${[0,1].map(i => bracketMatch(qf[i], `bm-qf-${i}`, 'qf')).join('')}</div>
-    <div class="bracket-col"><h4>Semi-final</h4>${bracketMatch(sf[0], 'bm-sf-0', 'sf')}</div>
+    <div class="bracket-col"><h4>Round of 16</h4>${colCap('r16')}${[0,1,2,3].map(i => bracketMatch(r16[i], `bm-r16-${i}`, 'r16')).join('')}</div>
+    <div class="bracket-col"><h4>Quarter-finals</h4>${colCap('qf')}${[0,1].map(i => bracketMatch(qf[i], `bm-qf-${i}`, 'qf')).join('')}</div>
+    <div class="bracket-col"><h4>Semi-final</h4>${colCap('sf')}${bracketMatch(sf[0], 'bm-sf-0', 'sf')}</div>
     <div class="bracket-col bracket-apex">
       <div class="bracket-trophy">
         <span class="icon">♛</span>
         <div class="trophy-label">Champion</div>
         <div class="winner-name">${state.champion || '—'}</div>
       </div>
-      <h4>Final</h4>
+      <h4>Final</h4>${colCap('final')}
       ${bracketMatch(fin, 'bm-final', 'final')}
     </div>
-    <div class="bracket-col"><h4>Semi-final</h4>${bracketMatch(sf[1], 'bm-sf-1', 'sf')}</div>
-    <div class="bracket-col"><h4>Quarter-finals</h4>${[2,3].map(i => bracketMatch(qf[i], `bm-qf-${i}`, 'qf')).join('')}</div>
-    <div class="bracket-col"><h4>Round of 16</h4>${[4,5,6,7].map(i => bracketMatch(r16[i], `bm-r16-${i}`, 'r16')).join('')}</div>
+    <div class="bracket-col"><h4>Semi-final</h4>${colCap('sf')}${bracketMatch(sf[1], 'bm-sf-1', 'sf')}</div>
+    <div class="bracket-col"><h4>Quarter-finals</h4>${colCap('qf')}${[2,3].map(i => bracketMatch(qf[i], `bm-qf-${i}`, 'qf')).join('')}</div>
+    <div class="bracket-col"><h4>Round of 16</h4>${colCap('r16')}${[4,5,6,7].map(i => bracketMatch(r16[i], `bm-r16-${i}`, 'r16')).join('')}</div>
   </div>`;
   return html;
 }
@@ -1635,6 +1714,200 @@ const ROUND_NAMES = { r16: 'Round of 16', qf: 'Quarter-finals', sf: 'Semi-finals
 const ROUND_ORDER = ['r16', 'qf', 'sf', 'final'];
 const ROUND_LIST  = { r16: () => state.r16, qf: () => state.qf, sf: () => state.sf, final: () => [state.final] };
 
+// ---- Mixed-question engine ---------------------------------------------------
+// The whole bracket is a single chain of rounds. Each round can be scored on its
+// own question; a country's score is just the share giving that round's answer.
+// Earlier rounds stay frozen; recomputing a round and everything after it lets a
+// new question take over from that point, with the same teams carrying through.
+const ROUND_CHAIN = ['group', 'r32', 'r16', 'qf', 'sf', 'final'];
+const ROUND_DISPLAY = {
+  group: 'Group stage', r32: 'Round of 32', r16: 'Round of 16',
+  qf: 'Quarter-finals', sf: 'Semi-finals', final: 'Final',
+};
+const COMPUTE_FN = {
+  group: computeGroupStage, r32: computeR32, r16: computeR16,
+  qf: computeQF, sf: computeSF, final: computeFinal,
+};
+function nextRoundOf(round) {
+  const i = ROUND_CHAIN.indexOf(round);
+  return i >= 0 && i < ROUND_CHAIN.length - 1 ? ROUND_CHAIN[i + 1] : null;
+}
+
+// Recompute a round and every round after it using the current active question.
+// Participants flow from the previous (frozen) round's stored results.
+function recomputeFrom(roundKey) {
+  const start = ROUND_CHAIN.indexOf(roundKey);
+  for (let i = start; i < ROUND_CHAIN.length; i++) COMPUTE_FN[ROUND_CHAIN[i]]();
+}
+
+// Reset reveal flags for a round and everything after it so the flow can replay them.
+// R32 is shown as a static block, so it counts as "revealed" the moment its phase shows.
+function markTailUnrevealed(roundKey) {
+  const start = ROUND_CHAIN.indexOf(roundKey);
+  for (let i = start; i < ROUND_CHAIN.length; i++) {
+    const r = ROUND_CHAIN[i];
+    if (r === 'r32') state.r32.forEach(m => m.revealed = true);
+    else if (r === 'r16') state.r16.forEach(m => m.revealed = false);
+    else if (r === 'qf') state.qf.forEach(m => m.revealed = false);
+    else if (r === 'sf') state.sf.forEach(m => m.revealed = false);
+    else if (r === 'final') { if (state.final) state.final.revealed = false; state.champion = null; }
+  }
+}
+
+// Stamp a round and its tail with the question they're now scored on.
+function stampRoundQA(roundKey, qa) {
+  const start = ROUND_CHAIN.indexOf(roundKey);
+  for (let i = start; i < ROUND_CHAIN.length; i++) state.roundQA[ROUND_CHAIN[i]] = { ...qa };
+}
+
+// True when the knockout bracket isn't all scored on one and the same question.
+function bracketIsMixed() {
+  const keys = ['r32', 'r16', 'qf', 'sf', 'final'].filter(k => state.roundQA[k]);
+  if (keys.length < 2) return false;
+  const first = state.roundQA[keys[0]];
+  return keys.some(k => {
+    const qa = state.roundQA[k];
+    return qa.q !== first.q || qa.a !== first.a;
+  });
+}
+
+// Small per-column caption naming the question a round was scored on.
+// Only shown once the bracket actually mixes questions, to avoid noise.
+function colCap(roundKey) {
+  if (!bracketIsMixed()) return '';
+  const qa = state.roundQA[roundKey];
+  if (!qa) return '';
+  return `<div class="q-cap" title="${qa.qLabel.replace(/"/g, '&quot;')}">“${qa.aLabel}”</div>`;
+}
+
+// Caption for a stage heading (group / R32), shown only when questions are mixed.
+function stageQACaption(roundKey) {
+  if (!bracketIsMixed()) return '';
+  const qa = state.roundQA[roundKey];
+  if (!qa) return '';
+  return `<div class="sub stage-qa">Scored on “<strong>${qa.aLabel}</strong>” · ${qa.qLabel}</div>`;
+}
+
+// Keep the top controls reflecting whatever question is currently active.
+function syncControlsToState() {
+  const qSel = document.getElementById('q-select');
+  const aSel = document.getElementById('a-select');
+  if (!qSel || !aSel || state.question == null) return;
+  qSel.value = state.question;
+  populateAnswers(state.question);
+  aSel.value = String(state.answerCode);
+}
+
+// ---- In-round question picker ------------------------------------------------
+// mode: 'rerun' (re-score this round) or 'next' (advance, then new question onward)
+function openQuestionPicker(mode, phase) {
+  if (state.animating) return;
+  state.modalMode = 'picker';
+  const thisName = ROUND_DISPLAY[phase];
+  const nextName = ROUND_DISPLAY[nextRoundOf(phase)] || '';
+  const title = mode === 'rerun'
+    ? `Re-run the ${thisName} on a different question`
+    : `Play the ${nextName} on a different question`;
+  const blurb = mode === 'rerun'
+    ? `Same line-up, fresh question. The ${thisName} is re-scored and everything after it replays.`
+    : `The ${thisName} results stand. Their winners go through, then play the ${nextName} onward scored on the new question.`;
+
+  document.getElementById('modal-content').innerHTML = `
+    <div class="modal-eyebrow">Change the question</div>
+    <div class="picker-title">${title}</div>
+    <p class="picker-blurb">${blurb}</p>
+    <div class="field picker-field">
+      <label for="picker-q">Question</label>
+      <select id="picker-q">${document.getElementById('q-select').innerHTML}</select>
+    </div>
+    <div class="field picker-field">
+      <label for="picker-a">Response</label>
+      <select id="picker-a" disabled><option value="">Select a question first…</option></select>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="picker-go" disabled onclick="confirmQuestionPicker('${mode}','${phase}')">Play it ▶</button>
+    </div>`;
+
+  const pq = document.getElementById('picker-q');
+  pq.value = '';   // force a fresh, deliberate choice
+  pq.addEventListener('change', () => {
+    fillPickerAnswers(pq.value);
+    document.getElementById('picker-go').disabled = true;
+  });
+  document.getElementById('picker-a').addEventListener('change', e => {
+    document.getElementById('picker-go').disabled = e.target.value === '';
+  });
+  openModal();
+}
+
+function fillPickerAnswers(qvar) {
+  const aSel = document.getElementById('picker-a');
+  aSel.innerHTML = '<option value="">Choose a response…</option>';
+  if (!qvar) { aSel.disabled = true; return; }
+  for (const a of buildAnswerOptions(qvar)) {
+    const opt = document.createElement('option');
+    opt.value = a.code;
+    opt.textContent = a.label + (a.code < 0 ? ' (any)' : '');
+    opt.dataset.label = a.label;
+    aSel.appendChild(opt);
+  }
+  aSel.disabled = false;
+}
+
+function confirmQuestionPicker(mode, phase) {
+  const pq = document.getElementById('picker-q');
+  const pa = document.getElementById('picker-a');
+  if (!pq.value || pa.value === '') return;
+  const qa = {
+    q: pq.value,
+    qLabel: pq.options[pq.selectedIndex].textContent,
+    a: parseFloat(pa.value),
+    aLabel: pa.options[pa.selectedIndex].dataset.label,
+  };
+  closeModal();
+  applyRoundQuestion(mode, phase, qa);
+}
+
+// Apply a newly-chosen question to a round (and the rounds after it), then drive the UI.
+function applyRoundQuestion(mode, phase, qa) {
+  clearAnimTimers();
+  state.question = qa.q; state.questionLabel = qa.qLabel;
+  state.answerCode = qa.a; state.answerLabel = qa.aLabel;
+  syncControlsToState();
+
+  const target = mode === 'rerun' ? phase : nextRoundOf(phase);
+  recomputeFrom(target);
+  markTailUnrevealed(target);
+  stampRoundQA(target, qa);
+
+  if (mode === 'rerun') {
+    // Re-show the round we just changed.
+    if (phase === 'group') {
+      state.phase = 'group';
+      document.getElementById('main-content').innerHTML = renderMainContent();
+      window.scrollTo({ top: document.querySelector('.controls-wrap').offsetTop, behavior: 'smooth' });
+    } else if (phase === 'r32') {
+      state.phase = 'r32';
+      document.getElementById('main-content').innerHTML = renderMainContent();
+      const el = document.querySelector('.r32-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      playRoundInline(phase);   // r16 / qf / sf / final — re-animate
+    }
+  } else {
+    // Advance into the next round under the new question.
+    if (phase === 'group') {
+      state.phase = 'r32';
+      document.getElementById('main-content').innerHTML = renderMainContent();
+      const el = document.querySelector('.r32-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      playRoundInline(nextRoundOf(phase));   // r32→r16, r16→qf, qf→sf, sf→final
+    }
+  }
+}
+
 // Animation timing (ms)
 const ANIM_LIVE_BEFORE_REVEAL = 700;   // how long a match stays in "live" state before revealing
 const ANIM_GAP_BETWEEN_MATCHES = 350;  // pause between matches
@@ -1644,6 +1917,7 @@ function openModal() {
 }
 function closeModal() {
   document.getElementById('modal').classList.remove('open');
+  state.modalMode = null;
 }
 
 function clearAnimTimers() {
@@ -1749,12 +2023,22 @@ function showRoundSummary(round) {
   const nextLabel = isFinalRound ? 'See the champion ▶'
     : `Continue to ${ROUND_NAMES[ROUND_ORDER[ROUND_ORDER.indexOf(round) + 1]]} ▶`;
 
+  const thisName = ROUND_DISPLAY[round];
+  const nextName = ROUND_DISPLAY[nextRoundOf(round)] || '';
+  const qa = state.roundQA[round];
+  const scoredOn = qa
+    ? `<div class="scored-on">Scored on “<strong>${qa.aLabel}</strong>” · ${qa.qLabel}</div>` : '';
+
+  state.modalMode = 'summary';
   document.getElementById('modal-content').innerHTML = `
     <div class="modal-eyebrow">${ROUND_NAMES[round]} — results</div>
     <div class="modal-round-name">${isFinalRound ? state.champion + ' wins!' : 'Round complete'}</div>
+    ${scoredOn}
     <div class="summary-list">${matchRows}</div>
-    <div class="modal-buttons">
-      <button class="btn btn-primary" onclick="${isFinalRound ? 'closeModal(); advancePhase();' : 'closeModal();'}">${isFinalRound ? 'See the champion ▶' : 'Got it'}</button>
+    <div class="modal-choices">
+      <button class="btn btn-primary" onclick="closeModal(); advancePhase();">${nextLabel}</button>
+      <button class="btn btn-secondary" onclick="closeModal(); openQuestionPicker('rerun','${round}')">↻ Re-run the ${thisName} on a new question</button>
+      ${isFinalRound ? '' : `<button class="btn btn-secondary" onclick="closeModal(); openQuestionPicker('next','${round}')">⏭ Play the ${nextName} on a new question</button>`}
     </div>`;
   openModal();
 }
@@ -1801,8 +2085,15 @@ function renderAdvanceButton() {
   };
   const label = labels[state.phase];
   if (!label) return '';
+  const ph = state.phase;
+  const nextName = ROUND_DISPLAY[nextRoundOf(ph)] || 'the next round';
   return `<div class="advance-wrap">
     <button class="btn btn-primary advance-btn" onclick="advancePhase()">${label}</button>
+    <div class="advance-alt">
+      <span class="advance-alt-label">…or change the question:</span>
+      <button class="btn btn-secondary advance-mini" onclick="openQuestionPicker('rerun','${ph}')">↻ Re-run this round, new question</button>
+      <button class="btn btn-secondary advance-mini" onclick="openQuestionPicker('next','${ph}')">⏭ ${nextName} on a new question</button>
+    </div>
   </div>`;
 }
 
@@ -1810,7 +2101,7 @@ function renderChampion() {
   return `<div class="champion-banner">
     <div class="eyebrow">The World Risk Poll Cup Champion</div>
     <h2>${state.champion}</h2>
-    <div class="ctx">… is the country where the highest proportion of respondents answered “<strong style="color:white;">${state.answerLabel}</strong>” to the question “${state.questionLabel}.”</div>
+    <div class="ctx">… is the country where the highest proportion of respondents answered “<strong style="color:white;">${state.answerLabel}</strong>” to the question “${state.questionLabel}.”${bracketIsMixed() ? ' <span style="opacity:0.75;">The road to the final mixed several questions, round by round.</span>' : ''}</div>
     <div class="actions">
       <button class="btn btn-primary" onclick="downloadPDF()">Download bracket as PDF</button>
       <button class="btn btn-secondary" onclick="resetTournament()">Try another question</button>
@@ -1861,6 +2152,11 @@ function runTournament() {
   state.phase = 'group';
   state.animating = false;
   state.animIdx = 0;
+  state.modalMode = null;
+  // Whole bracket starts on the one chosen question.
+  const qa0 = { q: state.question, qLabel: state.questionLabel, a: state.answerCode, aLabel: state.answerLabel };
+  state.roundQA = {};
+  ROUND_CHAIN.forEach(r => { state.roundQA[r] = { ...qa0 }; });
 
   document.getElementById('main-content').innerHTML = renderMainContent();
   const ww = document.getElementById('win-wrap');
@@ -1876,7 +2172,8 @@ function resetTournament() {
   state = {
     question: null, answerCode: null, answerLabel: null, questionLabel: null,
     groupResults: {}, r32: [], r16: [], qf: [], sf: [], final: null,
-    champion: null, phase: 'group', animating: false, animIdx: 0,
+    champion: null, roundQA: {}, modalMode: null,
+    phase: 'group', animating: false, animIdx: 0,
   };
   document.getElementById('q-select').value = '';
   document.getElementById('a-select').innerHTML = '<option value="">Select a question first…</option>';
@@ -1959,8 +2256,8 @@ document.getElementById('play-btn').addEventListener('click', runTournament);
 
 document.getElementById('modal').addEventListener('click', e => {
   if (e.target.id === 'modal') {
-    // Backdrop click closes the summary modal. If it was the final, also advance.
-    const wasFinal = state.phase === 'final' && state.final && state.final.revealed;
+    // Backdrop click closes the modal. If it was the final results summary, also advance.
+    const wasFinal = state.modalMode === 'summary' && state.phase === 'final' && state.final && state.final.revealed;
     closeModal();
     if (wasFinal) advancePhase();
   }
