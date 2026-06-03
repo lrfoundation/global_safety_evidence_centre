@@ -399,10 +399,6 @@
     owner: 'lrfoundation',
     repo:  'global_safety_evidence_centre',
 
-    // Personal access token (optional — increases GitHub API rate limit from 60 to 5,000/hr)
-    // Leave as empty string '' if the repo is public and low-traffic
-    token: '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',
-
     // Branch to read from
     branch: 'main',
 
@@ -519,7 +515,7 @@
 <footer class="site" role="contentinfo">
   <div class="footer-inner">
     <p class="footer-brand"><strong>Lloyd's Register Foundation</strong> · World Risk Poll</p>
-    <p class="footer-brand">Data served via the GitHub Contents API</p>
+    <p class="footer-brand">Data served via the GitHub Git Tree API</p>
   </div>
 </footer>
 
@@ -542,20 +538,21 @@
   const clearBtn   = document.getElementById('clear-btn');
 
   // ── GitHub API helpers ───────────────────────────────────────
-  function apiHeaders() {
-    const h = { 'Accept': 'application/vnd.github+json' };
-    if (CONFIG.token) h['Authorization'] = `Bearer ${CONFIG.token}`;
-    return h;
-  }
 
-  async function fetchTree(path) {
-    const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}?ref=${CONFIG.branch}`;
-    const res = await fetch(url, { headers: apiHeaders() });
+  // Single call fetches the entire repo tree — no token needed for public repos,
+  // and well within the 60 req/hour unauthenticated limit.
+  async function fetchRepoTree() {
+    const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/git/trees/${CONFIG.branch}?recursive=1`;
+    const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status} fetching ${path}`);
+      throw new Error(err.message || `HTTP ${res.status}`);
     }
-    return res.json();
+    const data = await res.json();
+    if (data.truncated) {
+      debugLog.push('WARNING: tree was truncated by GitHub (repo may be very large)');
+    }
+    return data.tree; // array of { path, type, sha, url }
   }
 
   // Download URL for a raw file
@@ -567,37 +564,43 @@
   const debugLog = [];
 
   async function loadAllFiles() {
+    debugLog.push(`Fetching full repo tree (1 API call)…`);
+    const tree = await fetchRepoTree();
+    debugLog.push(`  Tree entries: ${tree.length}`);
+
+    const root = CONFIG.rootFolder ? CONFIG.rootFolder + '/' : '';
     const files = [];
 
     for (const year of CONFIG.yearOrder) {
       const cfg = CONFIG.structure[year];
-      const yearPath = CONFIG.rootFolder ? `${CONFIG.rootFolder}/${year}` : year;
 
       if (!cfg.themes) {
-        debugLog.push(`Fetching: ${yearPath}`);
-        try {
-          const items = await fetchTree(yearPath);
-          const pdfs = Array.isArray(items) ? items.filter(i => i.type === 'file' && i.name.toLowerCase().endsWith('.pdf')) : [];
-          debugLog.push(`  OK: ${Array.isArray(items) ? items.length : 0} items, ${pdfs.length} PDFs`);
-          for (const item of pdfs) {
-            files.push({ name: item.name, path: item.path, url: rawUrl(item.path), year, theme: null });
-          }
-        } catch (e) {
-          debugLog.push(`  ERROR: ${e.message}`);
+        // Year folder has PDFs directly, no subfolders
+        const prefix = `${root}${year}/`;
+        const pdfs = tree.filter(n =>
+          n.type === 'blob' &&
+          n.path.startsWith(prefix) &&
+          !n.path.slice(prefix.length).includes('/') &&
+          n.path.toLowerCase().endsWith('.pdf')
+        );
+        debugLog.push(`${year}: ${pdfs.length} PDFs`);
+        for (const node of pdfs) {
+          const name = node.path.split('/').pop();
+          files.push({ name, path: node.path, url: rawUrl(node.path), year, theme: null });
         }
       } else {
         for (const theme of cfg.themes) {
-          const themePath = `${yearPath}/${theme}`;
-          debugLog.push(`Fetching: ${themePath}`);
-          try {
-            const items = await fetchTree(themePath);
-            const pdfs = Array.isArray(items) ? items.filter(i => i.type === 'file' && i.name.toLowerCase().endsWith('.pdf')) : [];
-            debugLog.push(`  OK: ${Array.isArray(items) ? items.length : 0} items, ${pdfs.length} PDFs`);
-            for (const item of pdfs) {
-              files.push({ name: item.name, path: item.path, url: rawUrl(item.path), year, theme });
-            }
-          } catch (e) {
-            debugLog.push(`  ERROR: ${e.message}`);
+          const prefix = `${root}${year}/${theme}/`;
+          const pdfs = tree.filter(n =>
+            n.type === 'blob' &&
+            n.path.startsWith(prefix) &&
+            !n.path.slice(prefix.length).includes('/') &&
+            n.path.toLowerCase().endsWith('.pdf')
+          );
+          debugLog.push(`${year}/${theme}: ${pdfs.length} PDFs`);
+          for (const node of pdfs) {
+            const name = node.path.split('/').pop();
+            files.push({ name, path: node.path, url: rawUrl(node.path), year, theme });
           }
         }
       }
