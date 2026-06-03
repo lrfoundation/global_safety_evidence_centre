@@ -396,8 +396,8 @@
 <script>
   const CONFIG = {
     // GitHub owner and repo name
-    owner: 'YOUR-ORG',
-    repo:  'YOUR-REPO',
+    owner: 'lrfoundation',
+    repo:  'global_safety_evidence_centre',
 
     // Personal access token (optional — increases GitHub API rate limit from 60 to 5,000/hr)
     // Leave as empty string '' if the repo is public and low-traffic
@@ -407,16 +407,29 @@
     branch: 'main',
 
     // Folder structure definition
-    // Set theme to null for years with no subfolders
+    // Set themes to null for years with no subfolders
+    // Folder names must match exactly (case-sensitive on GitHub)
     structure: {
-      '2019': { themes: null,                                    label: '2019' },
-      '2021': { themes: ['Risk', 'AI', 'V&H', 'Resilience'],    label: '2021' },
-      '2023': { themes: ['Risk', 'Waste', 'OSH', 'Resilience'], label: '2023' },
+      '2019': { themes: null,                                        label: '2019' },
+      '2021': { themes: ['ai', 'resi', 'trended', 'v_and_h'],       label: '2021' },
+      '2023': { themes: ['osh', 'resilience', 'risk', 'waste'],     label: '2023' },
     },
 
-    // Folder name inside the repo that holds the year folders
+    // Display labels for theme folder names (optional — shown in the UI instead of raw folder name)
+    themeLabels: {
+      'ai':         'AI',
+      'resi':       'Resilience',
+      'trended':    'Trended',
+      'v_and_h':    'V&H',
+      'osh':        'OSH',
+      'resilience': 'Resilience',
+      'risk':       'Risk',
+      'waste':      'Waste',
+    },
+
+    // Folder name inside the repo that contains the year folders
     // Set to '' if year folders sit at the root
-    rootFolder: '',
+    rootFolder: 'world_risk_poll/country_snapshots',
   };
 </script>
 <!-- ══════════════════════════════════════════════════════════ -->
@@ -650,7 +663,7 @@
     for (const key of sortedKeys) {
       const group = groups[key];
       const labelParts = [group.year];
-      if (group.theme) labelParts.push(group.theme);
+      if (group.theme) labelParts.push(CONFIG.themeLabels[group.theme] || group.theme);
       html += `
         <div class="group-header" role="heading" aria-level="2">
           <span class="group-label">${escHtml(labelParts.join(' · '))}</span>
@@ -664,7 +677,7 @@
           <div class="pdf-card" role="listitem">
             <div class="pdf-card-meta">
               <span class="tag tag-year">${escHtml(file.year)}</span>
-              ${file.theme ? `<span class="tag tag-theme">${escHtml(file.theme)}</span>` : ''}
+              ${file.theme ? `<span class="tag tag-theme">${escHtml(CONFIG.themeLabels[file.theme] || file.theme)}</span>` : ''}
             </div>
             <p class="pdf-name">${highlight(displayName, searchQuery)}</p>
             <a class="pdf-link" href="${escHtml(file.url)}" target="_blank" rel="noopener" aria-label="Download ${escHtml(displayName)} (PDF)">
@@ -691,7 +704,7 @@
       for (const t of themes) {
         const opt = document.createElement('option');
         opt.value = t;
-        opt.textContent = t;
+        opt.textContent = CONFIG.themeLabels[t] || t;
         themeSel.appendChild(opt);
       }
       themeSel.disabled = false;
