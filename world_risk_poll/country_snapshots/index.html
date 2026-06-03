@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World Risk Poll — Document Library</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Variables ─────────────────────────────────────────── */
+    :root {
+      --lrf-pink:       #e5006e;
+      --lrf-pink-dark:  #b00055;
+      --lrf-pink-light: #fce6f0;
+      --lrf-ink:        #0a0a14;
+      --lrf-ink-soft:   #2a2a35;
+      --lrf-muted:      #6c6c78;
+      --lrf-line:       #e4e4ea;
+      --lrf-bg:         #fafaf7;
+      --lrf-cream:      #f4f1e8;
+      --lrf-white:      #ffffff;
+      --shadow-sm:      0 1px 2px rgba(10,10,20,.06);
+      --shadow-md:      0 4px 14px rgba(10,10,20,.08);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: 'Manrope', -apple-system, sans-serif;
+      background: var(--lrf-bg);
+      color: var(--lrf-ink);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ────────────────────────────────────────────── */
+    header.site {
+      background: var(--lrf-white);
+      border-bottom: 1.5px solid var(--lrf-ink);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      height: 72px;
+    }
+    .brand-logo { height: 44px; width: auto; flex-shrink: 0; }
+    .brand-divider {
+      width: 1.5px;
+      height: 32px;
+      background: var(--lrf-line);
+      flex-shrink: 0;
+    }
+    .brand-text {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--lrf-ink);
+      line-height: 1.3;
+    }
+    .brand-text span {
+      display: block;
+      font-weight: 500;
+      color: var(--lrf-muted);
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 12px;
+    }
+
+    /* ── Hero ───────────────────────────────────────────────── */
+    .hero {
+      background: var(--lrf-cream);
+      border-bottom: 1.5px solid var(--lrf-ink);
+      padding: 3rem 2rem 2.5rem;
+    }
+    .hero-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .eyebrow {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+      color: var(--lrf-pink);
+      margin-bottom: 0.6rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 4vw, 3.25rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+    }
+    .hero h1 .period { color: var(--lrf-pink); }
+    .hero p.lede {
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 17px;
+      line-height: 1.6;
+      color: var(--lrf-ink-soft);
+      margin-top: 1rem;
+      max-width: 560px;
+    }
+
+    /* ── Controls strip ─────────────────────────────────────── */
+    .controls-wrap {
+      background: var(--lrf-white);
+      border-bottom: 1.5px solid var(--lrf-line);
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+    .controls-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr 2fr;
+      gap: 1rem;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+      color: var(--lrf-muted);
+      margin-bottom: 0.45rem;
+    }
+    .field select,
+    .field input {
+      width: 100%;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 500;
+      padding: 0.7rem 1rem;
+      background: var(--lrf-white);
+      border: 1.5px solid var(--lrf-ink);
+      border-radius: 2px;
+      color: var(--lrf-ink);
+      cursor: pointer;
+    }
+    .field select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%230a0a14' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.9rem center;
+      padding-right: 2.4rem;
+    }
+    .field select:focus,
+    .field input:focus {
+      outline: none;
+      border-color: var(--lrf-pink);
+      box-shadow: 0 0 0 3px var(--lrf-pink-light);
+    }
+    .field input::placeholder { color: var(--lrf-muted); font-weight: 400; }
+
+    /* ── Main content ───────────────────────────────────────── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem 4rem;
+    }
+
+    /* Results bar */
+    .results-bar {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--lrf-ink);
+    }
+    .results-count {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--lrf-muted);
+    }
+    .results-count strong {
+      color: var(--lrf-ink);
+      font-weight: 800;
+    }
+    .clear-btn {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--lrf-pink);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+    .clear-btn:hover { color: var(--lrf-pink-dark); }
+    .clear-btn.hidden { visibility: hidden; }
+
+    /* ── Group headers (theme) ──────────────────────────────── */
+    .group-header {
+      margin: 2rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .group-header:first-of-type { margin-top: 0; }
+    .group-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+      color: var(--lrf-pink);
+    }
+    .group-line {
+      flex: 1;
+      height: 1px;
+      background: var(--lrf-line);
+    }
+
+    /* ── PDF Cards ──────────────────────────────────────────── */
+    .pdf-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1px;
+      background: var(--lrf-line);
+      border: 1px solid var(--lrf-line);
+      margin-bottom: 0.5rem;
+    }
+    .pdf-card {
+      background: var(--lrf-white);
+      padding: 1.25rem 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: background 0.15s;
+    }
+    .pdf-card:hover { background: var(--lrf-bg); }
+
+    .pdf-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 2px;
+    }
+    .tag-year {
+      background: var(--lrf-ink);
+      color: var(--lrf-white);
+    }
+    .tag-theme {
+      background: var(--lrf-cream);
+      color: var(--lrf-muted);
+      border: 1px solid var(--lrf-line);
+    }
+
+    .pdf-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--lrf-ink);
+      line-height: 1.35;
+      /* highlight matches */
+    }
+    .pdf-name mark {
+      background: var(--lrf-pink-light);
+      color: var(--lrf-ink);
+      border-radius: 1px;
+    }
+
+    .pdf-link {
+      margin-top: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--lrf-pink);
+      text-decoration: none;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--lrf-line);
+      transition: color 0.15s;
+    }
+    .pdf-link:hover { color: var(--lrf-pink-dark); }
+    .pdf-link svg { flex-shrink: 0; }
+
+    /* ── Empty state ────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--lrf-muted);
+    }
+    .empty-state p { font-size: 15px; margin-top: 0.5rem; }
+    .empty-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+      opacity: 0.4;
+    }
+
+    /* ── Loading state ──────────────────────────────────────── */
+    .loading-state {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 2.5px solid var(--lrf-line);
+      border-top-color: var(--lrf-pink);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-state p { font-size: 13px; color: var(--lrf-muted); font-weight: 500; }
+
+    /* ── Error state ────────────────────────────────────────── */
+    .error-state {
+      background: var(--lrf-cream);
+      border: 1.5px solid var(--lrf-line);
+      border-radius: 2px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+    }
+    .error-state h3 { font-size: 14px; margin-bottom: 0.4rem; }
+    .error-state p { font-size: 13px; color: var(--lrf-muted); line-height: 1.55; }
+    .error-state code {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      background: var(--lrf-white);
+      padding: 0.15rem 0.4rem;
+      border-radius: 2px;
+      border: 1px solid var(--lrf-line);
+    }
+
+    /* ── Footer ─────────────────────────────────────────────── */
+    footer.site {
+      background: var(--lrf-ink);
+      color: var(--lrf-white);
+      padding: 2rem;
+      margin-top: 0;
+    }
+    .footer-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .footer-brand {
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.5);
+    }
+    .footer-brand strong { color: var(--lrf-white); font-weight: 700; }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .controls-inner { grid-template-columns: 1fr 1fr; }
+      .controls-inner .field:last-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 640px) {
+      header.site { padding: 0 1rem; height: 60px; }
+      .brand-logo { height: 36px; }
+      .hero { padding: 2rem 1rem 1.75rem; }
+      .controls-wrap { padding: 1.25rem 1rem; }
+      .controls-inner { grid-template-columns: 1fr; }
+      .controls-inner .field:last-child { grid-column: auto; }
+      main { padding: 1.5rem 1rem 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CONFIGURATION — edit these values to point at your repo
+═══════════════════════════════════════════════════════════ -->
+<script>
+  const CONFIG = {
+    // GitHub owner and repo name
+    owner: 'YOUR-ORG',
+    repo:  'YOUR-REPO',
+
+    // Personal access token (optional — increases GitHub API rate limit from 60 to 5,000/hr)
+    // Leave as empty string '' if the repo is public and low-traffic
+    token: '',
+
+    // Branch to read from
+    branch: 'main',
+
+    // Folder structure definition
+    // Set theme to null for years with no subfolders
+    structure: {
+      '2019': { themes: null,                                    label: '2019' },
+      '2021': { themes: ['Risk', 'AI', 'V&H', 'Resilience'],    label: '2021' },
+      '2023': { themes: ['Risk', 'Waste', 'OSH', 'Resilience'], label: '2023' },
+    },
+
+    // Folder name inside the repo that holds the year folders
+    // Set to '' if year folders sit at the root
+    rootFolder: '',
+  };
+</script>
+<!-- ══════════════════════════════════════════════════════════ -->
+
+<!-- Header -->
+<header class="site" role="banner">
+  <svg class="brand-logo" viewBox="0 0 376.09 532.11" xmlns="http://www.w3.org/2000/svg" aria-label="Lloyd's Register Foundation" role="img">
+    <g fill="#e5006e">
+      <path d="M209.54,493.54c0,5.04,2.31,7.78,6.9,7.78s7.13-3.33,7.13-8.05v-6.2c-1.76-1.34-3.89-1.94-6.66-1.94-5.09,0-7.36,3.1-7.36,8.42Z"/>
+      <path d="M281.69,485.3c-5.65,0-7.77,3.15-7.77,8.01s2.13,8.01,7.77,8.01,7.78-3.15,7.78-8.01-2.13-8.01-7.78-8.01Z"/>
+      <path d="M178.49,493.86c0,4.95,2.31,7.91,6.71,7.91,4.72,0,7.31-3.79,7.31-8.51v-7.41c-1.48-.79-3.19-1.16-6.02-1.16-5.6,0-8.01,3.79-8.01,9.16Z"/>
+      <path d="M95.75,485.3c-5.65,0-7.77,3.15-7.77,8.01s2.13,8.01,7.77,8.01,7.77-3.15,7.77-8.01-2.13-8.01-7.77-8.01Z"/>
+      <path d="M0,444.32v87.78h376.09v-87.78H0ZM79.63,477.62h-18.05v8.28h16.48v5.65h-16.48v14.67h-5.83v-34.25h23.88v5.65ZM96.01,506.77c-9.26,0-13.7-5.46-13.7-13.47s4.44-13.47,13.7-13.47,13.7,5.46,13.7,13.47-4.44,13.47-13.7,13.47ZM138.21,494.6c0,7.73-4.44,12.17-11.85,12.17s-11.8-4.44-11.8-12.17v-14.21h5.65v14.21c0,4.67,2.31,6.71,6.16,6.71s6.2-2.04,6.2-6.71v-14.21h5.65v14.21ZM167.97,506.22h-5.65v-14.86c0-4.07-2.13-6.06-5.88-6.06-4.54,0-6.9,2.64-6.9,7.87v13.05h-5.65v-25.82h4.91l.46,4.49c1.9-3.56,4.72-5.09,8.84-5.09,5.92,0,9.86,3.84,9.86,11.57v14.86ZM194.11,506.77c-.46-1.43-.88-2.92-1.06-4.77-1.99,3.52-5.6,4.77-8.7,4.77-6.66,0-11.52-4.54-11.52-12.91s5.65-14.07,14.12-14.07c1.9,0,3.93.37,5.83.97v-7.87l5.65-1.48v25.73c0,3.75.05,6.16.79,9.63h-5.09ZM234.42,505.15c-.65.79-2.36,1.62-4.44,1.62s-5.04-.97-5.92-4.54c-1.48,2.36-4.12,4.54-8.28,4.54-7.08,0-11.89-4.54-11.89-13.24s5.42-13.7,12.82-13.7c3.1,0,5.69.88,7.78,2.41l.65-1.85h4.35v18.23c0,2.08.74,2.68,2.36,2.68.74,0,1.53-.28,2.59-1.2v5.04ZM252.98,485.67h-8.42v11.57c0,3.15,1.25,4.17,4.12,4.17,1.43,0,2.59-.23,3.84-.79v5.04c-1.11.69-3.52,1.11-5.18,1.11-4.58,0-8.42-2.36-8.42-9.44v-11.66h-3.75v-3.93l3.75-1.34,1.39-5.46h4.26v5.46h8.42v5.28ZM263.25,506.22h-5.65v-25.82h5.65v25.82ZM263.57,477.2h-6.34v-5.79h6.34v5.79ZM281.94,506.77c-9.26,0-13.7-5.46-13.7-13.47s4.44-13.47,13.7-13.47,13.7,5.46,13.7,13.47-4.44,13.47-13.7,13.47ZM324.7,506.22h-5.65v-14.86c0-4.07-2.13-6.06-5.88-6.06-4.54,0-6.9,2.64-6.9,7.87v13.05h-5.65v-25.82h4.91l.46,4.49c1.9-3.56,4.72-5.09,8.84-5.09,5.92,0,9.86,3.84,9.86,11.57v14.86Z"/>
+      <path d="M234.24,243.22l106.51,131.23h-47.24l-130.78-160.51h44.18c49.73,0,78.95-22.92,78.95-63.01s-27.73-62.56-77.46-62.56h-45.54v-32.28h49.22c70.54,0,112.26,35.46,112.26,94.85,0,50.73-33.96,87.56-90.09,92.28M94.22,341.98h139.57v32.39H55.49V56.12h38.73v285.86ZM376.09,0H0v430.73h376.09V0Z"/>
+    </g>
+  </svg>
+  <div class="brand-divider" aria-hidden="true"></div>
+  <div class="brand-text">
+    World Risk Poll
+    <span>Document Library</span>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero" aria-label="Page introduction">
+  <div class="hero-inner">
+    <p class="eyebrow">Lloyd's Register Foundation</p>
+    <h1>WRP Document Library<span class="period">.</span></h1>
+    <p class="lede">Browse and download PDF reports from the World Risk Poll across all survey waves. Filter by year and theme, or search by country name.</p>
+  </div>
+</section>
+
+<!-- Controls -->
+<div class="controls-wrap" role="search" aria-label="Filter and search documents">
+  <div class="controls-inner">
+    <div class="field">
+      <label for="filter-year">Year</label>
+      <select id="filter-year" aria-label="Filter by year">
+        <option value="">All years</option>
+        <option value="2019">2019</option>
+        <option value="2021">2021</option>
+        <option value="2023">2023</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="filter-theme">Theme</label>
+      <select id="filter-theme" aria-label="Filter by theme" disabled>
+        <option value="">All themes</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="search-country">Search by country</label>
+      <input
+        type="search"
+        id="search-country"
+        placeholder="e.g. Nigeria, Brazil, India…"
+        autocomplete="off"
+        aria-label="Search file names by country"
+      >
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<main id="main-content" aria-live="polite" aria-atomic="true">
+  <div class="loading-state" id="loading-state">
+    <div class="spinner" aria-hidden="true"></div>
+    <p>Loading documents from GitHub…</p>
+  </div>
+  <div id="results-wrap" hidden>
+    <div class="results-bar">
+      <p class="results-count"><strong id="count-display">0</strong> documents</p>
+      <button class="clear-btn hidden" id="clear-btn" type="button">Clear filters</button>
+    </div>
+    <div id="cards-output"></div>
+  </div>
+  <div id="error-state" hidden></div>
+</main>
+
+<!-- Footer -->
+<footer class="site" role="contentinfo">
+  <div class="footer-inner">
+    <p class="footer-brand"><strong>Lloyd's Register Foundation</strong> · World Risk Poll</p>
+    <p class="footer-brand">Data served via the GitHub Contents API</p>
+  </div>
+</footer>
+
+<script>
+  // ── State ────────────────────────────────────────────────────
+  let allFiles = [];   // { name, path, url, year, theme }
+  let activeYear  = '';
+  let activeTheme = '';
+  let searchQuery = '';
+
+  // ── DOM refs ─────────────────────────────────────────────────
+  const yearSel    = document.getElementById('filter-year');
+  const themeSel   = document.getElementById('filter-theme');
+  const searchInp  = document.getElementById('search-country');
+  const loadingEl  = document.getElementById('loading-state');
+  const resultsEl  = document.getElementById('results-wrap');
+  const errorEl    = document.getElementById('error-state');
+  const outputEl   = document.getElementById('cards-output');
+  const countEl    = document.getElementById('count-display');
+  const clearBtn   = document.getElementById('clear-btn');
+
+  // ── GitHub API helpers ───────────────────────────────────────
+  function apiHeaders() {
+    const h = { 'Accept': 'application/vnd.github+json' };
+    if (CONFIG.token) h['Authorization'] = `Bearer ${CONFIG.token}`;
+    return h;
+  }
+
+  async function fetchTree(path) {
+    const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}?ref=${CONFIG.branch}`;
+    const res = await fetch(url, { headers: apiHeaders() });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${res.status} fetching ${path}`);
+    }
+    return res.json();
+  }
+
+  // Download URL for a raw file
+  function rawUrl(filePath) {
+    return `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/${filePath}`;
+  }
+
+  // ── Data loading ─────────────────────────────────────────────
+  async function loadAllFiles() {
+    const files = [];
+
+    for (const [year, cfg] of Object.entries(CONFIG.structure)) {
+      const yearPath = CONFIG.rootFolder ? `${CONFIG.rootFolder}/${year}` : year;
+
+      if (!cfg.themes) {
+        // No subfolders — load PDFs directly from year folder
+        try {
+          const items = await fetchTree(yearPath);
+          for (const item of items) {
+            if (item.type === 'file' && item.name.toLowerCase().endsWith('.pdf')) {
+              files.push({ name: item.name, path: item.path, url: rawUrl(item.path), year, theme: null });
+            }
+          }
+        } catch (e) {
+          console.warn(`Could not load ${yearPath}:`, e.message);
+        }
+      } else {
+        // Load PDFs from each theme subfolder
+        for (const theme of cfg.themes) {
+          const themePath = `${yearPath}/${theme}`;
+          try {
+            const items = await fetchTree(themePath);
+            for (const item of items) {
+              if (item.type === 'file' && item.name.toLowerCase().endsWith('.pdf')) {
+                files.push({ name: item.name, path: item.path, url: rawUrl(item.path), year, theme });
+              }
+            }
+          } catch (e) {
+            console.warn(`Could not load ${themePath}:`, e.message);
+          }
+        }
+      }
+    }
+
+    return files;
+  }
+
+  // ── Filter logic ─────────────────────────────────────────────
+  function applyFilters() {
+    let results = allFiles;
+
+    if (activeYear)  results = results.filter(f => f.year === activeYear);
+    if (activeTheme) results = results.filter(f => f.theme === activeTheme);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      results = results.filter(f => f.name.toLowerCase().includes(q));
+    }
+
+    return results;
+  }
+
+  // ── Render ───────────────────────────────────────────────────
+  function highlight(text, query) {
+    if (!query) return escHtml(text);
+    const safe = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escHtml(text).replace(new RegExp(`(${safe})`, 'gi'), '<mark>$1</mark>');
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function render() {
+    const results = applyFilters();
+
+    // Update count
+    countEl.textContent = results.length;
+
+    // Show/hide clear button
+    const hasFilter = activeYear || activeTheme || searchQuery;
+    clearBtn.classList.toggle('hidden', !hasFilter);
+
+    if (results.length === 0) {
+      outputEl.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📂</div>
+          <h3>No documents found</h3>
+          <p>Try adjusting your filters or search term.</p>
+        </div>`;
+      return;
+    }
+
+    // Group by year → theme
+    const groups = {};
+    for (const file of results) {
+      const key = file.year + '|||' + (file.theme || '');
+      if (!groups[key]) groups[key] = { year: file.year, theme: file.theme, files: [] };
+      groups[key].files.push(file);
+    }
+
+    // Sort groups: by year asc, then theme order from CONFIG
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      const [ay, at] = a.split('|||');
+      const [by, bt] = b.split('|||');
+      if (ay !== by) return ay.localeCompare(by);
+      const themes = CONFIG.structure[ay]?.themes || [];
+      return themes.indexOf(at) - themes.indexOf(bt);
+    });
+
+    let html = '';
+    for (const key of sortedKeys) {
+      const group = groups[key];
+      const labelParts = [group.year];
+      if (group.theme) labelParts.push(group.theme);
+      html += `
+        <div class="group-header" role="heading" aria-level="2">
+          <span class="group-label">${escHtml(labelParts.join(' · '))}</span>
+          <span class="group-line" aria-hidden="true"></span>
+        </div>
+        <div class="pdf-grid" role="list">`;
+
+      for (const file of group.files) {
+        const displayName = file.name.replace(/\.pdf$/i, '').replace(/[_-]/g, ' ');
+        html += `
+          <div class="pdf-card" role="listitem">
+            <div class="pdf-card-meta">
+              <span class="tag tag-year">${escHtml(file.year)}</span>
+              ${file.theme ? `<span class="tag tag-theme">${escHtml(file.theme)}</span>` : ''}
+            </div>
+            <p class="pdf-name">${highlight(displayName, searchQuery)}</p>
+            <a class="pdf-link" href="${escHtml(file.url)}" target="_blank" rel="noopener" aria-label="Download ${escHtml(displayName)} (PDF)">
+              <svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 1v8M3 7l3 3 3-3M1 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Download PDF
+            </a>
+          </div>`;
+      }
+
+      html += `</div>`;
+    }
+
+    outputEl.innerHTML = html;
+  }
+
+  // ── Theme select population ──────────────────────────────────
+  function updateThemeSelect(year) {
+    const themes = year ? CONFIG.structure[year]?.themes : null;
+    themeSel.innerHTML = '<option value="">All themes</option>';
+
+    if (themes && themes.length) {
+      for (const t of themes) {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        themeSel.appendChild(opt);
+      }
+      themeSel.disabled = false;
+    } else {
+      themeSel.disabled = true;
+    }
+    activeTheme = '';
+    themeSel.value = '';
+  }
+
+  // ── Event listeners ──────────────────────────────────────────
+  yearSel.addEventListener('change', () => {
+    activeYear = yearSel.value;
+    updateThemeSelect(activeYear);
+    render();
+  });
+
+  themeSel.addEventListener('change', () => {
+    activeTheme = themeSel.value;
+    render();
+  });
+
+  let searchTimer;
+  searchInp.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchQuery = searchInp.value.trim();
+      render();
+    }, 200);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    activeYear  = '';
+    activeTheme = '';
+    searchQuery = '';
+    yearSel.value  = '';
+    searchInp.value = '';
+    updateThemeSelect('');
+    render();
+  });
+
+  // ── Init ─────────────────────────────────────────────────────
+  async function init() {
+    try {
+      allFiles = await loadAllFiles();
+
+      loadingEl.hidden  = true;
+      resultsEl.hidden  = false;
+      errorEl.hidden    = true;
+      render();
+    } catch (err) {
+      loadingEl.hidden = true;
+      errorEl.hidden   = false;
+      errorEl.innerHTML = `
+        <div class="error-state">
+          <h3>Could not load documents</h3>
+          <p>
+            The GitHub API returned an error. Check that <code>CONFIG.owner</code> and <code>CONFIG.repo</code>
+            are set correctly at the top of this file, and that the repository is public
+            (or a valid <code>CONFIG.token</code> is provided).
+          </p>
+          <p style="margin-top:.75rem;font-size:12px;font-family:'Courier New',monospace;color:var(--lrf-ink-soft);">
+            ${escHtml(err.message)}
+          </p>
+        </div>`;
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
