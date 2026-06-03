@@ -410,9 +410,9 @@
     // Set themes to null for years with no subfolders
     // Folder names must match exactly (case-sensitive on GitHub)
     structure: {
-      '2019': { themes: null,                                        label: '2019' },
-      '2021': { themes: ['ai', 'resi', 'trended', 'v_and_h'],       label: '2021' },
       '2023': { themes: ['osh', 'resilience', 'risk', 'waste'],     label: '2023' },
+      '2021': { themes: ['ai', 'resi', 'trended', 'v_and_h'],       label: '2021' },
+      '2019': { themes: null,                                        label: '2019' },
     },
 
     // Display labels for theme folder names (optional — shown in the UI instead of raw folder name)
@@ -469,9 +469,9 @@
       <label for="filter-year">Year</label>
       <select id="filter-year" aria-label="Filter by year">
         <option value="">All years</option>
-        <option value="2019">2019</option>
-        <option value="2021">2021</option>
         <option value="2023">2023</option>
+        <option value="2021">2021</option>
+        <option value="2019">2019</option>
       </select>
     </div>
     <div class="field">
@@ -651,10 +651,11 @@
     }
 
     // Sort groups: by year asc, then theme order from CONFIG
+    const yearOrder = Object.keys(CONFIG.structure);
     const sortedKeys = Object.keys(groups).sort((a, b) => {
       const [ay, at] = a.split('|||');
       const [by, bt] = b.split('|||');
-      if (ay !== by) return ay.localeCompare(by);
+      if (ay !== by) return yearOrder.indexOf(ay) - yearOrder.indexOf(by);
       const themes = CONFIG.structure[ay]?.themes || [];
       return themes.indexOf(at) - themes.indexOf(bt);
     });
