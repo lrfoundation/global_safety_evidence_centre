@@ -486,33 +486,31 @@ main {
 /* ---------- Advance options (inline between phases) ---------- */
 .advance-wrap {
   margin: 2.5rem 0;
+}
+.advance-row {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
-.advance-btn {
-  font-size: 16px;
-  padding: 1rem 2.25rem;
-  box-shadow: var(--shadow-md);
-}
-.advance-alt {
+.advance-row .btn {
+  flex: 1 1 200px;
+  max-width: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-.advance-alt-label {
-  font-size: 13px;
-  color: var(--lrf-muted);
-  font-weight: 600;
-  margin-right: 0.25rem;
-}
-.advance-mini {
-  font-size: 13px;
-  padding: 0.6rem 1rem;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.25;
+  font-size: 14px;
+  padding: 0.85rem 1.1rem;
   box-shadow: var(--shadow-sm);
+}
+.advance-row .btn-primary {
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: var(--shadow-md);
 }
 
 /* ---------- Round-summary: scored-on caption + stacked choices ---------- */
@@ -549,6 +547,51 @@ main {
 }
 .picker-field { margin-bottom: 1rem; }
 .picker-field select { width: 100%; }
+.picker-fixtures {
+  background: var(--lrf-cream);
+  border: 1px solid var(--lrf-line);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 1.1rem;
+}
+.pf-head {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--lrf-pink-dark);
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pf-note { font-size: 13px; color: var(--lrf-muted); line-height: 1.45; }
+.pf-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem 1rem;
+  max-height: 190px;
+  overflow-y: auto;
+}
+.pf-tie { font-size: 12.5px; line-height: 1.4; }
+.pf-v { color: var(--lrf-muted); font-style: italic; margin: 0 0.25rem; }
+.pf-ff { color: var(--lrf-pink-dark); font-weight: 700; }
+@media (max-width: 520px) { .pf-list { grid-template-columns: 1fr; } }
+
+/* ---------- Countries caveat ---------- */
+.cav-star {
+  color: var(--lrf-pink);
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 0.75em;
+  vertical-align: super;
+}
+.cav-star:hover { text-decoration: underline; }
+.data-caveat {
+  max-width: 1400px;
+  margin: 0.9rem auto 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--lrf-muted);
+}
+.cav-mark { color: var(--lrf-pink); font-weight: 700; }
 
 /* ---------- Per-round question captions (mixed bracket) ---------- */
 .q-cap {
@@ -939,7 +982,7 @@ footer .colophon strong { color: white; font-weight: 700; }
     <div>
       <h1>The <span class="accent">World Risk Poll</span> Cup<span class="period">!</span></h1>
 		<p class="lede">A playful tournament built from real World Risk Poll data.<br>
-		  Here's the game: pick a survey question, then pick the answer you reckon <strong>your country leads the world on</strong>. All 48 World Cup nations then battle it out, group stage, knockouts, the final, to see who really tops it. A country's score is simply the share of its people who gave that answer, and the highest share wins each match. Can you find the answer that carries your team to the trophy?</p>
+		  Here's the game: pick a survey question, then pick the answer you reckon <strong>your country leads the world on</strong>. All 48 World Cup nations<a href="#data-caveat" class="cav-star">*</a> then battle it out, group stage, knockouts, the final, to see who really tops it. A country's score is simply the share of its people who gave that answer, and the highest share wins each match. Can you find the answer that carries your team to the trophy?</p>
     </div>
     <div class="hero-stats">
       <div class="stat"><div class="stat-num">140</div><div class="stat-lbl">Countries surveyed</div></div>
@@ -961,6 +1004,9 @@ footer .colophon strong { color: white; font-weight: 700; }
     </div>
     <button id="play-btn" class="btn btn-primary" disabled>Kick off ▶</button>
   </div>
+  <p class="data-caveat" id="data-caveat">
+    <span class="cav-mark">*</span> The draw fields 48 teams to fill a standard group stage. Of these, 43 have public World Risk Poll data; the other five (Qatar, Iran, Haiti, Curaçao and Cape Verde) aren't in this dataset, so they appear as placeholders and forfeit every match (counted as an automatic loss). The poll itself covers around 150,000 people across 140+ countries; this game uses only the 43 nations with comparable public results across the questions shown.
+  </p>
 </section>
 
 <main id="main-content">
@@ -1962,6 +2008,32 @@ function syncControlsToState() {
 }
 
 // ---- In-round question picker ------------------------------------------------
+// Show the ties the chosen question will decide, so the user knows who plays.
+function pickerFixturesHTML(mode, phase) {
+  let ties = [], heading = '';
+  if (mode === 'rerun') {
+    if (phase === 'group') {
+      return `<div class="picker-fixtures"><div class="pf-head">Who plays</div>` +
+        `<div class="pf-note">All 12 groups are re-scored on the new question; their round-robin fixtures don't change.</div></div>`;
+    }
+    heading = `${ROUND_DISPLAY[phase]} ties — same teams, re-scored`;
+    ties = (KO_LIST[phase]() || []).filter(Boolean).map(m => [m.teamA, m.teamB]);
+  } else {
+    const nk = nextRoundOf(phase);
+    heading = `${ROUND_DISPLAY[nk]} ties — decided on the new question`;
+    if (phase === 'group') {
+      ties = (state.r32 || []).map(m => [m.teamA, m.teamB]);
+    } else {
+      const winners = (KO_LIST[phase]() || []).filter(Boolean).map(m => m.winner);
+      for (let i = 0; i < winners.length; i += 2) ties.push([winners[i], winners[i + 1]]);
+    }
+  }
+  const tag = t => (TEAM_TO_DATA[t] === null ? `${t} <span class="pf-ff">*</span>` : t);
+  const rows = ties.map(([a, b]) =>
+    `<div class="pf-tie">${tag(a)} <span class="pf-v">v</span> ${tag(b)}</div>`).join('');
+  return `<div class="picker-fixtures"><div class="pf-head">${heading}</div><div class="pf-list">${rows}</div></div>`;
+}
+
 // mode: 'rerun' (re-score this round) or 'next' (advance, then new question onward)
 function openQuestionPicker(mode, phase) {
   if (state.animating) return;
@@ -1979,6 +2051,7 @@ function openQuestionPicker(mode, phase) {
     <div class="modal-eyebrow">Change the question</div>
     <div class="picker-title">${title}</div>
     <p class="picker-blurb">${blurb}</p>
+    ${pickerFixturesHTML(mode, phase)}
     <div class="field picker-field">
       <label for="picker-q">Question</label>
       <select id="picker-q">${document.getElementById('q-select').innerHTML}</select>
@@ -2249,13 +2322,11 @@ function renderAdvanceButton() {
   const label = labels[state.phase];
   if (!label) return '';
   const ph = state.phase;
-  const nextName = ROUND_DISPLAY[nextRoundOf(ph)] || 'the next round';
   return `<div class="advance-wrap">
-    <button class="btn btn-primary advance-btn" onclick="advancePhase()">${label}</button>
-    <div class="advance-alt">
-      <span class="advance-alt-label">…or change the question:</span>
-      <button class="btn btn-secondary advance-mini" onclick="openQuestionPicker('rerun','${ph}')">↻ Re-run this round, new question</button>
-      <button class="btn btn-secondary advance-mini" onclick="openQuestionPicker('next','${ph}')">⏭ ${nextName} on a new question</button>
+    <div class="advance-row">
+      <button class="btn btn-secondary" onclick="openQuestionPicker('rerun','${ph}')">↻ Re-run this round with a different question</button>
+      <button class="btn btn-primary" onclick="advancePhase()">Continue with same question ▶</button>
+      <button class="btn btn-secondary" onclick="openQuestionPicker('next','${ph}')">⏭ Continue to the next round with a different question</button>
     </div>
   </div>`;
 }
