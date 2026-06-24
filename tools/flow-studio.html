@@ -134,7 +134,10 @@ e.g. Applications received, 412"></textarea>
             <label class="chk"><input type="checkbox" id="fn-pct" checked> Show % of first stage</label>
             <label class="chk"><input type="checkbox" id="fn-drop" checked> Show drop-off between stages</label>
           </div>
-          <div class="field" style="margin-top:0.9rem;"><label for="fn-width">Width (px)</label><input type="number" id="fn-width" min="400" max="1200" step="20"></div>
+          <div class="field-row" style="margin-top:0.9rem;">
+            <div class="field"><label for="fn-width">Width (px)</label><input type="number" id="fn-width" min="400" max="1600" step="20"></div>
+            <div class="field"><label for="fn-height">Height (px)</label><input type="number" id="fn-height" min="220" max="1600" step="20"></div>
+          </div>
         </div>
       </div>
 
@@ -246,7 +249,7 @@ var state = {
   },
   funnel: {
     data: 'Applications received, 412\nEligible, 357\nSent for review, 357\nShortlisted, 96\nInterviewed, 38\nFunded, 21',
-    color: '#e5006e', pctOfFirst: true, dropoff: true, width: 760
+    color: '#e5006e', pctOfFirst: true, dropoff: true, width: 760, height: 520
   }
 };
 
@@ -447,13 +450,18 @@ function renderFunnel(){
   var pad = 22, W = Math.max(400, f.width || 760);
   var titleH = (state.title ? 26 : 0) + (state.subtitle ? 18 : 0) + ((state.title || state.subtitle) ? 12 : 0);
   var capH = state.source ? 22 : 0;
-  var top = pad + titleH, stageH = 50, gap = 26;
+  var top = pad + titleH;
 
   if(!rows.length){
     var hh = top + 60 + capH + pad;
     return { svg: '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + hh + '" viewBox="0 0 ' + W + ' ' + hh + '" font-family="DM Sans, system-ui, sans-serif"><rect width="' + W + '" height="' + hh + '" fill="#ffffff"/><text x="' + (W / 2) + '" y="' + (top + 40) + '" font-size="14" fill="' + MUTED + '" text-anchor="middle">Add at least one stage (label, count)</text></svg>', w: W, h: hh };
   }
 
+  // Scale bar height and gaps to fill the requested canvas height (gap = half a bar).
+  var n = rows.length, ratio = 0.5;
+  var availH = Math.max(60, (f.height || 520) - top - capH - pad);
+  var stageH = Math.max(18, availH / (n + ratio * (n - 1)));
+  var gap = stageH * ratio;
   var first = rows[0].n || 1, maxN = Math.max.apply(null, rows.map(function(r){ return r.n; })) || 1;
   // Reserve a right gutter so the drop-off labels never run off the edge.
   var rightGutter = f.dropoff ? 112 : pad;
@@ -537,11 +545,13 @@ $('download-png').addEventListener('click', function(){
   // Funnel fields
   $('fn-data').value = state.funnel.data;
   $('fn-width').value = state.funnel.width;
+  $('fn-height').value = state.funnel.height;
   $('fn-data').addEventListener('input', function(e){ state.funnel.data = e.target.value; render(); });
   $('fn-color').addEventListener('change', function(e){ state.funnel.color = e.target.value; render(); });
   $('fn-pct').addEventListener('change', function(e){ state.funnel.pctOfFirst = e.target.checked; render(); });
   $('fn-drop').addEventListener('change', function(e){ state.funnel.dropoff = e.target.checked; render(); });
   $('fn-width').addEventListener('input', function(e){ state.funnel.width = Math.max(400, +e.target.value || 760); render(); });
+  $('fn-height').addEventListener('input', function(e){ state.funnel.height = Math.max(220, +e.target.value || 520); render(); });
 
   // Shared labels
   $('f-title').addEventListener('input', function(e){ state.title = e.target.value; render(); });

@@ -66,6 +66,19 @@
           <label for="f-projection">World map projection</label>
           <select id="f-projection"></select>
         </div>
+        <div class="field" id="extent-wrap" style="margin-top:0.9rem;">
+          <label for="f-extent">Zoom to</label>
+          <select id="f-extent">
+            <option value="world">Whole world</option>
+            <option value="africa">Africa</option>
+            <option value="asia">Asia</option>
+            <option value="europe">Europe</option>
+            <option value="northAmerica">North America</option>
+            <option value="southAmerica">South America</option>
+            <option value="oceania">Oceania</option>
+          </select>
+          <label class="chk" id="neighbours-row" style="margin-top:0.65rem; display:none;"><input type="checkbox" id="c-neighbours" checked> Show neighbouring land</label>
+        </div>
       </div>
 
       <div class="panel-section">
@@ -300,7 +313,7 @@ var state = {
   source: 'Source: World Risk Poll, Lloyd’s Register Foundation (illustrative data)',
   suffix: '%', decimals: 0, classes: 5, legendTitle: '', showLegend: true,
   scheme: 'sequential', colorLow: '#e5006e', colorHigh: '#00a7b2', mid: null,
-  projection: 'equalEarth',
+  projection: 'equalEarth', extent: 'world', showNeighbours: true,
   width: 820, height: 520
 };
 
@@ -312,6 +325,28 @@ var PROJECTIONS = {
   robinson: { name: 'Robinson', fn: function(){ return d3.geoRobinson ? d3.geoRobinson() : d3.geoEqualEarth(); } },
   mercator: { name: 'Mercator', fn: function(){ return d3.geoMercator(); } }
 };
+
+/* Continent zoom: a geographic bounding box to fit the view to, plus the member
+   countries (alpha-3) used when neighbouring land is hidden. The box drives the
+   zoom (so trans-continental countries like Russia don't blow out the framing). */
+var CONTINENTS = {
+  africa: { name: 'Africa', bbox: [-20, -37, 53, 38], a3: ['DZA','AGO','BEN','BWA','BFA','BDI','CMR','CPV','CAF','TCD','COM','COG','COD','CIV','DJI','EGY','GNQ','ERI','SWZ','ETH','GAB','GMB','GHA','GIN','GNB','KEN','LSO','LBR','LBY','MDG','MWI','MLI','MRT','MUS','MAR','MOZ','NAM','NER','NGA','RWA','STP','SEN','SYC','SLE','SOM','ZAF','SSD','SDN','TZA','TGO','TUN','UGA','ZMB','ZWE','ESH'] },
+  asia: { name: 'Asia', bbox: [25, -11, 150, 56], a3: ['AFG','ARM','AZE','BHR','BGD','BTN','BRN','KHM','CHN','CYP','GEO','IND','IDN','IRN','IRQ','ISR','JPN','JOR','KAZ','KWT','KGZ','LAO','LBN','MYS','MDV','MNG','MMR','NPL','PRK','OMN','PAK','PSE','PHL','QAT','SAU','SGP','KOR','LKA','SYR','TWN','TJK','THA','TLS','TUR','TKM','ARE','UZB','VNM','YEM','HKG'] },
+  europe: { name: 'Europe', bbox: [-25, 34, 45, 71], a3: ['ALB','AND','AUT','BLR','BEL','BIH','BGR','HRV','CZE','DNK','EST','FIN','FRA','DEU','GRC','HUN','ISL','IRL','ITA','LVA','LIE','LTU','LUX','MLT','MDA','MCO','MNE','NLD','MKD','NOR','POL','PRT','ROU','RUS','SMR','SRB','SVK','SVN','ESP','SWE','CHE','UKR','GBR'] },
+  northAmerica: { name: 'North America', bbox: [-168, 7, -52, 74], a3: ['ATG','BHS','BRB','BLZ','CAN','CRI','CUB','DMA','DOM','SLV','GRD','GTM','HTI','HND','JAM','MEX','NIC','PAN','KNA','LCA','VCT','TTO','USA','GRL','BMU','PRI'] },
+  southAmerica: { name: 'South America', bbox: [-82, -56, -34, 13], a3: ['ARG','BOL','BRA','CHL','COL','ECU','GUY','PRY','PER','SUR','URY','VEN','FLK'] },
+  oceania: { name: 'Oceania', bbox: [112, -48, 179, 0], a3: ['AUS','FJI','KIR','MHL','FSM','NRU','NZL','PLW','PNG','WSM','SLB','TON','TUV','VUT','NCL','PYF'] }
+};
+function bboxGeo(b){
+  var x0 = b[0], y0 = b[1], x1 = b[2], y1 = b[3], pts = [], i, S = 4;
+  for(i = x0; i <= x1; i += S) pts.push([i, y0]);
+  for(i = y0; i <= y1; i += S) pts.push([x1, i]);
+  for(i = x1; i >= x0; i -= S) pts.push([i, y1]);
+  for(i = y1; i >= y0; i -= S) pts.push([x0, i]);
+  pts.push([x0, y0]);
+  pts.reverse(); // clockwise exterior — d3-geo otherwise reads it as "everywhere except the box"
+  return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [pts] } };
+}
 
 var SAMPLE = "Country\tWorry\nUnited States\t62\nUnited Kingdom\t66\nFrance\t69\nGermany\t70\nSpain\t72\nItaly\t71\nBrazil\t83\nMexico\t78\nCanada\t61\nKenya\t74\nNigeria\t72\nSouth Africa\t73\nIndia\t71\nChina\t58\nJapan\t68\nSouth Korea\t80\nIndonesia\t75\nAustralia\t64\nPhilippines\t84\nKenya\t74";
 
@@ -504,6 +539,7 @@ function syncLevelUI(){
   });
   $('country-wrap').classList.toggle('hidden', state.level !== 'country');
   $('proj-wrap').classList.toggle('hidden', state.level !== 'global');
+  $('extent-wrap').classList.toggle('hidden', state.level !== 'global');
   $('back-global').classList.toggle('show', state.level === 'country');
   if(state.level === 'global'){ $('region-names').classList.add('hidden'); }
 }
@@ -514,17 +550,25 @@ function render(){
   var W = state.width, H = state.height;
   $('dims').innerHTML = W + ' &times; ' + H;
 
-  var collection, isGlobal = state.level === 'global';
+  var isGlobal = state.level === 'global';
+  var fitTarget, drawFeatures, clipToPlot = false;
   if(isGlobal){
-    collection = WORLD;
+    drawFeatures = WORLD.features; fitTarget = WORLD;
+    if(state.extent !== 'world' && CONTINENTS[state.extent]){
+      var cont = CONTINENTS[state.extent];
+      fitTarget = bboxGeo(cont.bbox); clipToPlot = true; // zoom to the continent box
+      if(!state.showNeighbours){
+        var mem = {}; cont.a3.forEach(function(a){ mem[a] = 1; });
+        drawFeatures = WORLD.features.filter(function(f){ return mem[NUM2A3[pad3(f.id)]]; });
+      }
+    }
   } else {
     if(!state.country || !REGION_CACHE[state.country]){
-      // nothing loaded yet
       $('canvas-box').innerHTML = '';
-      if(state.country) { /* status handled elsewhere */ } else setStatus('Pick a country to load its regions.');
+      if(!state.country) setStatus('Pick a country to load its regions.');
       return;
     }
-    collection = REGION_CACHE[state.country];
+    fitTarget = REGION_CACHE[state.country]; drawFeatures = REGION_CACHE[state.country].features;
   }
 
   var m = matchData();
@@ -560,7 +604,7 @@ function render(){
   var x0 = 16, x1 = W - 16, y0 = top, y1 = H - bottom;
 
   var projFn = isGlobal ? (PROJECTIONS[state.projection] || PROJECTIONS.equalEarth).fn : function(){ return d3.geoMercator(); };
-  var proj = projFn().fitExtent([[x0, y0], [x1, y1]], collection);
+  var proj = projFn().fitExtent([[x0, y0], [x1, y1]], fitTarget);
   var path = d3.geoPath(proj);
 
   var svg = d3.create('svg')
@@ -573,7 +617,12 @@ function render(){
 
   // Geographies
   var g = svg.append('g');
-  g.selectAll('path').data(collection.features).enter().append('path')
+  if(clipToPlot){
+    svg.append('defs').append('clipPath').attr('id', 'plotclip').append('rect')
+      .attr('x', x0).attr('y', y0).attr('width', x1 - x0).attr('height', y1 - y0);
+    g.attr('clip-path', 'url(#plotclip)');
+  }
+  g.selectAll('path').data(drawFeatures).enter().append('path')
     .attr('class', 'geo')
     .attr('d', path)
     .attr('fill', function(f){
@@ -729,6 +778,10 @@ $('f-color2').addEventListener('change', function(e){ state.colorHigh = e.target
 $('f-mid').addEventListener('input', function(e){ var v = parseFloat(e.target.value); state.mid = (e.target.value === '' || isNaN(v)) ? null : v; render(); });
 $('f-classes').addEventListener('change', function(e){ state.classes = +e.target.value; render(); });
 $('f-projection').addEventListener('change', function(e){ state.projection = e.target.value; render(); });
+function updateExtentUI(){ $('neighbours-row').style.display = (state.extent !== 'world') ? 'flex' : 'none'; }
+$('f-extent').addEventListener('change', function(e){ state.extent = e.target.value; updateExtentUI(); render(); });
+$('c-neighbours').addEventListener('change', function(e){ state.showNeighbours = e.target.checked; render(); });
+updateExtentUI();
 $('f-legend-title').addEventListener('input', function(e){ state.legendTitle = e.target.value; render(); });
 $('c-legend').addEventListener('change', function(e){ state.showLegend = e.target.checked; render(); });
 $('f-width').addEventListener('input', function(e){ state.width = Math.max(360, +e.target.value || 360); render(); });
