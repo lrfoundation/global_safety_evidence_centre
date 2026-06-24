@@ -474,12 +474,12 @@ function renderFunnel(){
   for(var j = 0; j < rows.length; j++){
     var w2 = bw(rows[j].n), x2 = cx - w2 / 2, y = yOf(j);
     parts.push('<rect x="' + x2 + '" y="' + y + '" width="' + w2 + '" height="' + stageH + '" rx="3" fill="' + col + '"/>');
-    var pct = Math.round(rows[j].n / first * 1000) / 10;
+    var pct = Math.round(rows[j].n / first * 100);
     var valTxt = gi(rows[j].n) + (f.pctOfFirst ? '  ·  ' + pct + '%' : '');
     parts.push('<text x="' + cx + '" y="' + (y + stageH / 2 - 3) + '" font-size="13.5" font-weight="700" fill="' + tcol + '" text-anchor="middle">' + esc(rows[j].label) + '</text>');
     parts.push('<text x="' + cx + '" y="' + (y + stageH / 2 + 14) + '" font-size="11.5" fill="' + tcol + '" text-anchor="middle" opacity="0.92">' + esc(valTxt) + '</text>');
     if(f.dropoff && j < rows.length - 1){
-      var drop = rows[j].n - rows[j + 1].n, dpct = rows[j].n ? Math.round(drop / rows[j].n * 1000) / 10 : 0;
+      var drop = rows[j].n - rows[j + 1].n, dpct = rows[j].n ? Math.round(drop / rows[j].n * 100) : 0;
       parts.push('<text x="' + (W - pad) + '" y="' + (yOf(j) + stageH + gap / 2 + 4) + '" font-size="11" fill="' + MUTED + '" text-anchor="end">&#8722;' + gi(drop) + ' (&#8722;' + dpct + '%)</text>');
     }
   }

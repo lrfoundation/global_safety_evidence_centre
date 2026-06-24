@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="map-studio.css">
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4"></script>
 </head>
 <body>
 
@@ -60,6 +61,10 @@
           <label for="country-select">Country</label>
           <select id="country-select"><option value="">Choose a country…</option></select>
           <div class="hint">Regional boundaries load on demand. In global view you can also click a country to drill into it.</div>
+        </div>
+        <div class="field" id="proj-wrap" style="margin-top:0.9rem;">
+          <label for="f-projection">World map projection</label>
+          <select id="f-projection"></select>
         </div>
       </div>
 
@@ -295,7 +300,17 @@ var state = {
   source: 'Source: World Risk Poll, Lloyd’s Register Foundation (illustrative data)',
   suffix: '%', decimals: 0, classes: 5, legendTitle: '', showLegend: true,
   scheme: 'sequential', colorLow: '#e5006e', colorHigh: '#00a7b2', mid: null,
+  projection: 'equalEarth',
   width: 820, height: 520
+};
+
+/* World-map projections for the global view (country drill-down always uses a local Mercator).
+   Robinson comes from the d3-geo-projection plugin; fall back to Equal Earth if it didn't load. */
+var PROJECTIONS = {
+  equalEarth: { name: 'Equal Earth (equal-area)', fn: function(){ return d3.geoEqualEarth(); } },
+  naturalEarth: { name: 'Natural Earth (compromise)', fn: function(){ return d3.geoNaturalEarth1(); } },
+  robinson: { name: 'Robinson', fn: function(){ return d3.geoRobinson ? d3.geoRobinson() : d3.geoEqualEarth(); } },
+  mercator: { name: 'Mercator', fn: function(){ return d3.geoMercator(); } }
 };
 
 var SAMPLE = "Country\tWorry\nUnited States\t62\nUnited Kingdom\t66\nFrance\t69\nGermany\t70\nSpain\t72\nItaly\t71\nBrazil\t83\nMexico\t78\nCanada\t61\nKenya\t74\nNigeria\t72\nSouth Africa\t73\nIndia\t71\nChina\t58\nJapan\t68\nSouth Korea\t80\nIndonesia\t75\nAustralia\t64\nPhilippines\t84\nKenya\t74";
@@ -328,6 +343,8 @@ function populateColorSelect(sel, selected){
 }
 populateColorSelect($('f-color'), state.colorLow);
 populateColorSelect($('f-color2'), state.colorHigh);
+
+(function(){ var sel = $('f-projection'); Object.keys(PROJECTIONS).forEach(function(k){ var o = document.createElement('option'); o.value = k; o.textContent = PROJECTIONS[k].name; if(k === state.projection) o.selected = true; sel.appendChild(o); }); })();
 
 function updateSchemeUI(){
   var div = state.scheme === 'diverging';
@@ -486,6 +503,7 @@ function syncLevelUI(){
     b.classList.toggle('active', b.dataset.level === state.level);
   });
   $('country-wrap').classList.toggle('hidden', state.level !== 'country');
+  $('proj-wrap').classList.toggle('hidden', state.level !== 'global');
   $('back-global').classList.toggle('show', state.level === 'country');
   if(state.level === 'global'){ $('region-names').classList.add('hidden'); }
 }
@@ -541,7 +559,8 @@ function render(){
   var bottom = capH + legendH + 8;
   var x0 = 16, x1 = W - 16, y0 = top, y1 = H - bottom;
 
-  var proj = (isGlobal ? d3.geoEqualEarth() : d3.geoMercator()).fitExtent([[x0, y0], [x1, y1]], collection);
+  var projFn = isGlobal ? (PROJECTIONS[state.projection] || PROJECTIONS.equalEarth).fn : function(){ return d3.geoMercator(); };
+  var proj = projFn().fitExtent([[x0, y0], [x1, y1]], collection);
   var path = d3.geoPath(proj);
 
   var svg = d3.create('svg')
@@ -709,6 +728,7 @@ $('f-color').addEventListener('change', function(e){ state.colorLow = e.target.v
 $('f-color2').addEventListener('change', function(e){ state.colorHigh = e.target.value; render(); });
 $('f-mid').addEventListener('input', function(e){ var v = parseFloat(e.target.value); state.mid = (e.target.value === '' || isNaN(v)) ? null : v; render(); });
 $('f-classes').addEventListener('change', function(e){ state.classes = +e.target.value; render(); });
+$('f-projection').addEventListener('change', function(e){ state.projection = e.target.value; render(); });
 $('f-legend-title').addEventListener('input', function(e){ state.legendTitle = e.target.value; render(); });
 $('c-legend').addEventListener('change', function(e){ state.showLegend = e.target.checked; render(); });
 $('f-width').addEventListener('input', function(e){ state.width = Math.max(360, +e.target.value || 360); render(); });
