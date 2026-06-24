@@ -288,8 +288,8 @@ function boxSvg(b){
 }
 function vArrow(x, y1, y2){ return '<line x1="' + x + '" y1="' + y1 + '" x2="' + x + '" y2="' + y2 + '" stroke="' + INK + '" stroke-width="1.2" marker-end="url(#arr)"/>'; }
 function hArrow(x1, y, x2){ return '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 + '" y2="' + y + '" stroke="' + INK + '" stroke-width="1.2" marker-end="url(#arr)"/>'; }
-function elbow(x1, y1, x2, y2){
-  var ym = (y1 + y2) / 2;
+function elbow(x1, y1, x2, y2, bendY){
+  var ym = bendY != null ? bendY : (y1 + y2) / 2;
   return '<polyline points="' + x1 + ',' + y1 + ' ' + x1 + ',' + ym + ' ' + x2 + ',' + ym + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + INK + '" stroke-width="1.2" marker-end="url(#arr)"/>';
 }
 function svgDefs(){ return '<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M1,1 L7.5,4.5 L1,8" fill="none" stroke="' + INK + '" stroke-width="1.4"/></marker></defs>'; }
@@ -312,7 +312,7 @@ function nLine(label, v){ var g = gi(v); return g === '' ? null : label + ' (n =
 /* ---------- PRISMA renderer ---------- */
 function renderPrisma(){
   var p = state.prisma;
-  var pad = 22, bandW = 28, BW = 250, GX = 46, EX = 226, colGap = 56, prevW = 200, vgap = 30;
+  var pad = 22, bandW = 28, BW = 250, GX = 46, EX = 226, colGap = 56, prevW = 200, vgap = 30, incGap = 64;
   var titleH = (state.title ? 26 : 0) + (state.subtitle ? 18 : 0) + ((state.title || state.subtitle) ? 12 : 0);
   var capH = state.source ? 22 : 0;
 
@@ -325,6 +325,7 @@ function renderPrisma(){
 
   var arrows = [], boxes = [];
   function add(b){ boxes.push(b); return b; }
+  function centre(bxs, y, h){ bxs.forEach(function(b){ b.y = y + (h - b.h) / 2; }); } // vertical-centre boxes within a row band
 
   var top = pad + titleH;
 
@@ -344,6 +345,7 @@ function renderPrisma(){
   var aRm = add(boxObj(Ax, rowY, EX, [{ text: 'Records removed before screening:', bold: true }].concat(reasonLines(p.removedA)), { fill: EX_FILL }));
   var bId = add(boxObj(Bm, rowY, BW, [{ text: 'Records identified from:', bold: true }].concat(reasonLines(p.idB))));
   var row1H = Math.max(aId.h, aRm.h, bId.h);
+  centre([aId, aRm, bId], rowY, row1H);
   arrows.push(hArrow(aId.x + BW, aId.y + aId.h / 2, aRm.x));
 
   var prevS = null, prevR = null;
@@ -358,6 +360,7 @@ function renderPrisma(){
   var aSc = add(boxObj(Am, rowY2, BW, [nLine('Records screened', p.screened)]));
   var aScx = add(boxObj(Ax, rowY2, EX, [nLine('Records excluded', p.scrExcl)], { fill: EX_FILL }));
   var row2H = Math.max(aSc.h, aScx.h);
+  centre([aSc, aScx], rowY2, row2H);
   arrows.push(vArrow(Am + BW / 2, aId.y + aId.h, aSc.y));
   arrows.push(hArrow(aSc.x + BW, aSc.y + aSc.h / 2, aScx.x));
 
@@ -368,6 +371,7 @@ function renderPrisma(){
   var bSo = add(boxObj(Bm, rowY3, BW, [nLine('Reports sought for retrieval', p.soughtB)]));
   var bNr = add(boxObj(Bx, rowY3, EX, [nLine('Reports not retrieved', p.nrB)], { fill: EX_FILL }));
   var row3H = Math.max(aSo.h, aNr.h, bSo.h, bNr.h);
+  centre([aSo, aNr], rowY3, row3H); centre([bSo, bNr], rowY3, row3H);
   arrows.push(vArrow(Am + BW / 2, aSc.y + aSc.h, aSo.y));
   arrows.push(hArrow(aSo.x + BW, aSo.y + aSo.h / 2, aNr.x));
   arrows.push(vArrow(Bm + BW / 2, bId.y + bId.h, bSo.y));
@@ -380,26 +384,29 @@ function renderPrisma(){
   var bAs = add(boxObj(Bm, rowY4, BW, [nLine('Reports assessed for eligibility', p.assessedB)]));
   var bEr = add(boxObj(Bx, rowY4, EX, [{ text: 'Reports excluded:', bold: true }].concat(reasonLines(p.reasonsB)), { fill: EX_FILL }));
   var row4H = Math.max(aAs.h, aEr.h, bAs.h, bEr.h);
+  centre([aAs, aEr], rowY4, row4H); centre([bAs, bEr], rowY4, row4H);
   arrows.push(vArrow(Am + BW / 2, aSo.y + aSo.h, aAs.y));
   arrows.push(hArrow(aAs.x + BW, aAs.y + aAs.h / 2, aEr.x));
   arrows.push(vArrow(Bm + BW / 2, bSo.y + bSo.h, bAs.y));
   arrows.push(hArrow(bAs.x + BW, bAs.y + bAs.h / 2, bEr.x));
 
-  // Row 5 — included
-  var rowY5 = rowY4 + row4H + vgap + 6;
-  var incW = 320, incCx = (Am + (Bx + EX)) / 2, incX = incCx - incW / 2;
+  // Row 5 — included (centred between the two arm columns, with extra clearance above)
+  var rowY5 = rowY4 + row4H + incGap;
+  var bendY = rowY5 - 26; // route the merge arrows close to the included box, clear of the excluded boxes
+  var incW = 320, incCx = (Am + Bm) / 2 + BW / 2, incX = incCx - incW / 2;
   var inc = add(boxObj(incX, rowY5, incW, [nLine('Studies included in review', p.included), nLine('Reports of included studies', p.repIncluded)]));
-  arrows.push(elbow(Am + BW / 2, aAs.y + aAs.h, incCx - 46, rowY5));
-  arrows.push(elbow(Bm + BW / 2, bAs.y + bAs.h, incCx + 46, rowY5));
-  if(p.showPrev && prevR) arrows.push(elbow(xPrev + prevW / 2, prevR.y + prevR.h, incX + 26, rowY5));
+  arrows.push(elbow(Am + BW / 2, aAs.y + aAs.h, incCx - 46, rowY5, bendY));
+  arrows.push(elbow(Bm + BW / 2, bAs.y + bAs.h, incCx + 46, rowY5, bendY));
+  if(p.showPrev && prevR) arrows.push(elbow(xPrev + prevW / 2, prevR.y + prevR.h, incX + 26, rowY5, bendY));
 
   var totalH = inc.y + inc.h + capH + pad;
 
-  // Phase bands
+  // Phase bands (contiguous: Identification | Screening | Included)
+  var b1 = rowY2 - 9, b2 = rowY4 + row4H + incGap / 2;
   var bands = [
-    { y1: top, y2: rowY2 - 12, label: 'Identification' },
-    { y1: rowY2 - 6, y2: rowY5 - 12, label: 'Screening' },
-    { y1: rowY5 - 6, y2: inc.y + inc.h, label: 'Included' }
+    { y1: top, y2: b1, label: 'Identification' },
+    { y1: b1, y2: b2, label: 'Screening' },
+    { y1: b2, y2: inc.y + inc.h, label: 'Included' }
   ];
   var bandSvg = bands.map(function(bd){
     var h = bd.y2 - bd.y1, cy = (bd.y1 + bd.y2) / 2, cx = pad + bandW / 2;
