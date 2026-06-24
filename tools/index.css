@@ -1,0 +1,70 @@
+/* ============================================================
+   Tools landing page — specific styles.
+   Loads on top of lrf-theme.css (shared brand chrome).
+   ============================================================ */
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.tool-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--lrf-white);
+  border: 1px solid var(--lrf-line);
+  border-radius: var(--r);
+  padding: 1.75rem;
+  text-decoration: none;
+  color: var(--lrf-ink);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.tool-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--lrf-pink);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.18s ease;
+}
+.tool-card:hover {
+  border-color: var(--lrf-ink);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.tool-card:hover::before { transform: scaleY(1); }
+
+.tool-icon {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r);
+  background: var(--lrf-pink-light);
+  color: var(--lrf-pink);
+  margin-bottom: 1.1rem;
+}
+.tool-icon svg { width: 24px; height: 24px; }
+
+.tool-tag {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+  font-weight: 700; color: var(--lrf-pink); margin-bottom: 0.4rem;
+}
+.tool-card h3 {
+  font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em;
+  line-height: 1.15; margin-bottom: 0.6rem;
+}
+.tool-card p {
+  font-size: 14px; line-height: 1.55; color: var(--lrf-ink-soft);
+  margin-bottom: 1.5rem;
+}
+.tool-card .go {
+  margin-top: auto;
+  font-size: 13px; font-weight: 700; color: var(--lrf-pink);
+  display: inline-flex; align-items: center; gap: 0.4rem;
+}
+.tool-card .go .arrow { transition: transform 0.15s; }
+.tool-card:hover .go .arrow { transform: translateX(3px); }
