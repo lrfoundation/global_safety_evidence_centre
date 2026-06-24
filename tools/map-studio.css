@@ -1,0 +1,134 @@
+/* ============================================================
+   Map Studio — tool-specific styles.
+   Loads on top of lrf-theme.css (shared brand chrome).
+
+   Rendered map SVGs embed DM Sans as their output typeface
+   (matching Chart Studio), independent of the Manrope page UI.
+   ============================================================ */
+
+.hidden { display: none !important; }
+
+/* ---------- Workspace ---------- */
+.workspace { display: grid; grid-template-columns: 420px 1fr; gap: 1.75rem; align-items: start; }
+
+.panel { background: var(--lrf-white); border: 1px solid var(--lrf-line); border-radius: var(--r); overflow: hidden; }
+.panel-section { padding: 1.25rem 1.35rem; border-bottom: 1px solid var(--lrf-line); }
+.panel-section:last-child { border-bottom: none; }
+.sec-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+  font-weight: 700; color: var(--lrf-pink); margin-bottom: 0.85rem;
+}
+
+/* ---------- Segmented control ---------- */
+.segmented { display: grid; gap: 1px; background: var(--lrf-line); border: 1.5px solid var(--lrf-ink); border-radius: var(--r); overflow: hidden; }
+.segmented.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.seg-btn {
+  font-family: inherit; font-size: 13px; font-weight: 600; padding: 0.6rem 0.4rem;
+  background: var(--lrf-white); color: var(--lrf-ink); border: none; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.seg-btn:hover { background: var(--lrf-cream); }
+.seg-btn.active { background: var(--lrf-pink); color: #fff; }
+
+/* ---------- Fields (dense control panel) ---------- */
+.field { margin-bottom: 0.9rem; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; color: var(--lrf-muted); margin-bottom: 0.4rem;
+}
+.field input[type=text], .field input[type=number], .field select {
+  font-size: 14px; padding: 0.6rem 0.7rem;
+}
+.field select { padding-right: 2rem; background-position: right 0.7rem center; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.field-row .field { margin-bottom: 0; }
+
+.check-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1.1rem; }
+.chk { display: flex; align-items: center; gap: 0.45rem; font-size: 13px; font-weight: 500; color: var(--lrf-ink-soft); cursor: pointer; }
+.chk input { width: 16px; height: 16px; accent-color: var(--lrf-pink); cursor: pointer; }
+
+.hint { font-size: 12px; color: var(--lrf-muted); margin-top: 0.5rem; line-height: 1.45; }
+
+/* ---------- Data paste ---------- */
+.data-input {
+  width: 100%; height: 150px; min-height: 0;
+  font-family: 'SFMono-Regular','Menlo','Consolas',monospace; font-size: 12px;
+  padding: 0.6rem; line-height: 1.5;
+}
+
+/* ---------- Match summary ---------- */
+.match-summary { margin-top: 0.7rem; font-size: 12.5px; line-height: 1.5; }
+.match-summary .ok { color: var(--resolved); font-weight: 700; }
+.match-summary .bad { color: var(--danger); font-weight: 700; }
+.unmatched {
+  margin-top: 0.5rem; font-size: 12px; color: var(--lrf-ink-soft);
+  background: var(--lrf-pink-light); border: 1px solid var(--lrf-pink);
+  border-radius: var(--r); padding: 0.55rem 0.7rem; line-height: 1.5;
+}
+.region-names {
+  margin-top: 0.7rem; font-size: 12px; color: var(--lrf-ink-soft);
+  background: var(--lrf-cream); border: 1px solid var(--lrf-line);
+  border-radius: var(--r); padding: 0.55rem 0.7rem; line-height: 1.6; max-height: 150px; overflow: auto;
+}
+.region-names code { font-family: inherit; }
+.region-names b { color: var(--lrf-ink); font-weight: 700; }
+
+/* ---------- Preview ---------- */
+.preview-panel { position: sticky; top: 1.25rem; }
+.preview-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.35rem; border-bottom: 1px solid var(--lrf-line); gap: 1rem; }
+.preview-head .sec-label { margin-bottom: 0; }
+.preview-head .dims { font-size: 12px; color: var(--lrf-muted); font-variant-numeric: tabular-nums; }
+.back-link {
+  font-family: inherit; font-size: 12px; font-weight: 700; color: var(--lrf-pink);
+  background: none; border: none; cursor: pointer; padding: 0; display: none; align-items: center; gap: 0.3rem;
+}
+.back-link.show { display: inline-flex; }
+.back-link:hover { color: var(--lrf-pink-dark); }
+
+.stage { padding: 1.5rem; background: var(--lrf-cream); display: flex; justify-content: center; align-items: center; min-height: 420px; overflow: auto; position: relative; }
+.stage .canvas-box { background: var(--lrf-white); border: 1px solid var(--lrf-line); box-shadow: var(--shadow-sm); max-width: 100%; }
+.stage svg { display: block; max-width: 100%; height: auto; }
+.stage svg .geo { cursor: pointer; }
+
+.map-status {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  text-align: center; color: var(--lrf-muted); font-size: 14px; padding: 2rem; background: var(--lrf-cream);
+}
+.map-status.err { color: var(--danger); }
+.map-status.hidden { display: none; }
+
+.export-bar { padding: 1rem 1.35rem; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--lrf-line); }
+.export-bar .spacer { flex: 1; }
+
+/* ---------- Methodology ---------- */
+.methodology { background: var(--lrf-cream); border-top: 1px solid var(--lrf-line); margin-top: 3rem; }
+.methodology-inner { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+.methodology summary { list-style: none; cursor: pointer; padding: 2.25rem 0; user-select: none; }
+.methodology summary::-webkit-details-marker { display: none; }
+.methodology summary .eyebrow { display: block; margin-bottom: 0.4rem; }
+.methodology summary h2 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; display: flex; align-items: center; justify-content: space-between; }
+.methodology summary .m-toggle::before { content: '+'; font-weight: 400; color: var(--lrf-pink); font-size: 1.9rem; }
+.methodology details[open] summary .m-toggle::before { content: '\2212'; }
+.methodology summary .sub { margin-top: 0.4rem; font-size: 14px; color: var(--lrf-muted); }
+.methodology-body { padding: 0 0 2.75rem; font-size: 15px; color: var(--lrf-ink-soft); max-width: 760px; line-height: 1.65; }
+.methodology-body h3 { font-size: 1.02rem; font-weight: 800; color: var(--lrf-ink); margin: 1.75rem 0 0.5rem; }
+.methodology-body h3:first-child { margin-top: 0; }
+.methodology-body p { margin-bottom: 0.85rem; }
+.methodology-body code { font-family: 'SFMono-Regular','Menlo','Consolas',monospace; font-size: 0.88em; background: var(--lrf-white); border: 1px solid var(--lrf-line); padding: 1px 5px; border-radius: 2px; }
+.methodology-body a { font-weight: 600; }
+.methodology-body strong { color: var(--lrf-ink); font-weight: 800; }
+
+/* ---------- Toast ---------- */
+.toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(140%); background: var(--lrf-ink); color: #fff; padding: 0.75rem 1.4rem; border-radius: var(--r); font-size: 14px; font-weight: 600; box-shadow: var(--shadow-lg); transition: transform 0.25s ease; z-index: 200; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast .tick { color: var(--lrf-pink); margin-right: 0.4rem; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1080px) {
+  .workspace { grid-template-columns: 1fr; }
+  .preview-panel { position: static; }
+}
+@media (max-width: 640px) {
+  .export-bar .btn { flex: 1; }
+}

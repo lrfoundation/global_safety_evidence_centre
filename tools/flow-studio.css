@@ -1,0 +1,110 @@
+/* ============================================================
+   Flow Studio — tool-specific styles.
+   Loads on top of lrf-theme.css (shared brand chrome).
+   PRISMA 2020 flow diagrams + generic stage funnels.
+   Output SVGs use DM Sans (matching the other tools).
+   ============================================================ */
+
+.hidden { display: none !important; }
+
+/* ---------- Workspace ---------- */
+.workspace { display: grid; grid-template-columns: 430px 1fr; gap: 1.75rem; align-items: start; }
+
+.panel { background: var(--lrf-white); border: 1px solid var(--lrf-line); border-radius: var(--r); overflow: hidden; }
+.panel-section { padding: 1.25rem 1.35rem; border-bottom: 1px solid var(--lrf-line); }
+.panel-section:last-child { border-bottom: none; }
+.sec-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+  font-weight: 700; color: var(--lrf-pink); margin-bottom: 0.85rem;
+}
+
+/* ---------- Segmented control ---------- */
+.segmented { display: grid; gap: 1px; background: var(--lrf-line); border: 1.5px solid var(--lrf-ink); border-radius: var(--r); overflow: hidden; }
+.segmented.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.seg-btn {
+  font-family: inherit; font-size: 13px; font-weight: 600; padding: 0.6rem 0.4rem;
+  background: var(--lrf-white); color: var(--lrf-ink); border: none; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.seg-btn:hover { background: var(--lrf-cream); }
+.seg-btn.active { background: var(--lrf-pink); color: #fff; }
+
+/* ---------- Subsection heading ---------- */
+.subsec {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;
+  color: var(--lrf-ink-soft); margin: 1.3rem 0 0.7rem; padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--lrf-line);
+}
+.subsec:first-child { margin-top: 0; }
+
+/* ---------- Fields ---------- */
+.field { margin-bottom: 0.9rem; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; color: var(--lrf-muted); margin-bottom: 0.4rem;
+}
+.field input[type=text], .field input[type=number], .field select {
+  font-size: 14px; padding: 0.6rem 0.7rem;
+}
+.field select { padding-right: 2rem; background-position: right 0.7rem center; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.field-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.field-row .field { margin-bottom: 0; }
+.field-row + .field-row { margin-top: 0.9rem; }
+
+.check-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1.1rem; }
+.chk { display: flex; align-items: center; gap: 0.45rem; font-size: 13px; font-weight: 500; color: var(--lrf-ink-soft); cursor: pointer; }
+.chk input { width: 16px; height: 16px; accent-color: var(--lrf-pink); cursor: pointer; }
+
+.area {
+  width: 100%; min-height: 0; resize: vertical;
+  font-family: 'SFMono-Regular','Menlo','Consolas',monospace; font-size: 12px;
+  padding: 0.6rem; line-height: 1.5;
+}
+.area.reasons { height: 74px; }
+.area.funnel { height: 150px; }
+
+.hint { font-size: 12px; color: var(--lrf-muted); margin-top: 0.5rem; line-height: 1.45; }
+
+/* ---------- Preview ---------- */
+.preview-panel { position: sticky; top: 1.25rem; }
+.preview-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.35rem; border-bottom: 1px solid var(--lrf-line); }
+.preview-head .sec-label { margin-bottom: 0; }
+.preview-head .dims { font-size: 12px; color: var(--lrf-muted); font-variant-numeric: tabular-nums; }
+.stage { padding: 1.5rem; background: var(--lrf-cream); display: flex; justify-content: center; align-items: flex-start; min-height: 420px; overflow: auto; }
+.stage .canvas-box { background: var(--lrf-white); border: 1px solid var(--lrf-line); box-shadow: var(--shadow-sm); max-width: 100%; }
+.stage svg { display: block; max-width: 100%; height: auto; }
+.export-bar { padding: 1rem 1.35rem; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--lrf-line); }
+.export-bar .spacer { flex: 1; }
+
+/* ---------- Methodology ---------- */
+.methodology { background: var(--lrf-cream); border-top: 1px solid var(--lrf-line); margin-top: 3rem; }
+.methodology-inner { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+.methodology summary { list-style: none; cursor: pointer; padding: 2.25rem 0; user-select: none; }
+.methodology summary::-webkit-details-marker { display: none; }
+.methodology summary .eyebrow { display: block; margin-bottom: 0.4rem; }
+.methodology summary h2 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; display: flex; align-items: center; justify-content: space-between; }
+.methodology summary .m-toggle::before { content: '+'; font-weight: 400; color: var(--lrf-pink); font-size: 1.9rem; }
+.methodology details[open] summary .m-toggle::before { content: '\2212'; }
+.methodology summary .sub { margin-top: 0.4rem; font-size: 14px; color: var(--lrf-muted); }
+.methodology-body { padding: 0 0 2.75rem; font-size: 15px; color: var(--lrf-ink-soft); max-width: 760px; line-height: 1.65; }
+.methodology-body h3 { font-size: 1.02rem; font-weight: 800; color: var(--lrf-ink); margin: 1.75rem 0 0.5rem; }
+.methodology-body h3:first-child { margin-top: 0; }
+.methodology-body p { margin-bottom: 0.85rem; }
+.methodology-body a { font-weight: 600; }
+.methodology-body strong { color: var(--lrf-ink); font-weight: 800; }
+
+/* ---------- Toast ---------- */
+.toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(140%); background: var(--lrf-ink); color: #fff; padding: 0.75rem 1.4rem; border-radius: var(--r); font-size: 14px; font-weight: 600; box-shadow: var(--shadow-lg); transition: transform 0.25s ease; z-index: 200; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast .tick { color: var(--lrf-pink); margin-right: 0.4rem; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1080px) {
+  .workspace { grid-template-columns: 1fr; }
+  .preview-panel { position: static; }
+}
+@media (max-width: 640px) {
+  .export-bar .btn { flex: 1; }
+}

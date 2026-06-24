@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map Studio · Lloyd's Register Foundation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lrf-theme.css">
+<link rel="stylesheet" href="map-studio.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+</head>
+<body>
+
+<header class="site">
+  <a class="brand" href="https://www.lrfoundation.org.uk/" target="_blank" rel="noopener">
+    <svg class="brand-logo" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 376.09 532.11" aria-label="Lloyd's Register Foundation">
+      <path fill="#e5006e" d="M209.54,493.54c0,5.04,2.31,7.78,6.9,7.78s7.13-3.33,7.13-8.05v-6.2c-1.76-1.34-3.89-1.94-6.66-1.94-5.09,0-7.36,3.1-7.36,8.42Z"/>
+      <path fill="#e5006e" d="M281.69,485.3c-5.65,0-7.77,3.15-7.77,8.01s2.13,8.01,7.77,8.01,7.78-3.15,7.78-8.01-2.13-8.01-7.78-8.01Z"/>
+      <path fill="#e5006e" d="M178.49,493.86c0,4.95,2.31,7.91,6.71,7.91,4.72,0,7.31-3.79,7.31-8.51v-7.41c-1.48-.79-3.19-1.16-6.02-1.16-5.6,0-8.01,3.79-8.01,9.16Z"/>
+      <path fill="#e5006e" d="M95.75,485.3c-5.65,0-7.77,3.15-7.77,8.01s2.13,8.01,7.77,8.01,7.77-3.15,7.77-8.01-2.13-8.01-7.77-8.01Z"/>
+      <path fill="#e5006e" d="M0,444.32v87.78h376.09v-87.78H0ZM79.63,477.62h-18.05v8.28h16.48v5.65h-16.48v14.67h-5.83v-34.25h23.88v5.65ZM96.01,506.77c-9.26,0-13.7-5.46-13.7-13.47s4.44-13.47,13.7-13.47,13.7,5.46,13.7,13.47-4.44,13.47-13.7,13.47ZM138.21,494.6c0,7.73-4.44,12.17-11.85,12.17s-11.8-4.44-11.8-12.17v-14.21h5.65v14.21c0,4.67,2.31,6.71,6.16,6.71s6.2-2.04,6.2-6.71v-14.21h5.65v14.21ZM167.97,506.22h-5.65v-14.86c0-4.07-2.13-6.06-5.88-6.06-4.54,0-6.9,2.64-6.9,7.87v13.05h-5.65v-25.82h4.91l.46,4.49c1.9-3.56,4.72-5.09,8.84-5.09,5.92,0,9.86,3.84,9.86,11.57v14.86ZM194.11,506.77c-.46-1.43-.88-2.92-1.06-4.77-1.99,3.52-5.6,4.77-8.7,4.77-6.66,0-11.52-4.54-11.52-12.91s5.65-14.07,14.12-14.07c1.9,0,3.93.37,5.83.97v-7.87l5.65-1.48v25.73c0,3.75.05,6.16.79,9.63h-5.09ZM234.42,505.15c-.65.79-2.36,1.62-4.44,1.62s-5.04-.97-5.92-4.54c-1.48,2.36-4.12,4.54-8.28,4.54-7.08,0-11.89-4.54-11.89-13.24s5.42-13.7,12.82-13.7c3.1,0,5.69.88,7.78,2.41l.65-1.85h4.35v18.23c0,2.08.74,2.68,2.36,2.68.74,0,1.53-.28,2.59-1.2v5.04ZM252.98,485.67h-8.42v11.57c0,3.15,1.25,4.17,4.12,4.17,1.43,0,2.59-.23,3.84-.79v5.04c-1.11.69-3.52,1.11-5.18,1.11-4.58,0-8.42-2.36-8.42-9.44v-11.66h-3.75v-3.93l3.75-1.34,1.39-5.46h4.26v5.46h8.42v5.28ZM263.25,506.22h-5.65v-25.82h5.65v25.82ZM263.57,477.2h-6.34v-5.79h6.34v5.79ZM281.94,506.77c-9.26,0-13.7-5.46-13.7-13.47s4.44-13.47,13.7-13.47,13.7,5.46,13.7,13.47-4.44,13.47-13.7,13.47ZM324.7,506.22h-5.65v-14.86c0-4.07-2.13-6.06-5.88-6.06-4.54,0-6.9,2.64-6.9,7.87v13.05h-5.65v-25.82h4.91l.46,4.49c1.9-3.56,4.72-5.09,8.84-5.09,5.92,0,9.86,3.84,9.86,11.57v14.86Z"/>
+      <path fill="#e5006e" d="M234.24,243.22l106.51,131.23h-47.24l-130.78-160.51h44.18c49.73,0,78.95-22.92,78.95-63.01s-27.73-62.56-77.46-62.56h-45.54v-32.28h49.22c70.54,0,112.26,35.46,112.26,94.85,0,50.73-33.96,87.56-90.09,92.28M94.22,341.98h139.57v32.39H55.49V56.12h38.73v285.86ZM376.09,0H0v430.73h376.09V0Z"/>
+    </svg>
+    <div class="brand-text">
+      <span class="name">Lloyd's Register Foundation</span>
+      <span class="unit">Global Safety Evidence Centre · Tools</span>
+    </div>
+  </a>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="eyebrow">Global Safety Evidence Centre</div>
+      <h1>Map <span class="accent">Studio</span><span class="period">.</span></h1>
+      <p class="lede">Shade a world map by country, then drill into any country to map its regions. Paste a table of values, copy the SVG or export a PNG — all in the Foundation house style.</p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">2</div><div class="stat-lbl">Levels: world &amp; regional</div></div>
+      <div class="stat"><div class="stat-num">SVG</div><div class="stat-lbl">Copy-ready output</div></div>
+    </div>
+  </div>
+</section>
+
+<main>
+  <div class="workspace">
+
+    <!-- CONTROLS -->
+    <div class="panel" id="controls">
+      <div class="panel-section">
+        <div class="sec-label">Level</div>
+        <div class="segmented cols-2" id="level-seg">
+          <button class="seg-btn active" data-level="global">Global</button>
+          <button class="seg-btn" data-level="country">Country (regions)</button>
+        </div>
+        <div class="field hidden" id="country-wrap" style="margin-top:0.9rem;">
+          <label for="country-select">Country</label>
+          <select id="country-select"><option value="">Choose a country…</option></select>
+          <div class="hint">Regional boundaries load on demand. In global view you can also click a country to drill into it.</div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="sec-label">Data</div>
+        <textarea class="data-input" id="data-input" placeholder="Paste two columns: name and value.
+One row per line, tab- or comma-separated.
+A header row is ignored automatically."></textarea>
+        <div class="grid-actions" style="display:flex; gap:0.6rem; margin-top:0.7rem;">
+          <button class="btn btn-small" id="load-sample">Load sample</button>
+          <button class="btn btn-small" id="clear-data">Clear</button>
+        </div>
+        <div class="match-summary" id="match-summary"></div>
+        <div class="unmatched hidden" id="unmatched"></div>
+        <div class="region-names hidden" id="region-names"></div>
+        <div class="hint">Global: match by country name or ISO code (alpha-2, alpha-3 or numeric). Regional: match by the region names listed once a country is loaded.</div>
+      </div>
+
+      <div class="panel-section">
+        <div class="sec-label">Labels and format</div>
+        <div class="field"><label for="f-title">Title</label><input type="text" id="f-title"></div>
+        <div class="field"><label for="f-subtitle">Subtitle (italic, optional)</label><input type="text" id="f-subtitle"></div>
+        <div class="field"><label for="f-source">Source caption</label><input type="text" id="f-source"></div>
+        <div class="field-row">
+          <div class="field"><label for="f-suffix">Value suffix</label><input type="text" id="f-suffix" placeholder="%"></div>
+          <div class="field"><label for="f-decimals">Decimals</label>
+            <select id="f-decimals"><option selected>0</option><option>1</option><option>2</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="sec-label">Colour and legend</div>
+        <div class="field">
+          <label>Scheme</label>
+          <div class="segmented cols-2" id="scheme-seg">
+            <button class="seg-btn active" data-scheme="sequential">Sequential</button>
+            <button class="seg-btn" data-scheme="diverging">Diverging</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field" id="wrap-color-low"><label for="f-color" id="lbl-color">Colour</label>
+            <select id="f-color"></select>
+          </div>
+          <div class="field hidden" id="wrap-color-high"><label for="f-color2">High colour</label>
+            <select id="f-color2"></select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="f-classes">Colour steps</label>
+            <select id="f-classes">
+              <option>3</option><option>4</option><option selected>5</option><option>6</option>
+              <option>7</option><option>8</option><option>9</option><option>10</option>
+            </select>
+          </div>
+          <div class="field hidden" id="wrap-mid"><label for="f-mid">Midpoint</label><input type="number" id="f-mid" placeholder="auto" step="any"></div>
+        </div>
+        <div class="field"><label for="f-legend-title">Legend title</label><input type="text" id="f-legend-title" placeholder="optional"></div>
+        <div class="check-row" style="margin-top:0.3rem;">
+          <label class="chk"><input type="checkbox" id="c-legend" checked> Show legend</label>
+        </div>
+        <div class="hint" id="color-hint">Sequential ramps from light to the chosen colour. Diverging runs low colour → neutral → high colour around the midpoint (defaults to the data's middle). No-data areas are light grey.</div>
+      </div>
+
+      <div class="panel-section">
+        <div class="sec-label">Canvas</div>
+        <div class="field-row">
+          <div class="field"><label for="f-width">Width (px)</label><input type="number" id="f-width" min="360" max="1600" step="10"></div>
+          <div class="field"><label for="f-height">Height (px)</label><input type="number" id="f-height" min="280" max="1200" step="10"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="panel preview-panel">
+      <div class="preview-head">
+        <span class="sec-label">Live preview</span>
+        <div style="display:flex; align-items:center; gap:1rem;">
+          <button class="back-link" id="back-global">&larr; Back to world</button>
+          <span class="dims" id="dims">820 &times; 520</span>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="canvas-box" id="canvas-box"></div>
+        <div class="map-status" id="status">Loading world boundaries…</div>
+      </div>
+      <div class="export-bar">
+        <button class="btn btn-primary" id="copy-svg">Copy SVG</button>
+        <button class="btn" id="download-svg">Download SVG</button>
+        <button class="btn" id="download-png">Download PNG</button>
+        <span class="spacer"></span>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<section class="methodology">
+  <div class="methodology-inner">
+    <details>
+      <summary>
+        <span class="eyebrow">How it works</span>
+        <h2>Notes, sources and conventions<span class="m-toggle"></span></h2>
+        <div class="sub">Click to expand for boundary sources, matching rules and attribution.</div>
+      </summary>
+      <div class="methodology-body">
+        <h3>What this produces</h3>
+        <p>A single self-contained SVG choropleth — a world map shaded by country, or one country shaded by its first-level regions. Copy the SVG into a page or report, or export a PNG for Office. It carries an explicit <code>viewBox</code> and pixel size, so it scales cleanly and drops into fixed layouts.</p>
+
+        <h3>Two levels</h3>
+        <p><strong>Global</strong> shades each country by the value you paste. <strong>Country (regions)</strong> loads that country's first-level administrative areas (ADM1 — states, provinces, regions) and shades those. Switch levels with the control, pick a country from the list, or simply click a country on the world map to drill in.</p>
+
+        <h3>Matching your data</h3>
+        <p>You paste two columns — a name and a number. In global view, names are matched to countries by a normalised name or an ISO 3166 code (alpha-2, alpha-3 or numeric), with common variants handled (<code>UK</code>, <code>USA</code>, <code>South Korea</code>, <code>Czechia</code>, and so on). In regional view, names are matched to the loaded region names, which are listed for you to copy exactly. Anything that doesn't match is flagged rather than silently dropped.</p>
+
+        <h3>Boundaries and attribution</h3>
+        <p>Country outlines come from <a href="https://github.com/topojson/world-atlas" target="_blank" rel="noopener">world-atlas</a> (Natural Earth, public domain). Sub-national boundaries are fetched on demand from <a href="https://www.geoboundaries.org/" target="_blank" rel="noopener">geoBoundaries</a> (gbOpen, CC&nbsp;BY&nbsp;4.0) — <strong>please credit geoBoundaries</strong> when you publish a regional map. Only the boundary files are fetched; the values you paste never leave your browser.</p>
+
+        <h3>Caveats</h3>
+        <p>Region names and divisions in geoBoundaries may not match how the World Risk Poll aggregates regions; check the listed region names and relabel your data to suit. This is a layout tool, not a statistics package — it plots exactly what you type. Replace the illustrative sample with verified values and a proper source line before publishing.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    Map Studio renders Foundation-branded choropleths in your browser. Country outlines: world-atlas / Natural Earth. Sub-national boundaries: geoBoundaries (CC BY 4.0). No tracking, no analytics.
+  </div>
+</footer>
+
+<div class="toast" id="toast"><span class="tick">&#10003;</span><span id="toast-text">Copied</span></div>
+
+<script>
+"use strict";
+
+/* ---------- Sources ---------- */
+var TOPO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+// geoBoundaries gbOpen ADM1 files, pulled straight from GitHub's LFS media host
+// (resolves the Git-LFS content and sends permissive CORS; the geoBoundaries API
+// itself is not CORS-accessible from the browser).
+function gbUrl(a3, simplified){
+  return 'https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/main/releaseData/gbOpen/' +
+    a3 + '/ADM1/geoBoundaries-' + a3 + '-ADM1' + (simplified ? '_simplified' : '') + '.geojson';
+}
+
+/* ---------- Palette ---------- */
+var PINK = '#e5006e', INK = '#0a0a14', INK_SOFT = '#2a2a35', MUTED = '#6c6c78', LINE = '#e4e4ea';
+var NODATA = '#e9e9ee', STROKE = '#ffffff';
+var DIV_NEUTRAL = '#f4f1e8'; // brand cream as the diverging midpoint
+
+/* Core Foundation and World Risk Poll data colours, shared with the other tools. */
+var SWATCHES = [
+  { g: 'Foundation', items: [
+    { n: 'Magenta', c: '#e5006e' }, { n: 'Purple', c: '#8f47eb' }, { n: 'Blue', c: '#067acc' },
+    { n: 'Green', c: '#0a891f' }, { n: 'Orange', c: '#af640c' }, { n: 'Red', c: '#d91424' },
+    { n: 'Turquoise', c: '#0a8484' }, { n: 'Yellow', c: '#8c7500' }
+  ]},
+  { g: 'World Risk Poll', items: [
+    { n: 'WRP Magenta', c: '#e3076e' }, { n: 'WRP Teal', c: '#00a7b2' }, { n: 'WRP Green', c: '#00785c' },
+    { n: 'WRP Orange', c: '#f07800' }, { n: 'WRP Purple', c: '#7a50de' }, { n: 'WRP Lime', c: '#8cab00' },
+    { n: 'WRP Red', c: '#bf153d' }
+  ]}
+];
+function mix(a, b, t){ return d3.interpolateRgb(a, b)(t); }
+function seqStops(base){ return [mix(base, '#ffffff', 0.88), mix(base, '#ffffff', 0.45), base, mix(base, '#000000', 0.45)]; }
+function divStops(low, high){ return [mix(low, '#000000', 0.35), low, DIV_NEUTRAL, high, mix(high, '#000000', 0.35)]; }
+function rampColors(n){
+  var stops = state.scheme === 'diverging' ? divStops(state.colorLow, state.colorHigh) : seqStops(state.colorLow);
+  return d3.quantize(d3.interpolateRgbBasis(stops), n);
+}
+
+/* ---------- ISO 3166-1 numeric -> alpha-3 (for the geoBoundaries drill-down) ---------- */
+var NUM2A3 = {
+"004":"AFG","008":"ALB","012":"DZA","016":"ASM","020":"AND","024":"AGO","028":"ATG","031":"AZE","032":"ARG","036":"AUS",
+"040":"AUT","044":"BHS","048":"BHR","050":"BGD","051":"ARM","052":"BRB","056":"BEL","060":"BMU","064":"BTN","068":"BOL",
+"070":"BIH","072":"BWA","076":"BRA","084":"BLZ","090":"SLB","092":"VGB","096":"BRN","100":"BGR","104":"MMR","108":"BDI",
+"112":"BLR","116":"KHM","120":"CMR","124":"CAN","132":"CPV","136":"CYM","140":"CAF","144":"LKA","148":"TCD","152":"CHL",
+"156":"CHN","158":"TWN","170":"COL","174":"COM","178":"COG","180":"COD","184":"COK","188":"CRI","191":"HRV","192":"CUB",
+"196":"CYP","203":"CZE","204":"BEN","208":"DNK","212":"DMA","214":"DOM","218":"ECU","222":"SLV","226":"GNQ","231":"ETH",
+"232":"ERI","233":"EST","242":"FJI","246":"FIN","250":"FRA","258":"PYF","262":"DJI","266":"GAB","268":"GEO","270":"GMB",
+"275":"PSE","276":"DEU","288":"GHA","296":"KIR","300":"GRC","304":"GRL","308":"GRD","320":"GTM","324":"GIN","328":"GUY",
+"332":"HTI","340":"HND","344":"HKG","348":"HUN","352":"ISL","356":"IND","360":"IDN","364":"IRN","368":"IRQ","372":"IRL",
+"376":"ISR","380":"ITA","384":"CIV","388":"JAM","392":"JPN","398":"KAZ","400":"JOR","404":"KEN","408":"PRK","410":"KOR",
+"414":"KWT","417":"KGZ","418":"LAO","422":"LBN","426":"LSO","428":"LVA","430":"LBR","434":"LBY","438":"LIE","440":"LTU",
+"442":"LUX","446":"MAC","450":"MDG","454":"MWI","458":"MYS","462":"MDV","466":"MLI","470":"MLT","478":"MRT","480":"MUS",
+"484":"MEX","492":"MCO","496":"MNG","498":"MDA","499":"MNE","504":"MAR","508":"MOZ","512":"OMN","516":"NAM","520":"NRU",
+"524":"NPL","528":"NLD","540":"NCL","548":"VUT","554":"NZL","558":"NIC","562":"NER","566":"NGA","570":"NIU","578":"NOR",
+"583":"FSM","584":"MHL","585":"PLW","586":"PAK","591":"PAN","598":"PNG","600":"PRY","604":"PER","608":"PHL","616":"POL",
+"620":"PRT","624":"GNB","626":"TLS","630":"PRI","634":"QAT","642":"ROU","643":"RUS","646":"RWA","682":"SAU","686":"SEN",
+"688":"SRB","690":"SYC","694":"SLE","702":"SGP","703":"SVK","704":"VNM","705":"SVN","706":"SOM","710":"ZAF","716":"ZWE",
+"724":"ESP","728":"SSD","729":"SDN","732":"ESH","740":"SUR","748":"SWZ","752":"SWE","756":"CHE","760":"SYR","762":"TJK",
+"764":"THA","768":"TGO","776":"TON","780":"TTO","784":"ARE","788":"TUN","792":"TUR","795":"TKM","798":"TUV","800":"UGA",
+"804":"UKR","807":"MKD","818":"EGY","826":"GBR","834":"TZA","840":"USA","850":"VIR","854":"BFA","858":"URY","860":"UZB",
+"862":"VEN","882":"WSM","887":"YEM","894":"ZMB"
+};
+
+/* ---------- Name aliases (normalised) -> numeric id, for global matching ---------- */
+var ALIAS = {
+"usa":"840","unitedstates":"840","unitedstatesofamerica":"840","us":"840","america":"840",
+"uk":"826","unitedkingdom":"826","greatbritain":"826","britain":"826","england":"826",
+"southkorea":"410","republicofkorea":"410","korearep":"410","koreasouth":"410",
+"northkorea":"408","dprk":"408","koreademrep":"408","koreanorth":"408",
+"russia":"643","russianfederation":"643","iran":"364","iranislamicrep":"364",
+"vietnam":"704","syria":"760","laos":"418","laopdr":"418",
+"bolivia":"068","venezuela":"862","venezuelarb":"862","tanzania":"834",
+"moldova":"498","czechia":"203","czechrepublic":"203","slovakia":"703",
+"ivorycoast":"384","cotedivoire":"384","drcongo":"180","democraticrepublicofthecongo":"180","congodemrep":"180","drc":"180","congokinshasa":"180",
+"congo":"178","republicofthecongo":"178","congorep":"178","congobrazzaville":"178",
+"northmacedonia":"807","macedonia":"807","fyrom":"807","eswatini":"748","swaziland":"748",
+"caboverde":"132","capeverde":"132","myanmar":"104","burma":"104","brunei":"096",
+"palestine":"275","palestinianterritories":"275","westbankandgaza":"275","statepalestine":"275",
+"egypt":"818","egyptarabrep":"818","gambia":"270","thegambia":"270","bahamas":"044","thebahamas":"044",
+"unitedarabemirates":"784","uae":"784","kyrgyzstan":"417","kyrgyzrepublic":"417",
+"dominicanrepublic":"214","southsudan":"728","bosnia":"070","bosniaandherzegovina":"070",
+"turkey":"792","turkiye":"792","capeverde":"132","yemenrep":"887","yemen":"887",
+"laopeoplesdemocraticrepublic":"418","russianfed":"643","vietnamsocialistrepublic":"704",
+"saudiarabia":"682","southafrica":"710","newzealand":"554","srilanka":"144","costarica":"188",
+"elsalvador":"222","puertorico":"630","hongkong":"344","taiwan":"158"
+};
+
+/* ---------- Helpers ---------- */
+function norm(s){ return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ''); }
+function pad3(s){ return ('00' + String(s)).slice(-3); }
+function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function $(id){ return document.getElementById(id); }
+
+/* ---------- State ---------- */
+var state = {
+  level: 'global', country: null, countryName: '',
+  title: 'Worry about climate change',
+  subtitle: 'Share who are very or somewhat worried, by country',
+  source: 'Source: World Risk Poll, Lloyd’s Register Foundation (illustrative data)',
+  suffix: '%', decimals: 0, classes: 5, legendTitle: '', showLegend: true,
+  scheme: 'sequential', colorLow: '#e5006e', colorHigh: '#00a7b2', mid: null,
+  width: 820, height: 520
+};
+
+var SAMPLE = "Country\tWorry\nUnited States\t62\nUnited Kingdom\t66\nFrance\t69\nGermany\t70\nSpain\t72\nItaly\t71\nBrazil\t83\nMexico\t78\nCanada\t61\nKenya\t74\nNigeria\t72\nSouth Africa\t73\nIndia\t71\nChina\t58\nJapan\t68\nSouth Korea\t80\nIndonesia\t75\nAustralia\t64\nPhilippines\t84\nKenya\t74";
+
+/* ---------- Loaded geometry ---------- */
+var WORLD = null;          // FeatureCollection of countries (Antarctica removed)
+var ALIAS_INDEX = {};      // normalised string -> numeric id
+var REGION_CACHE = {};     // alpha3 -> FeatureCollection
+var lastSvgNode = null;
+
+/* ---------- Boot ---------- */
+$('f-title').value = state.title;
+$('f-subtitle').value = state.subtitle;
+$('f-source').value = state.source;
+$('f-suffix').value = state.suffix;
+$('f-width').value = state.width;
+$('f-height').value = state.height;
+$('data-input').value = SAMPLE;
+
+function populateColorSelect(sel, selected){
+  SWATCHES.forEach(function(grp){
+    var og = document.createElement('optgroup'); og.label = grp.g;
+    grp.items.forEach(function(it){
+      var o = document.createElement('option'); o.value = it.c; o.textContent = it.n;
+      if(it.c === selected) o.selected = true;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+}
+populateColorSelect($('f-color'), state.colorLow);
+populateColorSelect($('f-color2'), state.colorHigh);
+
+function updateSchemeUI(){
+  var div = state.scheme === 'diverging';
+  [].forEach.call(document.querySelectorAll('#scheme-seg .seg-btn'), function(b){
+    b.classList.toggle('active', (b.dataset.scheme === 'diverging') === div);
+  });
+  $('wrap-color-high').classList.toggle('hidden', !div);
+  $('wrap-mid').classList.toggle('hidden', !div);
+  $('lbl-color').textContent = div ? 'Low colour' : 'Colour';
+}
+
+function setStatus(msg, isErr){
+  var s = $('status');
+  if(!msg){ s.classList.add('hidden'); return; }
+  s.classList.remove('hidden');
+  s.classList.toggle('err', !!isErr);
+  s.textContent = msg;
+}
+
+d3.json(TOPO_URL).then(function(topo){
+  var fc = topojson.feature(topo, topo.objects.countries);
+  WORLD = { type: 'FeatureCollection', features: fc.features.filter(function(f){ return pad3(f.id) !== '010'; }) };
+  // Build the country picker and the global name index.
+  var sel = $('country-select');
+  WORLD.features.slice().sort(function(a, b){ return d3.ascending(a.properties.name, b.properties.name); }).forEach(function(f){
+    ALIAS_INDEX[norm(f.properties.name)] = String(f.id);
+    ALIAS_INDEX[norm(f.id)] = String(f.id);
+    ALIAS_INDEX[pad3(f.id)] = String(f.id);
+    if(NUM2A3[pad3(f.id)]) ALIAS_INDEX[norm(NUM2A3[pad3(f.id)])] = String(f.id);
+    if(NUM2A3[pad3(f.id)]){
+      var opt = document.createElement('option');
+      opt.value = String(f.id); opt.textContent = f.properties.name;
+      sel.appendChild(opt);
+    }
+  });
+  Object.keys(ALIAS).forEach(function(k){ ALIAS_INDEX[k] = ALIAS[k]; });
+  setStatus(null);
+  render();
+}).catch(function(err){
+  setStatus('Could not load world boundaries. Check your connection and reload. (' + err.message + ')', true);
+});
+
+/* ---------- Parsing & matching ---------- */
+function parseRows(text){
+  var out = [];
+  text.split(/\r?\n/).forEach(function(line){
+    if(!line.trim()) return;
+    var parts = line.split(/\t|,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+    if(parts.length < 2) parts = line.split(/\s{2,}/);
+    if(parts.length < 2) return;
+    var key = parts[0].trim().replace(/^"|"$/g, '');
+    var valStr = parts[parts.length - 1].trim().replace(/^"|"$/g, '').replace(/[%,]/g, '');
+    var v = parseFloat(valStr);
+    if(isNaN(v)) return; // skips header rows and blanks
+    out.push({ key: key, value: v });
+  });
+  return out;
+}
+
+// Returns { values: {lookupKey -> value}, unmatched: [names] }
+function matchData(){
+  var rows = parseRows($('data-input').value);
+  var values = {}, unmatched = [];
+  if(state.level === 'global'){
+    rows.forEach(function(r){
+      var id = ALIAS_INDEX[norm(r.key)];
+      if(id) values[id] = r.value; else unmatched.push(r.key);
+    });
+  } else {
+    var fc = state.country ? REGION_CACHE[state.country] : null;
+    var idx = {};
+    if(fc) fc.features.forEach(function(f){ idx[norm(regionName(f))] = true; });
+    rows.forEach(function(r){
+      var nk = norm(r.key);
+      if(idx[nk]) values[nk] = r.value; else unmatched.push(r.key);
+    });
+  }
+  return { values: values, unmatched: unmatched };
+}
+
+function regionName(f){
+  var p = f.properties || {};
+  return p.shapeName || p.name || p.NAME_1 || p.shapeISO || 'Region';
+}
+
+function updateSummary(matched, unmatched){
+  var n = Object.keys(matched).length;
+  var sum = $('match-summary');
+  sum.innerHTML = '<span class="ok">' + n + ' matched</span>' +
+    (unmatched.length ? ' · <span class="bad">' + unmatched.length + ' unmatched</span>' : '');
+  var u = $('unmatched');
+  if(unmatched.length){
+    u.classList.remove('hidden');
+    u.innerHTML = '<b>Unmatched:</b> ' + unmatched.slice(0, 25).map(esc).join(', ') + (unmatched.length > 25 ? '…' : '');
+  } else { u.classList.add('hidden'); }
+}
+
+function showRegionNames(){
+  var box = $('region-names');
+  if(state.level !== 'country' || !state.country || !REGION_CACHE[state.country]){ box.classList.add('hidden'); return; }
+  var names = REGION_CACHE[state.country].features.map(regionName).sort(d3.ascending);
+  box.classList.remove('hidden');
+  box.innerHTML = '<b>' + names.length + ' regions in this map — paste these names:</b><br>' + names.map(esc).join(' · ');
+}
+
+/* ---------- Region loading ---------- */
+// geoBoundaries polygons are not wound to the convention d3-geo expects, so each
+// region would otherwise fill the whole map. Rewind every ring: exterior clockwise
+// (negative signed area in lon/lat), holes counter-clockwise.
+function ringArea(r){ var a = 0; for(var i = 0, n = r.length, j = n - 1; i < n; j = i++){ a += r[j][0] * r[i][1] - r[i][0] * r[j][1]; } return a / 2; }
+function rewindPoly(poly){
+  for(var i = 0; i < poly.length; i++){
+    var a = ringArea(poly[i]), wantCCW = (i !== 0); // exterior CW, holes CCW
+    if((wantCCW && a < 0) || (!wantCCW && a > 0)) poly[i].reverse();
+  }
+}
+function rewindGeo(fc){
+  fc.features.forEach(function(f){
+    var g = f.geometry; if(!g) return;
+    if(g.type === 'Polygon') rewindPoly(g.coordinates);
+    else if(g.type === 'MultiPolygon') g.coordinates.forEach(rewindPoly);
+  });
+  return fc;
+}
+
+function loadRegions(a3){
+  if(REGION_CACHE[a3]) return Promise.resolve(REGION_CACHE[a3]);
+  function grab(simplified){
+    return fetch(gbUrl(a3, simplified)).then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  }
+  // Prefer the simplified file (smaller); fall back to the full-resolution one.
+  return grab(true).catch(function(){ return grab(false); }).then(function(geo){
+    if(!geo || !geo.features || !geo.features.length) throw new Error('no regions published');
+    REGION_CACHE[a3] = rewindGeo(geo);
+    return REGION_CACHE[a3];
+  });
+}
+
+function drillTo(id, name){
+  var a3 = NUM2A3[pad3(id)];
+  if(!a3){ setStatus('No ISO code available for ' + name + ', so its regions can’t be loaded.', true); return; }
+  state.level = 'country'; state.country = a3; state.countryName = name;
+  syncLevelUI();
+  $('country-select').value = String(id);
+  setStatus('Loading regions for ' + name + '…');
+  loadRegions(a3).then(function(){
+    setStatus(null); showRegionNames(); render();
+  }).catch(function(err){
+    setStatus('No first-level regions available for ' + name + ' (' + err.message + ').', true);
+    showRegionNames();
+  });
+}
+
+function syncLevelUI(){
+  [].forEach.call(document.querySelectorAll('#level-seg .seg-btn'), function(b){
+    b.classList.toggle('active', b.dataset.level === state.level);
+  });
+  $('country-wrap').classList.toggle('hidden', state.level !== 'country');
+  $('back-global').classList.toggle('show', state.level === 'country');
+  if(state.level === 'global'){ $('region-names').classList.add('hidden'); }
+}
+
+/* ---------- Render ---------- */
+function render(){
+  if(!WORLD) return;
+  var W = state.width, H = state.height;
+  $('dims').innerHTML = W + ' &times; ' + H;
+
+  var collection, isGlobal = state.level === 'global';
+  if(isGlobal){
+    collection = WORLD;
+  } else {
+    if(!state.country || !REGION_CACHE[state.country]){
+      // nothing loaded yet
+      $('canvas-box').innerHTML = '';
+      if(state.country) { /* status handled elsewhere */ } else setStatus('Pick a country to load its regions.');
+      return;
+    }
+    collection = REGION_CACHE[state.country];
+  }
+
+  var m = matchData();
+  updateSummary(m.values, m.unmatched);
+
+  // Colour scale over the present values
+  var vals = Object.keys(m.values).map(function(k){ return m.values[k]; });
+  var colorOf = function(){ return NODATA; };
+  var scale = null, colors = [];
+  if(vals.length){
+    var lo = d3.min(vals), hi = d3.max(vals);
+    colors = rampColors(state.classes);
+    if(state.scheme === 'diverging'){
+      var mid = (state.mid != null && isFinite(state.mid)) ? state.mid : (lo + hi) / 2;
+      var dev = Math.max(mid - lo, hi - mid) || 1; // symmetric domain so neutral sits at the midpoint
+      scale = d3.scaleQuantize().domain([mid - dev, mid + dev]).range(colors);
+      colorOf = function(v){ return v == null ? NODATA : scale(v); };
+    } else if(lo === hi){
+      colorOf = function(v){ return v == null ? NODATA : colors[colors.length - 1]; };
+    } else {
+      scale = d3.scaleQuantize().domain([lo, hi]).range(colors);
+      colorOf = function(v){ return v == null ? NODATA : scale(v); };
+    }
+  }
+
+  // Layout bands
+  var top = 14, ty = 0, sy = 0;
+  if(state.title){ ty = 28; top = 38; }
+  if(state.subtitle){ sy = state.title ? 50 : 26; top = sy + 12; }
+  var capH = state.source ? 18 : 6;
+  var legendH = (state.showLegend && vals.length) ? 50 : 0;
+  var bottom = capH + legendH + 8;
+  var x0 = 16, x1 = W - 16, y0 = top, y1 = H - bottom;
+
+  var proj = (isGlobal ? d3.geoEqualEarth() : d3.geoMercator()).fitExtent([[x0, y0], [x1, y1]], collection);
+  var path = d3.geoPath(proj);
+
+  var svg = d3.create('svg')
+    .attr('xmlns', 'http://www.w3.org/2000/svg')
+    .attr('width', W).attr('height', H)
+    .attr('viewBox', '0 0 ' + W + ' ' + H)
+    .attr('font-family', 'DM Sans, system-ui, -apple-system, Segoe UI, sans-serif');
+
+  svg.append('rect').attr('width', W).attr('height', H).attr('fill', '#ffffff');
+
+  // Geographies
+  var g = svg.append('g');
+  g.selectAll('path').data(collection.features).enter().append('path')
+    .attr('class', 'geo')
+    .attr('d', path)
+    .attr('fill', function(f){
+      var v = isGlobal ? m.values[String(f.id)] : m.values[norm(regionName(f))];
+      return colorOf(v == null ? null : v);
+    })
+    .attr('stroke', STROKE).attr('stroke-width', isGlobal ? 0.5 : 0.7)
+    .attr('stroke-linejoin', 'round')
+    .each(function(f){
+      if(isGlobal){
+        var self = this, name = f.properties.name, id = f.id;
+        self.style.cursor = 'pointer';
+        self.addEventListener('click', function(){ drillTo(id, name); });
+        var t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        t.textContent = name; self.appendChild(t);
+      } else {
+        var t2 = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        t2.textContent = regionName(f); this.appendChild(t2);
+      }
+    });
+
+  // Title / subtitle
+  if(state.title){
+    var endsPunct = /[.!?]$/.test(state.title.trim());
+    var tnode = svg.append('text').attr('x', 16).attr('y', ty).attr('font-size', 18)
+      .attr('font-weight', 700).attr('fill', INK).attr('letter-spacing', '-0.01em').text(state.title);
+    if(!endsPunct) tnode.append('tspan').attr('fill', PINK).text('.');
+  }
+  if(state.subtitle){
+    svg.append('text').attr('x', 16).attr('y', sy).attr('font-size', 13)
+      .attr('font-style', 'italic').attr('fill', INK_SOFT).text(state.subtitle);
+  }
+  // Caption
+  if(state.source){
+    svg.append('text').attr('x', 16).attr('y', H - 6).attr('font-size', 11).attr('fill', MUTED).text(state.source);
+  }
+
+  // Legend
+  if(state.showLegend && vals.length){
+    drawLegend(svg, colors, scale, vals, 16, H - capH - legendH + 6, Math.min(360, W - 32));
+  }
+
+  var box = $('canvas-box');
+  box.innerHTML = '';
+  box.appendChild(svg.node());
+  lastSvgNode = svg.node();
+  if(state.level === 'global' || (state.country && REGION_CACHE[state.country])) setStatus(null);
+}
+
+function fmt(v){
+  var s = Number(v).toFixed(state.decimals);
+  return s + (state.suffix || '');
+}
+
+function drawLegend(svg, colors, scale, vals, x, y, w){
+  var n = colors.length, sw = w / n, h = 12;
+  var g = svg.append('g');
+  if(state.legendTitle){
+    g.append('text').attr('x', x).attr('y', y - 4).attr('font-size', 11).attr('font-weight', 600).attr('fill', INK_SOFT).text(state.legendTitle);
+    y += 8;
+  }
+  for(var i = 0; i < n; i++){
+    g.append('rect').attr('x', x + i * sw).attr('y', y).attr('width', sw).attr('height', h).attr('fill', colors[i]);
+  }
+  g.append('rect').attr('x', x).attr('y', y).attr('width', w).attr('height', h).attr('fill', 'none').attr('stroke', LINE).attr('stroke-width', 0.5);
+  // Boundary tick labels — use the scale's domain so diverging shows its symmetric range
+  var dom = (scale && scale.domain) ? scale.domain() : [d3.min(vals), d3.max(vals)];
+  var ticks = [dom[0]];
+  if(scale && scale.thresholds) ticks = ticks.concat(scale.thresholds());
+  ticks.push(dom[1]);
+  ticks.forEach(function(t, i){
+    var tx = x + (i) * sw;
+    g.append('text').attr('x', tx).attr('y', y + h + 13).attr('font-size', 10).attr('fill', MUTED)
+      .attr('text-anchor', i === 0 ? 'start' : (i === ticks.length - 1 ? 'end' : 'middle')).text(fmt(t));
+  });
+  // No-data swatch
+  var ndx = x + w + 14;
+  g.append('rect').attr('x', ndx).attr('y', y).attr('width', h).attr('height', h).attr('fill', NODATA).attr('stroke', LINE).attr('stroke-width', 0.5);
+  g.append('text').attr('x', ndx + h + 5).attr('y', y + h - 1).attr('font-size', 10).attr('fill', MUTED).text('No data');
+}
+
+/* ---------- Export ---------- */
+function svgString(){
+  if(!lastSvgNode) return '';
+  return new XMLSerializer().serializeToString(lastSvgNode);
+}
+function toast(msg){
+  var t = $('toast'); $('toast-text').textContent = msg || 'Copied';
+  t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 1600);
+}
+$('copy-svg').addEventListener('click', function(){
+  var s = svgString(); if(!s) return;
+  navigator.clipboard.writeText(s).then(function(){ toast('SVG copied'); }, function(){ toast('Copy failed'); });
+});
+$('download-svg').addEventListener('click', function(){
+  var s = svgString(); if(!s) return;
+  var blob = new Blob([s], { type: 'image/svg+xml' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'lrf-map.svg'; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+});
+$('download-png').addEventListener('click', function(){
+  var s = svgString(); if(!s) return;
+  var scale = 2, img = new Image();
+  img.onload = function(){
+    var cv = document.createElement('canvas');
+    cv.width = state.width * scale; cv.height = state.height * scale;
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.drawImage(img, 0, 0);
+    var a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = 'lrf-map.png'; a.click();
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+});
+
+/* ---------- Controls ---------- */
+[].forEach.call(document.querySelectorAll('#level-seg .seg-btn'), function(b){
+  b.addEventListener('click', function(){
+    var lvl = b.dataset.level;
+    if(lvl === state.level && lvl === 'global') return;
+    if(lvl === 'global'){
+      state.level = 'global'; syncLevelUI(); setStatus(null); render();
+    } else {
+      state.level = 'country'; syncLevelUI();
+      if(state.country && REGION_CACHE[state.country]){ showRegionNames(); render(); }
+      else { $('canvas-box').innerHTML = ''; setStatus('Pick a country to load its regions.'); }
+    }
+  });
+});
+$('country-select').addEventListener('change', function(e){
+  var id = e.target.value; if(!id) return;
+  var f = WORLD.features.filter(function(x){ return String(x.id) === id; })[0];
+  drillTo(id, f ? f.properties.name : 'country');
+});
+$('back-global').addEventListener('click', function(){
+  state.level = 'global'; syncLevelUI(); setStatus(null); render();
+});
+$('data-input').addEventListener('input', render);
+$('load-sample').addEventListener('click', function(){
+  $('data-input').value = SAMPLE; state.level = 'global'; syncLevelUI(); setStatus(null); render();
+});
+$('clear-data').addEventListener('click', function(){ $('data-input').value = ''; render(); });
+
+$('f-title').addEventListener('input', function(e){ state.title = e.target.value; render(); });
+$('f-subtitle').addEventListener('input', function(e){ state.subtitle = e.target.value; render(); });
+$('f-source').addEventListener('input', function(e){ state.source = e.target.value; render(); });
+$('f-suffix').addEventListener('input', function(e){ state.suffix = e.target.value; render(); });
+$('f-decimals').addEventListener('change', function(e){ state.decimals = +e.target.value; render(); });
+[].forEach.call(document.querySelectorAll('#scheme-seg .seg-btn'), function(b){
+  b.addEventListener('click', function(){ state.scheme = b.dataset.scheme; updateSchemeUI(); render(); });
+});
+$('f-color').addEventListener('change', function(e){ state.colorLow = e.target.value; render(); });
+$('f-color2').addEventListener('change', function(e){ state.colorHigh = e.target.value; render(); });
+$('f-mid').addEventListener('input', function(e){ var v = parseFloat(e.target.value); state.mid = (e.target.value === '' || isNaN(v)) ? null : v; render(); });
+$('f-classes').addEventListener('change', function(e){ state.classes = +e.target.value; render(); });
+$('f-legend-title').addEventListener('input', function(e){ state.legendTitle = e.target.value; render(); });
+$('c-legend').addEventListener('change', function(e){ state.showLegend = e.target.checked; render(); });
+$('f-width').addEventListener('input', function(e){ state.width = Math.max(360, +e.target.value || 360); render(); });
+$('f-height').addEventListener('input', function(e){ state.height = Math.max(280, +e.target.value || 280); render(); });
+</script>
+</body>
+</html>
