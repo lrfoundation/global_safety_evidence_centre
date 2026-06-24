@@ -60,14 +60,11 @@
       <div id="prisma-controls">
         <div class="panel-section">
           <div class="subsec">Databases &amp; registers</div>
-          <div class="field-row">
-            <div class="field"><label for="p-databases">Databases (n)</label><input type="text" id="p-databases"></div>
-            <div class="field"><label for="p-registers">Registers (n)</label><input type="text" id="p-registers"></div>
+          <div class="field"><label for="p-idA">Identified from <span class="lc">(one row per source: <code>label, n</code>)</span></label>
+            <textarea class="area reasons" id="p-idA"></textarea>
           </div>
-          <div class="field-row cols-3">
-            <div class="field"><label for="p-dup">Duplicates removed</label><input type="text" id="p-dup"></div>
-            <div class="field"><label for="p-auto">By automation</label><input type="text" id="p-auto"></div>
-            <div class="field"><label for="p-other">Other reasons</label><input type="text" id="p-other"></div>
+          <div class="field"><label for="p-removedA">Removed before screening <span class="lc">(<code>label, n</code> per row)</span></label>
+            <textarea class="area reasons" id="p-removedA"></textarea>
           </div>
           <div class="field-row">
             <div class="field"><label for="p-screened">Records screened</label><input type="text" id="p-screened"></div>
@@ -81,17 +78,15 @@
             <div class="field"><label for="p-assessedA">Reports assessed</label><input type="text" id="p-assessedA"></div>
             <div class="field"></div>
           </div>
-          <div class="field" style="margin-top:0.9rem;"><label for="p-reasonsA">Reports excluded, with reasons (one per line: <code>reason, n</code>)</label>
+          <div class="field" style="margin-top:0.9rem;"><label for="p-reasonsA">Reports excluded, with reasons <span class="lc">(<code>reason, n</code> per row)</span></label>
             <textarea class="area reasons" id="p-reasonsA"></textarea>
           </div>
         </div>
 
         <div class="panel-section">
           <div class="subsec">Other methods</div>
-          <div class="field-row cols-3">
-            <div class="field"><label for="p-websites">Websites (n)</label><input type="text" id="p-websites"></div>
-            <div class="field"><label for="p-orgs">Organisations</label><input type="text" id="p-orgs"></div>
-            <div class="field"><label for="p-citation">Citations</label><input type="text" id="p-citation"></div>
+          <div class="field"><label for="p-idB">Identified from <span class="lc">(one row per source: <code>label, n</code>)</span></label>
+            <textarea class="area reasons" id="p-idB"></textarea>
           </div>
           <div class="field-row">
             <div class="field"><label for="p-soughtB">Reports sought</label><input type="text" id="p-soughtB"></div>
@@ -101,7 +96,7 @@
             <div class="field"><label for="p-assessedB">Reports assessed</label><input type="text" id="p-assessedB"></div>
             <div class="field"></div>
           </div>
-          <div class="field" style="margin-top:0.9rem;"><label for="p-reasonsB">Reports excluded, with reasons</label>
+          <div class="field" style="margin-top:0.9rem;"><label for="p-reasonsB">Reports excluded, with reasons <span class="lc">(<code>reason, n</code> per row)</span></label>
             <textarea class="area reasons" id="p-reasonsB"></textarea>
           </div>
         </div>
@@ -211,7 +206,7 @@ var BAND_FILL = '#fce6f0', EX_FILL = '#faf7f0';
 /* Core Foundation & World Risk Poll colours (shared with the other tools) */
 var SWATCHES = [
   { g: 'Foundation', items: [
-    { n: 'Magenta', c: '#e5006e' }, { n: 'Purple', c: '#8f47eb' }, { n: 'Blue', c: '#067acc' },
+    { n: 'Foundation Fuchsia', c: '#e5006e' }, { n: 'Purple', c: '#8f47eb' }, { n: 'Blue', c: '#067acc' },
     { n: 'Green', c: '#0a891f' }, { n: 'Orange', c: '#af640c' }, { n: 'Red', c: '#d91424' },
     { n: 'Turquoise', c: '#0a8484' }, { n: 'Yellow', c: '#8c7500' }
   ]},
@@ -239,10 +234,12 @@ var state = {
   mode: 'prisma',
   title: '', subtitle: '', source: '',
   prisma: {
-    databases: '2110', registers: '85', dup: '624', auto: '110', other: '31',
+    idA: 'Databases, 2110\nRegisters, 85',
+    removedA: 'Duplicate records removed, 624\nMarked ineligible by automation tools, 110\nRemoved for other reasons, 31',
     screened: '1430', scrExcl: '1198', soughtA: '232', nrA: '15', assessedA: '217',
     reasonsA: 'Wrong outcomes, 92\nWrong study design, 58\nWrong population, 41',
-    websites: '85', orgs: '22', citation: '40', soughtB: '64', nrB: '5', assessedB: '59',
+    idB: 'Websites, 85\nOrganisations, 22\nCitation searching, 40',
+    soughtB: '64', nrB: '5', assessedB: '59',
     reasonsB: 'Wrong outcomes, 18\nDuplicate of included study, 9',
     included: '86', repIncluded: '94',
     showPrev: true, prevStudies: '18', prevReports: '20'
@@ -297,12 +294,15 @@ function elbow(x1, y1, x2, y2){
 }
 function svgDefs(){ return '<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M1,1 L7.5,4.5 L1,8" fill="none" stroke="' + INK + '" stroke-width="1.4"/></marker></defs>'; }
 
+// Parse a "label, n" list (one per line). The last comma/tab-separated field is the
+// count; everything before it is the label, so labels may themselves contain commas.
 function reasonLines(text){
   var out = [];
   String(text || '').split(/\r?\n/).forEach(function(ln){
     if(!ln.trim()) return;
-    var m = ln.split(/\t|,(?![^(]*\))/);
-    var label = m[0].trim(), n = m.length > 1 ? m[m.length - 1].trim() : '';
+    var m = ln.split(/\t|,/);
+    var n = '', label = ln.trim();
+    if(m.length > 1){ n = m[m.length - 1].trim(); label = m.slice(0, m.length - 1).join(',').trim(); }
     out.push(label + (n !== '' ? ' (n = ' + gi(n) + ')' : ''));
   });
   return out;
@@ -340,9 +340,9 @@ function renderPrisma(){
   var rowY = top + headerH + 16;
 
   // Row 1 — identification
-  var aId = add(boxObj(Am, rowY, BW, [{ text: 'Records identified from:', bold: true }, nLine('Databases', p.databases), nLine('Registers', p.registers)]));
-  var aRm = add(boxObj(Ax, rowY, EX, [{ text: 'Records removed before screening:', bold: true }, nLine('Duplicate records removed', p.dup), nLine('Marked ineligible by automation tools', p.auto), nLine('Removed for other reasons', p.other)], { fill: EX_FILL }));
-  var bId = add(boxObj(Bm, rowY, BW, [{ text: 'Records identified from:', bold: true }, nLine('Websites', p.websites), nLine('Organisations', p.orgs), nLine('Citation searching', p.citation)]));
+  var aId = add(boxObj(Am, rowY, BW, [{ text: 'Records identified from:', bold: true }].concat(reasonLines(p.idA))));
+  var aRm = add(boxObj(Ax, rowY, EX, [{ text: 'Records removed before screening:', bold: true }].concat(reasonLines(p.removedA)), { fill: EX_FILL }));
+  var bId = add(boxObj(Bm, rowY, BW, [{ text: 'Records identified from:', bold: true }].concat(reasonLines(p.idB))));
   var row1H = Math.max(aId.h, aRm.h, bId.h);
   arrows.push(hArrow(aId.x + BW, aId.y + aId.h / 2, aRm.x));
 
@@ -448,36 +448,35 @@ function renderFunnel(){
   }
 
   var first = rows[0].n || 1, maxN = Math.max.apply(null, rows.map(function(r){ return r.n; })) || 1;
-  var minW = W * 0.16, maxW = W * 0.86, cx = W / 2;
+  // Reserve a right gutter so the drop-off labels never run off the edge.
+  var rightGutter = f.dropoff ? 112 : pad;
+  var areaL = pad, areaR = W - rightGutter, areaW = areaR - areaL, cx = areaL + areaW / 2;
+  var minW = areaW * 0.18, maxW = areaW * 0.94;
   var col = f.color, colLight = mix(col, '#ffffff', 0.62), tcol = textOn(col);
   function bw(n){ return minW + (maxW - minW) * (n / maxN); }
+  function yOf(i){ return top + i * (stageH + gap); }
 
   var parts = [];
-  var y = top;
-  for(var i = 0; i < rows.length; i++){
-    var w = bw(rows[i].n), x = cx - w / 2;
-    // connector trapezoid to next stage
-    if(i < rows.length - 1){
-      var wN = bw(rows[i + 1].n), xN = cx - wN / 2, yC = y + stageH, yC2 = yC + gap;
-      parts.push('<polygon points="' + x + ',' + yC + ' ' + (x + w) + ',' + yC + ' ' + (xN + wN) + ',' + yC2 + ' ' + xN + ',' + yC2 + '" fill="' + colLight + '"/>');
-    }
+  // Connector trapezoids between consecutive stages (each at its own row).
+  for(var i = 0; i < rows.length - 1; i++){
+    var w = bw(rows[i].n), x = cx - w / 2, wN = bw(rows[i + 1].n), xN = cx - wN / 2;
+    var yC = yOf(i) + stageH, yC2 = yOf(i + 1);
+    parts.push('<polygon points="' + x + ',' + yC + ' ' + (x + w) + ',' + yC + ' ' + (xN + wN) + ',' + yC2 + ' ' + xN + ',' + yC2 + '" fill="' + colLight + '"/>');
   }
-  y = top;
+  // Stage bars, labels and drop-off annotations.
   for(var j = 0; j < rows.length; j++){
-    var w2 = bw(rows[j].n), x2 = cx - w2 / 2;
+    var w2 = bw(rows[j].n), x2 = cx - w2 / 2, y = yOf(j);
     parts.push('<rect x="' + x2 + '" y="' + y + '" width="' + w2 + '" height="' + stageH + '" rx="3" fill="' + col + '"/>');
     var pct = Math.round(rows[j].n / first * 1000) / 10;
-    var label = rows[j].label, valTxt = gi(rows[j].n) + (f.pctOfFirst ? '  ·  ' + pct + '%' : '');
-    parts.push('<text x="' + cx + '" y="' + (y + stageH / 2 - 3) + '" font-size="13.5" font-weight="700" fill="' + tcol + '" text-anchor="middle">' + esc(label) + '</text>');
+    var valTxt = gi(rows[j].n) + (f.pctOfFirst ? '  ·  ' + pct + '%' : '');
+    parts.push('<text x="' + cx + '" y="' + (y + stageH / 2 - 3) + '" font-size="13.5" font-weight="700" fill="' + tcol + '" text-anchor="middle">' + esc(rows[j].label) + '</text>');
     parts.push('<text x="' + cx + '" y="' + (y + stageH / 2 + 14) + '" font-size="11.5" fill="' + tcol + '" text-anchor="middle" opacity="0.92">' + esc(valTxt) + '</text>');
-    // drop-off annotation
     if(f.dropoff && j < rows.length - 1){
       var drop = rows[j].n - rows[j + 1].n, dpct = rows[j].n ? Math.round(drop / rows[j].n * 1000) / 10 : 0;
-      parts.push('<text x="' + (cx + maxW / 2 + 12) + '" y="' + (y + stageH + gap / 2 + 4) + '" font-size="11" fill="' + MUTED + '" text-anchor="start">&#8722;' + gi(drop) + ' (&#8722;' + dpct + '%)</text>');
+      parts.push('<text x="' + (W - pad) + '" y="' + (yOf(j) + stageH + gap / 2 + 4) + '" font-size="11" fill="' + MUTED + '" text-anchor="end">&#8722;' + gi(drop) + ' (&#8722;' + dpct + '%)</text>');
     }
-    y += stageH + gap;
   }
-  var totalH = y - gap + capH + pad;
+  var totalH = yOf(rows.length - 1) + stageH + capH + pad;
 
   var head = '';
   if(state.title){
@@ -521,9 +520,9 @@ $('download-png').addEventListener('click', function(){
   });
 
   // PRISMA fields
-  var pf = ['databases','registers','dup','auto','other','screened','scrExcl','soughtA','nrA','assessedA','websites','orgs','citation','soughtB','nrB','assessedB','included','repIncluded','prevStudies','prevReports'];
+  var pf = ['screened','scrExcl','soughtA','nrA','assessedA','soughtB','nrB','assessedB','included','repIncluded','prevStudies','prevReports'];
   pf.forEach(function(k){ var el = $('p-' + k); el.value = state.prisma[k]; el.addEventListener('input', function(){ state.prisma[k] = el.value; render(); }); });
-  ['reasonsA','reasonsB'].forEach(function(k){ var el = $('p-' + k); el.value = state.prisma[k]; el.addEventListener('input', function(){ state.prisma[k] = el.value; render(); }); });
+  ['idA','removedA','reasonsA','idB','reasonsB'].forEach(function(k){ var el = $('p-' + k); el.value = state.prisma[k]; el.addEventListener('input', function(){ state.prisma[k] = el.value; render(); }); });
   $('p-showprev').checked = state.prisma.showPrev;
   $('prev-fields').classList.toggle('hidden', !state.prisma.showPrev);
   $('p-showprev').addEventListener('change', function(e){ state.prisma.showPrev = e.target.checked; $('prev-fields').classList.toggle('hidden', !e.target.checked); render(); });

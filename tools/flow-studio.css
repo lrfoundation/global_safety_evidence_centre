@@ -48,9 +48,11 @@
   font-size: 14px; padding: 0.6rem 0.7rem;
 }
 .field select { padding-right: 2rem; background-position: right 0.7rem center; }
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; align-items: end; }
 .field-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
 .field-row .field { margin-bottom: 0; }
+.field-row .field label { min-height: 26px; } /* keeps 1- and 2-line labels' inputs aligned */
+.field label .lc { text-transform: none; font-weight: 500; color: var(--lrf-muted); letter-spacing: 0; }
 .field-row + .field-row { margin-top: 0.9rem; }
 
 .check-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1.1rem; }
