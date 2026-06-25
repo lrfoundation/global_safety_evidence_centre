@@ -13,7 +13,7 @@ let ROWS = null; // current passing row indices (null = all)
 const filters = {};           // dimKey -> Set(codes)
 const ctrl = { question:'climate', breakdown1:'countrynew', breakdown2:'countrynew',
                metric1:'climate_very', metric2:'climate_other_very', right:'climate_other', sort:'metric1',
-               profileCountry:null, k:4, colourBy:'cluster', clusterBy:'worry' };
+               profileScope:'all', k:4, colourBy:'cluster', clusterBy:'worry' };
 let activeView = 'dist';
 
 function activeFilterCount(){ return Object.keys(filters).filter(k=>filters[k]&&filters[k].size).length; }
@@ -198,7 +198,13 @@ function buildControls(){
     h+=selectField('c-right','Question (right)',qOpts(),ctrl.right);
   } else if(activeView==='profile'){
     h+=selectField('c-m1','Metric',mOpts(),ctrl.metric1);
-    h+=selectField('c-pcountry','Country',[['','All countries']].concat(COUNTRIES.map((c,i)=>[String(i),c.name])), ctrl.profileCountry==null?'':String(ctrl.profileCountry));
+    const sp=ctrl.profileScope||'all', o=(v,t)=>`<option value="${v}"${v===sp?' selected':''}>${esc(t)}</option>`,
+      og=(label,opts)=>`<optgroup label="${label}">${opts}</optgroup>`;
+    const scopeSel = og('Global', o('all','All countries'))
+      + og('By income group', (DIM['CountryIncome'].cats||[]).map(c=>o('inc:'+c.code,c.label)).join(''))
+      + og('By global region', (DIM['GlobalRegion'].cats||[]).map(c=>o('reg:'+c.code,c.label)).join(''))
+      + og('By country', COUNTRIES.map((c,i)=>o('c:'+i,c.name)).join(''));
+    h+=`<div class="field"><label for="c-pscope">Scope</label><select id="c-pscope">${scopeSel}</select></div>`;
   } else if(activeView==='clusters'){
     h+=selectField('c-clusterby','Cluster by',[['worry','Worry'],['experience','Experience'],['both','Worry + experience']],ctrl.clusterBy);
     h+=selectField('c-k','Clusters (k)',[['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],String(ctrl.k));
@@ -208,7 +214,7 @@ function buildControls(){
   const bind=(id,key)=>{ const el=$('#'+id); if(el) el.onchange=()=>{ ctrl[key]=el.value; render(); }; };
   bind('c-question','question'); bind('c-bd1','breakdown1'); bind('c-bd2','breakdown2');
   bind('c-m1','metric1'); bind('c-m2','metric2'); bind('c-right','right');
-  const pc=$('#c-pcountry'); if(pc) pc.onchange=()=>{ ctrl.profileCountry = pc.value===''?null:+pc.value; render(); };
+  const pscope=$('#c-pscope'); if(pscope) pscope.onchange=()=>{ ctrl.profileScope=pscope.value; render(); };
   const kk=$('#c-k'); if(kk) kk.onchange=()=>{ ctrl.k=+kk.value; render(); };
   const colb=$('#c-colour'); if(colb) colb.onchange=()=>{ ctrl.colourBy=colb.value; render(); };
   const clb=$('#c-clusterby'); if(clb) clb.onchange=()=>{ ctrl.clusterBy=clb.value; render(); };
@@ -422,26 +428,32 @@ function renderSankey(){
 }
 
 /* ---------- View 5: demographic profile ---------- */
-function profileAgg(metric, dimCol, countryIdx){
-  const bd=dimCol?col(dimCol):null, cc=col('country'), w=WEIGHT, mean=isMean(metric), arr=col(metric.col), num=mean?null:new Set(metric.num), agg=new Map();
-  forEachRow(i=>{ if(countryIdx!=null && cc[i]!==countryIdx) return; const a=arr[i]; if(a<0) return; const g=bd?bd[i]:0; if(bd && g<0) return;
+function profileAgg(metric, dimCol, scopeCol, scopeCode){
+  const bd=dimCol?col(dimCol):null, sc=(scopeCol && scopeCode!=null)?col(scopeCol):null, w=WEIGHT, mean=isMean(metric), arr=col(metric.col), num=mean?null:new Set(metric.num), agg=new Map();
+  forEachRow(i=>{ if(sc && sc[i]!==scopeCode) return; const a=arr[i]; if(a<0) return; const g=bd?bd[i]:0; if(bd && g<0) return;
     let e=agg.get(g); if(!e){e=[0,0,0]; agg.set(g,e);} const wi=w[i]; e[1]+=wi; e[2]++; if(mean) e[0]+=wi*(a/100); else if(num.has(a)) e[0]+=wi; });
   return agg; }
 function aggVal(e, mean){ return (e && e[1]) ? (mean ? e[0]/e[1] : e[0]/e[1]*100) : NaN; }
 function renderProfile(){
-  const m=M[ctrl.metric1], mean=isMean(m), ci=ctrl.profileCountry;
+  const m=M[ctrl.metric1], mean=isMean(m), sp=ctrl.profileScope||'all';
+  let scopeCol=null, scopeCode=null, scopeLabel='All countries';
+  if(sp.indexOf('inc:')===0){ scopeCol='wbi'; scopeCode=+sp.slice(4); scopeLabel='Income group: '+(((DIM['CountryIncome'].cats||[]).find(c=>c.code===scopeCode)||{}).label||sp); }
+  else if(sp.indexOf('reg:')===0){ scopeCol='RegionLRF'; scopeCode=+sp.slice(4); scopeLabel=((DIM['GlobalRegion'].cats||[]).find(c=>c.code===scopeCode)||{}).label||sp; }
+  else if(sp.indexOf('c:')===0){ scopeCol='country'; scopeCode=+sp.slice(2); scopeLabel=COUNTRIES[scopeCode]?COUNTRIES[scopeCode].name:sp; }
   const dimKeys=['gender','age_5','income_quintiles','education','urban_rural','employment'].filter(k=>DIM[k]);
-  const oe=profileAgg(m,null,ci).get(0), overall=aggVal(oe,mean);
-  const data=dimKeys.map(k=>{ const d=DIM[k], agg=profileAgg(m,d.col,ci);
+  const oe=profileAgg(m,null,scopeCol,scopeCode).get(0), overall=aggVal(oe,mean);
+  const data=dimKeys.map(k=>{ const d=DIM[k], agg=profileAgg(m,d.col,scopeCol,scopeCode);
     const cats=(d.cats||[]).map(c=>{ const e=agg.get(c.code); return {label:c.label, v:aggVal(e,mean), n:e?e[2]:0}; }).filter(c=>!isNaN(c.v));
     return {label:d.label, cats}; });
   let maxV=overall||0; data.forEach(d=>d.cats.forEach(c=>{ if(c.v>maxV) maxV=c.v; }));
   if(!isFinite(maxV)||maxV<=0) maxV=mean?1:100; maxV*=1.12;
-  const cols=2, cellW=360, labW=120, barMax=cellW-labW-50, pad=14;
+  const cols=2, cellW=360, labW=120, barMax=cellW-labW-50, pad=14, headerH=44;
   const cellH=28+Math.max(...data.map(d=>d.cats.length),1)*23+14, rowsN=Math.ceil(data.length/cols);
-  const W=cols*cellW+pad, H=rowsN*cellH+pad+4, xOf=v=>labW+(v/maxV)*barMax;
+  const W=cols*cellW+pad, H=headerH+rowsN*cellH+pad+4, xOf=v=>labW+(v/maxV)*barMax;
   let s=`<svg id="profile-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
-  data.forEach((d,di)=>{ const cx=pad+(di%cols)*cellW, cy=pad+Math.floor(di/cols)*cellH;
+  s+=`<text x="${pad}" y="${pad+13}" font-size="14" font-weight="800" fill="#0d2240">${esc(m.label)}</text>`;
+  s+=`<text x="${pad}" y="${pad+31}" font-size="12" fill="#6c6c78">${esc(scopeLabel)} · overall ${fmtMetric(m,overall)} (dashed line) · by demographic</text>`;
+  data.forEach((d,di)=>{ const cx=pad+(di%cols)*cellW, cy=pad+headerH+Math.floor(di/cols)*cellH;
     s+=`<text x="${cx}" y="${cy+12}" font-size="12" font-weight="800" fill="#0d2240">${esc(d.label)}</text>`;
     const ox=(cx+xOf(overall)).toFixed(1); s+=`<line x1="${ox}" y1="${cy+20}" x2="${ox}" y2="${cy+26+d.cats.length*23}" stroke="#0d2240" stroke-dasharray="3 3" stroke-width="1"/>`;
     d.cats.forEach((c,i)=>{ const ry=cy+28+i*23, bw=Math.max(1,xOf(c.v)-labW), up=c.v>=overall, small=c.n<30;
@@ -449,11 +461,11 @@ function renderProfile(){
       s+=`<rect x="${cx+labW}" y="${ry+3}" width="${bw.toFixed(1)}" height="14" rx="2" fill="${up?'#e3076e':'#00a7b3'}"${small?' opacity="0.4"':''} data-tip="${esc(d.label)} · ${esc(c.label)}" data-sub="${fmtMetric(m,c.v)} (n=${c.n})${small?' · small base':''}"/>`;
       s+=`<text x="${(cx+labW+bw+5).toFixed(1)}" y="${ry+14}" font-size="10" fill="#2a2a35">${fmtMetric(m,c.v)}</text>`; }); });
   s+='</svg>'; $('#profile-svg').outerHTML=s;
-  $('#profile-title').textContent=`${m.label} — ${ci==null?'all countries':COUNTRIES[ci].name} · by demographic (overall ${fmtMetric(m,overall)}; dashed line)`;
+  $('#profile-title').textContent=`${m.label} — ${scopeLabel}`;
   const trows=[['(overall)','',csvNum(m,overall), oe?oe[2]:0]];
   data.forEach(d=>d.cats.forEach(c=>trows.push([d.label,c.label,csvNum(m,c.v),c.n])));
   $('#profile-table-card').innerHTML=`<div class="sec-label">Values</div><div class="tbl-scroll"><table class="dt"><thead><tr><th>Dimension</th><th>Group</th><th class="num">${m.key}</th><th class="num">n</th></tr></thead><tbody>${trows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="num">${r[2]}</td><td class="num">${r[3]}</td></tr>`).join('')}</tbody></table></div>`;
-  lastExport={ name:`wrp_profile_${ctrl.metric1}_${ci==null?'all':(COUNTRIES[ci].iso3||ci)}`, cols:['Dimension','Group',m.key,'base_n'], rows:trows };
+  lastExport={ name:`wrp_profile_${ctrl.metric1}_${sp.replace(':','-')}`, cols:['Dimension','Group',m.key,'base_n'], rows:trows };
 }
 
 /* ---------- View 6: dynamic clusters (k-means on the worry profile) ---------- */
@@ -490,12 +502,16 @@ function renderClusters(){
   const REGCOL=['#e3076e','#00a7b3','#7a50de','#f07800','#00785c','#b07d00','#2f6fb5','#d91424','#1aa088','#067acc','#af640c','#0a891f','#bf153d','#8c7500','#6c6c78'];
   const INCCOL={1:'#0d2240',2:'#2f6fb5',3:'#00a7b3',4:'#e3076e',9:'#bdbdbd'};
   const cb=ctrl.colourBy||'cluster';
-  const W=Math.max(420,($('#cluster-svg').parentElement.clientWidth)||720), H=520, cx0=W/2, cy0=H/2, Rr=Math.min(W,H)*0.30;
+  const W=Math.max(420,($('#cluster-svg').parentElement.clientWidth)||720), H=520, cx0=W/2, cy0=H/2;
+  const rB=Math.max(5,Math.min(12,Math.sqrt((W*H)/((idxs.length||1)*8))));
+  const Rr=Math.min(W,H)*(k<=2?0.18:0.27);   // pull anchors in for few clusters so blobs don't reach the edges
   const anchors=Array.from({length:k},(_,j)=>({x:cx0+Rr*Math.cos(2*Math.PI*j/k-Math.PI/2), y:cy0+Rr*Math.sin(2*Math.PI*j/k-Math.PI/2)}));
-  const rB=Math.max(5,Math.min(12,Math.sqrt((W*H)/((idxs.length||1)*7))));
-  const nodes=idxs.map((ix,i)=>{ const a=anchors[assign[i]], ang=i*2.399963; return {ix,cl:assign[i],x:a.x+Math.cos(ang)*22,y:a.y+Math.sin(ang)*22}; });
-  d3.forceSimulation(nodes).force('x',d3.forceX(d=>anchors[d.cl].x).strength(0.25)).force('y',d3.forceY(d=>anchors[d.cl].y).strength(0.25))
-    .force('collide',d3.forceCollide(rB+1.3)).force('charge',d3.forceManyBody().strength(-4)).stop().tick(280);
+  const nodes=idxs.map((ix,i)=>{ const a=anchors[assign[i]], ang=i*2.399963; return {ix,cl:assign[i],x:a.x+Math.cos(ang)*18,y:a.y+Math.sin(ang)*18}; });
+  const sim=d3.forceSimulation(nodes).force('x',d3.forceX(d=>anchors[d.cl].x).strength(0.2)).force('y',d3.forceY(d=>anchors[d.cl].y).strength(0.2))
+    .force('collide',d3.forceCollide(rB+1.3)).force('charge',d3.forceManyBody().strength(-3)).stop();
+  const mnX=rB+6, mxX=W-rB-6, mnY=rB+6, mxY=H-rB-6;   // keep every bubble inside the frame each tick
+  for(let it=0; it<320; it++){ sim.tick(); for(let q=0;q<nodes.length;q++){ const nd=nodes[q];
+    nd.x = nd.x<mnX?mnX:(nd.x>mxX?mxX:nd.x); nd.y = nd.y<mnY?mnY:(nd.y>mxY?mxY:nd.y); } }
   const regLabel=c=>{ const x=(DIM['GlobalRegion'].cats||[]).find(z=>z.code===c); return x?x.label:''; };
   let colourOf, legendHTML='', tipExtra=()=>'';
   if(cb==='region'){ const present=[...new Set(nodes.map(n=>CREGION[n.ix]).filter(c=>c>0))].sort((a,b)=>a-b);
