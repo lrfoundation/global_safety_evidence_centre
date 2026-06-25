@@ -95,7 +95,7 @@ function valueFn(m){
   if(isMean(m)) return i=>{ const v=a[i]; return v<0?null:v/100; };
   const s = new Set(m.num); return i=>{ const v=a[i]; return v<0?null:(s.has(v)?1:0); };
 }
-function fmtMetric(m,v){ if(v==null||isNaN(v)) return '–'; return isMean(m)? v.toFixed(2) : v.toFixed(1)+'%'; }
+function fmtMetric(m,v){ if(v==null||isNaN(v)) return '–'; return isMean(m)? String(Math.round(v*100)) : v.toFixed(1)+'%'; }
 
 /* group code -> label for a breakdown dim */
 function groupLabel(dimKey, code){
@@ -349,8 +349,8 @@ function renderRel(){
   const X=v=>pad.l+v/xmax*pw, Y=v=>pad.t+ph*(1-v/ymax);
   let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
   for(let t=0;t<=1.0001;t+=0.25){ const gx=X(t*xmax),gy=Y(t*ymax); s+=`<line x1="${pad.l}" y1="${gy}" x2="${W-pad.r}" y2="${gy}" stroke="#eef1f4"/><line x1="${gx}" y1="${pad.t}" x2="${gx}" y2="${H-pad.b}" stroke="#eef1f4"/>`;
-    s+=`<text x="${pad.l-6}" y="${gy+3}" font-size="10" fill="#6c6c78" text-anchor="end">${isMean(m2)?(t*ymax).toFixed(1):(Math.round(t*ymax))+'%'}</text>`;
-    s+=`<text x="${gx}" y="${H-pad.b+14}" font-size="10" fill="#6c6c78" text-anchor="middle">${isMean(m1)?(t*xmax).toFixed(1):(Math.round(t*xmax))+'%'}</text>`; }
+    s+=`<text x="${pad.l-6}" y="${gy+3}" font-size="10" fill="#6c6c78" text-anchor="end">${isMean(m2)?Math.round(t*ymax*100):(Math.round(t*ymax))+'%'}</text>`;
+    s+=`<text x="${gx}" y="${H-pad.b+14}" font-size="10" fill="#6c6c78" text-anchor="middle">${isMean(m1)?Math.round(t*xmax*100):(Math.round(t*xmax))+'%'}</text>`; }
   // OLS trend on the points
   if(pts.length>1){ const mx=d3.mean(pts,p=>p.x),my=d3.mean(pts,p=>p.y); let sxy=0,sxx=0; pts.forEach(p=>{sxy+=(p.x-mx)*(p.y-my);sxx+=(p.x-mx)**2;}); const b=sxx?sxy/sxx:0,a=my-b*mx;
     s+=`<line class="trend" x1="${X(0)}" y1="${Y(a)}" x2="${X(xmax)}" y2="${Y(a+b*xmax)}"/>`; }
@@ -384,7 +384,12 @@ function renderRel(){
   const otab=odds.map(o=>{ const tt=Math.abs(Math.log(o.ratio))/maxLog, up=o.ratio>=1;
     return `<tr><td class="name">${esc(groupLabel(bd,o.g))}</td><td class="num">${(o.p2*100).toFixed(1)}%</td><td class="num heat" style="background:${rampColor(up?['#ffffff',UP]:['#ffffff',DOWN],tt)};color:${tt>0.6?'#fff':'#1b222c'}">${o.ratio.toFixed(2)}</td><td class="num">${(o.p1*100).toFixed(1)}%</td></tr>`; }).join('');
   $('#odds-table-card').innerHTML=`<div class="tbl-scroll"><table class="dt"><thead><tr><th>${DIM[bd].label}</th><th class="num">${m2.key}</th><th class="num">ratio</th><th class="num">${m1.key}</th></tr></thead><tbody>${otab}</tbody></table></div>`;
-  $('#odds-explain').innerHTML=`<p class="muted-note"><b>Understanding the odds ratio.</b> How many times more likely a <b>${m1.key}</b> response is versus a <b>${m2.key}</b> response. <span style="color:${UP};font-weight:700">Above 1</span> = ${m1.key} more likely; <span style="color:${DOWN};font-weight:700">below 1</span> = ${m2.key} more likely; 1.0 = balanced. Plotted on a log scale, so 2× and ½× sit equal distances from the baseline.</p>`;
+  $('#odds-explain').innerHTML=`<div class="explain" style="margin-top:0.7rem">
+    <h4>How to read the odds ratio</h4>
+    <p>For each <b>${esc(DIM[bd].label).toLowerCase()}</b> we compare two things side by side: the share who say <b>${esc(m1.label)}</b> and the share who say <b>${esc(m2.label)}</b>. The bar shows how many <b>times more likely</b> one answer is than the other — for example a bar of <b>2</b> means the first answer is twice as common as the second.</p>
+    <p><span style="color:${UP};font-weight:700">Magenta (above 1)</span> = <b>${esc(m1.label)}</b> is the more common answer · <span style="color:${DOWN};font-weight:700">teal (below 1)</span> = <b>${esc(m2.label)}</b> is more common · <b>1.0</b> = the two answers are equally likely. Bars sit on a <b>log scale</b>, so being "twice as likely" (2×) and "half as likely" (½×) sit the same distance from the baseline — i.e. equal-looking bars mean equal-sized gaps in either direction.</p>
+    <p class="muted-note" style="margin-top:0.4rem">It's a way of measuring <b>how out-of-step</b> two responses are within the same group. The bigger the bar, the wider the gap between the two answers for that group.</p>
+  </div>`;
   lastExport = { name:`wrp_rel_${ctrl.metric1}_vs_${ctrl.metric2}`,
     cols:[DIM[bd].label, m1.key+' (%)', m2.key+' (%)', 'odds_ratio'],
     rows: odds.map(o=>[groupLabel(bd,o.g), (o.p1*100).toFixed(1), (o.p2*100).toFixed(1), o.ratio.toFixed(3)]) };
@@ -447,25 +452,34 @@ function renderProfile(){
     return {label:d.label, cats}; });
   let maxV=overall||0; data.forEach(d=>d.cats.forEach(c=>{ if(c.v>maxV) maxV=c.v; }));
   if(!isFinite(maxV)||maxV<=0) maxV=mean?1:100; maxV*=1.12;
-  const cols=2, cellW=360, labW=120, barMax=cellW-labW-50, pad=14, headerH=44;
+  // Adapt column count and cell width to the container so text stays at native size
+  // (no SVG scaling) — labels fit, bars fill the card, no big blank gutter on wide screens.
+  const host = document.getElementById('profile-svg').parentElement;
+  const avail = Math.max(360, (host && host.clientWidth) || 760);
+  const pad=14;
+  const cols = avail >= 1180 ? 3 : avail >= 720 ? 2 : 1;
+  const cellW = Math.max(320, Math.floor((avail - pad) / cols));
+  const labW = 150, barMax = cellW - labW - 64, headerH = 44;
   const cellH=28+Math.max(...data.map(d=>d.cats.length),1)*23+14, rowsN=Math.ceil(data.length/cols);
   const W=cols*cellW+pad, H=headerH+rowsN*cellH+pad+4, xOf=v=>labW+(v/maxV)*barMax;
-  let s=`<svg id="profile-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
+  let s=`<svg id="profile-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
   s+=`<text x="${pad}" y="${pad+13}" font-size="14" font-weight="800" fill="#0d2240">${esc(m.label)}</text>`;
   s+=`<text x="${pad}" y="${pad+31}" font-size="12" fill="#6c6c78">${esc(scopeLabel)} · overall ${fmtMetric(m,overall)} (dashed line) · by demographic</text>`;
   data.forEach((d,di)=>{ const cx=pad+(di%cols)*cellW, cy=pad+headerH+Math.floor(di/cols)*cellH;
     s+=`<text x="${cx}" y="${cy+12}" font-size="12" font-weight="800" fill="#0d2240">${esc(d.label)}</text>`;
     const ox=(cx+xOf(overall)).toFixed(1); s+=`<line x1="${ox}" y1="${cy+20}" x2="${ox}" y2="${cy+26+d.cats.length*23}" stroke="#0d2240" stroke-dasharray="3 3" stroke-width="1"/>`;
     d.cats.forEach((c,i)=>{ const ry=cy+28+i*23, bw=Math.max(1,xOf(c.v)-labW), up=c.v>=overall, small=c.n<30;
-      s+=`<text x="${cx+labW-6}" y="${ry+12}" font-size="10.5" fill="#2a2a35" text-anchor="end">${esc(String(c.label).slice(0,16))}</text>`;
+      s+=`<text x="${cx+labW-6}" y="${ry+12}" font-size="10.5" fill="#2a2a35" text-anchor="end">${esc(String(c.label).slice(0,22))}</text>`;
       s+=`<rect x="${cx+labW}" y="${ry+3}" width="${bw.toFixed(1)}" height="14" rx="2" fill="${up?'#e3076e':'#00a7b3'}"${small?' opacity="0.4"':''} data-tip="${esc(d.label)} · ${esc(c.label)}" data-sub="${fmtMetric(m,c.v)} (n=${c.n})${small?' · small base':''}"/>`;
       s+=`<text x="${(cx+labW+bw+5).toFixed(1)}" y="${ry+14}" font-size="10" fill="#2a2a35">${fmtMetric(m,c.v)}</text>`; }); });
   s+='</svg>'; $('#profile-svg').outerHTML=s;
   $('#profile-title').textContent=`${m.label} — ${scopeLabel}`;
-  const trows=[['(overall)','',csvNum(m,overall), oe?oe[2]:0]];
-  data.forEach(d=>d.cats.forEach(c=>trows.push([d.label,c.label,csvNum(m,c.v),c.n])));
+  const trows=[['(overall)','', fmtMetric(m,overall), oe?oe[2]:0]];
+  data.forEach(d=>d.cats.forEach(c=>trows.push([d.label,c.label, fmtMetric(m,c.v), c.n])));
   $('#profile-table-card').innerHTML=`<div class="sec-label">Values</div><div class="tbl-scroll"><table class="dt"><thead><tr><th>Dimension</th><th>Group</th><th class="num">${m.key}</th><th class="num">n</th></tr></thead><tbody>${trows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="num">${r[2]}</td><td class="num">${r[3]}</td></tr>`).join('')}</tbody></table></div>`;
-  lastExport={ name:`wrp_profile_${ctrl.metric1}_${sp.replace(':','-')}`, cols:['Dimension','Group',m.key,'base_n'], rows:trows };
+  const csvRows=[['(overall)','', csvNum(m,overall), oe?oe[2]:0]];
+  data.forEach(d=>d.cats.forEach(c=>csvRows.push([d.label,c.label, csvNum(m,c.v), c.n])));
+  lastExport={ name:`wrp_profile_${ctrl.metric1}_${sp.replace(':','-')}`, cols:['Dimension','Group',m.key,'base_n'], rows:csvRows };
 }
 
 /* ---------- View 6: dynamic clusters (k-means on the worry profile) ---------- */
@@ -488,7 +502,17 @@ function renderClusters(){
   const basis=ctrl.clusterBy||'worry';
   const FEAT=(basis==='experience'?EXP_F : basis==='both'?WORRY_F.concat(EXP_F) : WORRY_F).filter(k=>M[k]);
   const basisLabel=basis==='experience'?'experienced-harm' : basis==='both'?'worry & experience' : 'worry';
-  const featLabel=k=>k.replace('_very','').replace(/^exp_/,'');
+  const FEATURE_LABEL={
+    climate_very:'climate change as a threat', food_very:'food safety', water_very:'water safety',
+    crime_very:'violent crime', weather_very:'severe weather', wildfires_very:'wildfires',
+    air_very:'air quality', mental_health_very:'mental health', traffic_very:'road traffic',
+    work_very:'safety at work',
+    exp_food:'harm from food', exp_water:'harm from water', exp_crime:'harm from violent crime',
+    exp_weather:'harm from severe weather', exp_prolonged_weather:'harm from prolonged weather',
+    exp_wildfires:'harm from wildfires', exp_air:'harm from the air',
+    exp_traffic:'harm from traffic', exp_mental_health:'harm to mental health', exp_work:'harm at work',
+  };
+  const featLabel=k=>FEATURE_LABEL[k] || k.replace('_very','').replace(/^exp_/,'');
   const maps=FEAT.map(k=>metricByGroup(M[k],'countrynew'));
   const idxs=[...maps[0].keys()].filter(ix=>maps.every(mp=>mp.has(ix)&&!isNaN(mp.get(ix))));
   const raw=idxs.map(ix=>maps.map(mp=>mp.get(ix)));
@@ -502,15 +526,19 @@ function renderClusters(){
   const REGCOL=['#e3076e','#00a7b3','#7a50de','#f07800','#00785c','#b07d00','#2f6fb5','#d91424','#1aa088','#067acc','#af640c','#0a891f','#bf153d','#8c7500','#6c6c78'];
   const INCCOL={1:'#0d2240',2:'#2f6fb5',3:'#00a7b3',4:'#e3076e',9:'#bdbdbd'};
   const cb=ctrl.colourBy||'cluster';
-  const W=Math.max(420,($('#cluster-svg').parentElement.clientWidth)||720), H=520, cx0=W/2, cy0=H/2;
-  const rB=Math.max(5,Math.min(12,Math.sqrt((W*H)/((idxs.length||1)*8))));
-  const Rr=Math.min(W,H)*(k<=2?0.18:0.27);   // pull anchors in for few clusters so blobs don't reach the edges
+  const W=Math.max(420,($('#cluster-svg').parentElement.clientWidth)||720), H=720, cx0=W/2, cy0=H/2;
+  const rB=Math.max(6,Math.min(13,Math.sqrt((W*H)/((idxs.length||1)*7))));
+  const Rr=Math.min(W,H)*(k<=2?0.22:0.32);   // push anchors a little further apart so the clusters separate cleanly
   const anchors=Array.from({length:k},(_,j)=>({x:cx0+Rr*Math.cos(2*Math.PI*j/k-Math.PI/2), y:cy0+Rr*Math.sin(2*Math.PI*j/k-Math.PI/2)}));
   const nodes=idxs.map((ix,i)=>{ const a=anchors[assign[i]], ang=i*2.399963; return {ix,cl:assign[i],x:a.x+Math.cos(ang)*18,y:a.y+Math.sin(ang)*18}; });
-  const sim=d3.forceSimulation(nodes).force('x',d3.forceX(d=>anchors[d.cl].x).strength(0.2)).force('y',d3.forceY(d=>anchors[d.cl].y).strength(0.2))
-    .force('collide',d3.forceCollide(rB+1.3)).force('charge',d3.forceManyBody().strength(-3)).stop();
+  const sim=d3.forceSimulation(nodes)
+    .force('x',d3.forceX(d=>anchors[d.cl].x).strength(0.18))
+    .force('y',d3.forceY(d=>anchors[d.cl].y).strength(0.18))
+    .force('collide',d3.forceCollide(rB+3).strength(1))
+    .force('charge',d3.forceManyBody().strength(-26).distanceMax(rB*10))
+    .stop();
   const mnX=rB+6, mxX=W-rB-6, mnY=rB+6, mxY=H-rB-6;   // keep every bubble inside the frame each tick
-  for(let it=0; it<320; it++){ sim.tick(); for(let q=0;q<nodes.length;q++){ const nd=nodes[q];
+  for(let it=0; it<450; it++){ sim.tick(); for(let q=0;q<nodes.length;q++){ const nd=nodes[q];
     nd.x = nd.x<mnX?mnX:(nd.x>mxX?mxX:nd.x); nd.y = nd.y<mnY?mnY:(nd.y>mxY?mxY:nd.y); } }
   const regLabel=c=>{ const x=(DIM['GlobalRegion'].cats||[]).find(z=>z.code===c); return x?x.label:''; };
   let colourOf, legendHTML='', tipExtra=()=>'';
@@ -534,18 +562,38 @@ function renderClusters(){
   let html='<div class="sec-label">Clusters</div>';
   byCl.forEach((members,ci)=>{ if(!members.length) return;
     const mz=new Array(d).fill(0); members.forEach(i=>z[i].forEach((v,q)=>mz[q]+=v)); for(let q=0;q<d;q++) mz[q]/=members.length;
-    const hi=mz.map((v,q)=>[q,v]).sort((a,b)=>b[1]-a[1]).slice(0,2).map(o=>featLabel(FEAT[o[0]])).join(', ');
+    // pick the two indicators where this cluster deviates most from the global average
+    // (in either direction) — gives a more honest "what makes this group distinctive".
+    const top=mz.map((v,q)=>[q,v]).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,2);
+    const tagsHi=top.filter(([,v])=>v>=0).map(([q])=>featLabel(FEAT[q]));
+    const tagsLo=top.filter(([,v])=>v<0).map(([q])=>featLabel(FEAT[q]));
+    const bits=[];
+    if(tagsHi.length) bits.push('higher than average on '+tagsHi.join(' and '));
+    if(tagsLo.length) bits.push('lower than average on '+tagsLo.join(' and '));
+    const distinctive = bits.join('; ');
     const names=members.map(i=>COUNTRIES[idxs[i]].name).sort();
-    html+=`<div style="margin-bottom:0.85rem"><div style="font-weight:700;color:#0d2240"><span class="dot" style="background:${CL[ci%CL.length]}"></span> Cluster ${ci+1} <span style="color:#6c6c78;font-weight:500">· ${members.length} countries · stands out: ${esc(hi)}</span></div><div style="font-size:12px;color:#2a2a35;line-height:1.5;margin-top:2px">${names.map(esc).join(', ')}</div></div>`; });
-  html += `<div class="explain" style="margin-top:0.7rem;border-top:1px solid var(--lrf-line);padding-top:0.85rem">
-    <h4>What this shows</h4>
-    <p>Each country is sorted into one of ${k} groups so that countries in the same group have the most <b>similar ${basisLabel} pattern</b> across the ${FEAT.length} indicators — not who scores highest overall, but the <i>shape</i> of their responses: which items stand out for them relative to the rest. Use <b>Cluster by</b> to base the grouping on worry, experienced harm, or both.</p>
-    <h4>How to read it</h4>
-    <p>Each bubble is a country, and bubbles that <b>sit together</b> have a similar ${basisLabel} profile — the layout uses all ${FEAT.length} indicators at once, so there are no axes and position only reflects similarity. By default colour marks the group; switch <b>Colour by</b> to shade the bubbles by region, income group or any response, to see whether the worry‑groups line up with those.</p>
-    <h4>Keep in mind</h4>
-    <p>This is a way of <b>describing</b> the data, not a ranking or a verdict — the groups have no order, and a country near the edge of a blob could reasonably belong to either side. Figures are standardised, so groups reflect <b>relative</b> patterns, not absolute levels. Change the number of groups or any filter above and the grouping is recalculated; the colour overlay updates instantly.</p>
-  </div>`;
+    html+=`<div style="margin-bottom:0.95rem">
+      <div style="font-weight:700;color:#0d2240"><span class="dot" style="background:${CL[ci%CL.length]}"></span> Cluster ${ci+1} <span style="color:#6c6c78;font-weight:500">· ${members.length} countries</span></div>
+      <div style="font-size:12.5px;color:#2a2a35;margin-top:2px"><b>Distinctive pattern:</b> ${esc(distinctive)}.</div>
+      <div style="font-size:12px;color:#6c6c78;line-height:1.5;margin-top:3px">${names.map(esc).join(', ')}</div>
+    </div>`; });
   $('#cluster-list').innerHTML=html;
+  const explainEl=document.getElementById('cluster-explain');
+  if(explainEl){ explainEl.innerHTML=`<div class="sec-label">About this chart</div>
+    <div class="explain explain-grid">
+      <section>
+        <h4>What this shows</h4>
+        <p>Each country is sorted into one of ${k} groups so that countries in the same group share the most <b>similar ${basisLabel} pattern</b> across the ${FEAT.length} indicators. It is not about who scores highest overall, but the <i>shape</i> of their responses — which items stand out for them relative to everyone else. Use <b>Cluster by</b> to base the grouping on worry, experienced harm, or both.</p>
+      </section>
+      <section>
+        <h4>How to read it</h4>
+        <p>Each bubble is a country, and bubbles that <b>sit close together</b> have a similar ${basisLabel} profile. The layout uses all ${FEAT.length} indicators at once, so there are no axes — position only reflects similarity. By default colour marks the cluster; switch <b>Colour by</b> to shade the bubbles by region, income group or any individual response, to see whether the data‑driven groups line up with those.</p>
+      </section>
+      <section>
+        <h4>Keep in mind</h4>
+        <p>This is a way of <b>describing</b> the data, not a ranking or a verdict — the groups have no order, and a country near the edge of a blob could reasonably belong to either side. Figures are standardised, so the groups reflect <b>relative</b> patterns, not absolute levels. Change the number of groups or any filter above and the clustering recalculates; the colour overlay updates instantly.</p>
+      </section>
+    </div>`; }
   lastExport={ name:`wrp_clusters_${basis}_k${k}`, cols:['Country','ISO3','cluster',...FEAT], rows:idxs.map((ix,i)=>[COUNTRIES[ix].name, COUNTRIES[ix].iso3||'', assign[i]+1, ...raw[i].map(v=>v.toFixed(1))]) };
 }
 
