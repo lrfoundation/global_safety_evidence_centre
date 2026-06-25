@@ -114,6 +114,14 @@ table.dt .heat { color: var(--lrf-ink); font-weight: 600; border-radius: 2px; }
 .status { padding: 4rem 1rem; text-align: center; color: var(--lrf-muted); font-size: 15px; }
 .status.err { color: var(--danger); }
 
+/* hover tooltip (shared across all charts) */
+.tip { position: fixed; pointer-events: none; z-index: 80; background: var(--lrf-white); color: var(--lrf-ink);
+  border: 1px solid var(--lrf-line); border-radius: var(--r); padding: 7px 10px; font-size: 12px;
+  box-shadow: var(--shadow-lg); max-width: 280px; opacity: 0; transition: opacity .08s; line-height: 1.4; }
+.tip b { color: var(--lrf-ink); font-weight: 700; }
+.tip .m { color: var(--lrf-muted); margin-top: 2px; }
+.geo, .scatter-pt, .sankey-link, .sankey-node rect, #rel-odds rect, #dist-chart rect { cursor: pointer; }
+
 /* mobile: let tabs and control bar wrap */
 @media (max-width: 700px) {
   .segmented { display: flex; flex-wrap: wrap; }

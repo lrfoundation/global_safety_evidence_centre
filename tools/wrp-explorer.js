@@ -65,6 +65,16 @@ async function load(){
   }
 }
 
+/* ---------- hover tooltip (delegated; works for string-built and d3-built SVG) ---------- */
+function showTip(main, sub, x, y){ const t=document.getElementById('tip'); if(!t) return;
+  t.innerHTML = '<b></b>' + (sub ? '<div class="m"></div>' : '');
+  t.querySelector('b').textContent = main || ''; if(sub) t.querySelector('.m').textContent = sub;
+  const w = t.offsetWidth || 200; let lx = x + 14; if(lx + w + 10 > window.innerWidth) lx = x - w - 14;
+  t.style.left = Math.max(4, lx) + 'px'; t.style.top = (y + 14) + 'px'; t.style.opacity = 1; }
+function hideTip(){ const t=document.getElementById('tip'); if(t) t.style.opacity = 0; }
+document.addEventListener('mousemove', e=>{ const el = (e.target && e.target.closest) ? e.target.closest('[data-tip]') : null;
+  if(el) showTip(el.getAttribute('data-tip'), el.getAttribute('data-sub') || '', e.clientX, e.clientY); else hideTip(); });
+
 /* ---------- helpers ---------- */
 const col = k => STORE[k];
 function forEachRow(fn){ if(ROWS){ for(let k=0;k<ROWS.length;k++) fn(ROWS[k]); } else { for(let i=0;i<N;i++) fn(i); } }
@@ -226,7 +236,7 @@ function renderDist(){
   const labelEvery=Math.ceil(keys.length/45);
   keys.forEach((g,i)=>{ const e=groups.get(g), x=pad.l+i*barW; let cy=pad.t;
     q.answers.forEach(a=>{ const w=e.counts.get(a.code)||0; const frac=e.total?w/e.total:0; const hh=frac*plotH;
-      if(hh>0) s+=`<rect x="${x+0.5}" y="${cy.toFixed(1)}" width="${barW-1}" height="${hh.toFixed(1)}" fill="${a.color}"/>`; cy+=hh; });
+      if(hh>0) s+=`<rect x="${x+0.5}" y="${cy.toFixed(1)}" width="${barW-1}" height="${hh.toFixed(1)}" fill="${a.color}" data-tip="${esc(groupLabel(bd,g))}" data-sub="${esc(a.label)}: ${(frac*100).toFixed(1)}%"/>`; cy+=hh; });
     if(i%labelEvery===0){ const lx=x+barW/2, ly=H-pad.b+10; s+=`<text x="${lx}" y="${ly}" font-size="9" fill="#2a2a35" text-anchor="end" transform="rotate(-55 ${lx} ${ly})">${esc(groupLabel(bd,g).slice(0,18))}</text>`; }
   });
   s+='</svg>'; svg.outerHTML=s.replace('<svg','<svg id="dist-chart"');
@@ -264,7 +274,8 @@ async function renderMap(){
     svg.selectAll('path.c').data(world.features.filter(f=>pad3(f.id)!=='010')).enter().append('path')
       .attr('d',path).attr('class',f=>{ const iso=NUM2A3[pad3(f.id)]; return iso2val.has(iso)?'map-land':'map-land-nodata'; })
       .attr('fill',f=>{ const iso=NUM2A3[pad3(f.id)]; if(!iso2val.has(iso)) return '#fff'; return rampColor(MAP_RAMP,(iso2val.get(iso)-lo)/(hi-lo||1)); })
-      .append('title').text(f=>{ const iso=NUM2A3[pad3(f.id)]; return (f.properties&&f.properties.name||'')+(iso2val.has(iso)?': '+fmtMetric(m1,iso2val.get(iso)):''); });
+      .attr('data-tip', f=> (f.properties&&f.properties.name)||'')
+      .attr('data-sub', f=>{ const iso=NUM2A3[pad3(f.id)]; return iso2val.has(iso)? m1.label+': '+fmtMetric(m1,iso2val.get(iso)) : 'No data'; });
     $('#map-legend').innerHTML = `<span>${fmtMetric(m1,lo)}</span><span class="bar" style="background:linear-gradient(to right,${MAP_RAMP.join(',')})"></span><span>${fmtMetric(m1,hi)}</span>`;
   }
   // table (paginated handled simply: scroll)
@@ -293,29 +304,37 @@ function renderRel(){
   // OLS trend on the points
   if(pts.length>1){ const mx=d3.mean(pts,p=>p.x),my=d3.mean(pts,p=>p.y); let sxy=0,sxx=0; pts.forEach(p=>{sxy+=(p.x-mx)*(p.y-my);sxx+=(p.x-mx)**2;}); const b=sxx?sxy/sxx:0,a=my-b*mx;
     s+=`<line class="trend" x1="${X(0)}" y1="${Y(a)}" x2="${X(xmax)}" y2="${Y(a+b*xmax)}"/>`; }
-  pts.forEach(p=>{ s+=`<circle class="scatter-pt" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="3.4" fill="#e3076e" fill-opacity="0.7"><title>${esc(groupLabel(bd,p.g))}: ${fmtMetric(m1,p.x)} / ${fmtMetric(m2,p.y)}</title></circle>`; });
+  pts.forEach(p=>{ s+=`<circle class="scatter-pt" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="3.6" fill="#e3076e" fill-opacity="0.7" data-tip="${esc(groupLabel(bd,p.g))}" data-sub="${m1.key}: ${fmtMetric(m1,p.x)} · ${m2.key}: ${fmtMetric(m2,p.y)}"></circle>`; });
   s+=`<text x="${W/2}" y="${H-4}" font-size="10" fill="#6c6c78" text-anchor="middle">${m1.key}</text>`;
   s+='</svg>'; $('#rel-scatter').outerHTML=s.replace('<svg','<svg id="rel-scatter"');
   // R^2 (respondent-level)
   const R=r2(m1,m2); $('#rel-r2').textContent = isNaN(R)?'–':R.toFixed(2);
   $('#rel-explain').innerHTML = `<h4>What is R²</h4><p>R² measures how strongly the two selected metrics move together across <b>individual respondents</b> (0–1). 0.7–1.0 strong · 0.4–0.7 moderate · 0.1–0.4 weak · below 0.1 negligible.</p><h4>Keep in mind</h4><p>It is computed across respondents, not the country averages plotted left. A high R² means the two move together — not that one causes the other.</p>`;
-  // odds ratio per group
+  // odds ratio per group — diverging, log scale around OR = 1 (magenta above, teal below)
+  const UP='#e3076e', DOWN='#00a7b3';
   const keys=[...g1.keys()].filter(g=>g2.has(g));
   const odds=keys.map(g=>{ const p1=(g1.get(g)||0)/(isMean(m1)?1:100), p2=(g2.get(g)||0)/(isMean(m2)?1:100);
-    const o1=p1/(1-p1||1e-9), o2=p2/(1-p2||1e-9); return {g, ratio:(o2>0?o1/o2:NaN), p1,p2}; }).filter(o=>!isNaN(o.ratio)&&isFinite(o.ratio));
+    const o1=p1/((1-p1)||1e-9), o2=p2/((1-p2)||1e-9); return {g, ratio:(o2>0?o1/o2:NaN), p1,p2}; })
+    .filter(o=>o.ratio>0 && isFinite(o.ratio));
   odds.sort((a,b)=>b.ratio-a.ratio);
   const ocw=Math.max(360, ($('#rel-odds').parentElement.clientWidth)||760);
-  const OH=240,opad={t:8,r:8,b:60,l:30}; const oph=OH-opad.t-opad.b; const omax=Math.max(...odds.map(o=>o.ratio),1);
-  const obw=Math.max(2,Math.min(22,Math.floor((ocw-opad.l-opad.r)/Math.max(1,odds.length))));
-  const OW=opad.l+opad.r+odds.length*obw;
+  const OH=340, opad={t:14,r:10,b:66,l:42}; const oph=OH-opad.t-opad.b, mid=opad.t+oph/2;
+  const maxAbs=Math.max(0.3, ...odds.map(o=>Math.abs(Math.log(o.ratio))));
+  const obw=Math.max(2, Math.min(26, Math.floor((ocw-opad.l-opad.r)/Math.max(1,odds.length))));
+  const OW=opad.l+opad.r+odds.length*obw, yOf=l=> mid - (l/maxAbs)*(oph/2);
   let os=`<svg width="${OW}" height="${OH}" viewBox="0 0 ${OW} ${OH}" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
-  [0,1,2,3,4,5].forEach(v=>{ if(v>omax+0.5)return; const y=opad.t+oph*(1-v/omax); os+=`<line x1="${opad.l}" y1="${y}" x2="${opad.l+odds.length*obw}" y2="${y}" stroke="${v===1?'#0d2240':'#eef1f4'}"/><text x="${opad.l-5}" y="${y+3}" font-size="9" fill="#6c6c78" text-anchor="end">${v}</text>`; });
-  odds.forEach((o,i)=>{ const x=opad.l+i*obw, h=o.ratio/omax*oph, y=opad.t+oph-h; os+=`<rect x="${x+0.5}" y="${y.toFixed(1)}" width="${obw-1}" height="${h.toFixed(1)}" fill="#e3076e"><title>${esc(groupLabel(bd,o.g))}: OR ${o.ratio.toFixed(1)}</title></rect>`;
-    if(i%Math.ceil(odds.length/40)===0){ const lx=x+obw/2,ly=OH-opad.b+8; os+=`<text x="${lx}" y="${ly}" font-size="8" fill="#2a2a35" text-anchor="end" transform="rotate(-55 ${lx} ${ly})">${esc(groupLabel(bd,o.g).slice(0,16))}</text>`; } });
+  [8,4,2,1,0.5,0.25,0.125].forEach(t=>{ const l=Math.log(t); if(Math.abs(l)>maxAbs+1e-9) return; const y=yOf(l);
+    os+=`<line x1="${opad.l}" y1="${y.toFixed(1)}" x2="${OW-opad.r}" y2="${y.toFixed(1)}" stroke="${t===1?'#0d2240':'#eef1f4'}" stroke-width="${t===1?1.2:1}"/>`;
+    os+=`<text x="${opad.l-5}" y="${(y+3).toFixed(1)}" font-size="9" fill="#6c6c78" text-anchor="end">${t>=1?t:'1/'+Math.round(1/t)}</text>`; });
+  odds.forEach((o,i)=>{ const x=opad.l+i*obw, y=yOf(Math.log(o.ratio)), up=o.ratio>=1, ry=up?y:mid, rh=Math.max(0.6,Math.abs(y-mid));
+    os+=`<rect x="${(x+0.5).toFixed(1)}" y="${ry.toFixed(1)}" width="${(obw-1).toFixed(1)}" height="${rh.toFixed(1)}" fill="${up?UP:DOWN}" data-tip="${esc(groupLabel(bd,o.g))}" data-sub="OR ${o.ratio.toFixed(2)} · ${m1.key} ${(o.p1*100).toFixed(1)}% vs ${m2.key} ${(o.p2*100).toFixed(1)}%"/>`;
+    if(i%Math.ceil(odds.length/40)===0){ const lx=x+obw/2, ly=OH-opad.b+10; os+=`<text x="${lx}" y="${ly}" font-size="8" fill="#2a2a35" text-anchor="end" transform="rotate(-55 ${lx} ${ly})">${esc(groupLabel(bd,o.g).slice(0,16))}</text>`; } });
   os+='</svg>'; $('#rel-odds').outerHTML=os.replace('<svg','<svg id="rel-odds"');
-  const otab=odds.map(o=>`<tr><td class="name">${esc(groupLabel(bd,o.g))}</td><td class="num">${(o.p2*100).toFixed(1)}%</td><td class="num heat" style="background:${rampColor(HEAT2,o.ratio/omax)};color:${o.ratio/omax>0.5?'#fff':'#1b222c'}">${o.ratio.toFixed(1)}</td><td class="num">${(o.p1*100).toFixed(1)}%</td></tr>`).join('');
+  const maxLog=maxAbs||1;
+  const otab=odds.map(o=>{ const tt=Math.abs(Math.log(o.ratio))/maxLog, up=o.ratio>=1;
+    return `<tr><td class="name">${esc(groupLabel(bd,o.g))}</td><td class="num">${(o.p2*100).toFixed(1)}%</td><td class="num heat" style="background:${rampColor(up?['#ffffff',UP]:['#ffffff',DOWN],tt)};color:${tt>0.6?'#fff':'#1b222c'}">${o.ratio.toFixed(2)}</td><td class="num">${(o.p1*100).toFixed(1)}%</td></tr>`; }).join('');
   $('#odds-table-card').innerHTML=`<div class="tbl-scroll"><table class="dt"><thead><tr><th>${DIM[bd].label}</th><th class="num">${m2.key}</th><th class="num">ratio</th><th class="num">${m1.key}</th></tr></thead><tbody>${otab}</tbody></table></div>`;
-  $('#odds-explain').innerHTML=`<p class="muted-note"><b>Understanding the odds ratio.</b> How many times more likely a metric-1 response is versus a metric-2 response. 1.0 = balanced; the further from 1.0, the greater the disharmony between the two response groups.</p>`;
+  $('#odds-explain').innerHTML=`<p class="muted-note"><b>Understanding the odds ratio.</b> How many times more likely a <b>${m1.key}</b> response is versus a <b>${m2.key}</b> response. <span style="color:${UP};font-weight:700">Above 1</span> = ${m1.key} more likely; <span style="color:${DOWN};font-weight:700">below 1</span> = ${m2.key} more likely; 1.0 = balanced. Plotted on a log scale, so 2× and ½× sit equal distances from the baseline.</p>`;
 }
 
 /* ---------- View 4: sankey ---------- */
@@ -336,9 +355,11 @@ function renderSankey(){
     const sk=d3.sankey().nodeWidth(14).nodePadding(12).extent([[6,10],[W-6,H-10]]);
     const graph=sk({nodes:nodes.map(d=>Object.assign({},d)), links:links.map(d=>Object.assign({},d))});
     svg.append('g').selectAll('path').data(graph.links).enter().append('path').attr('class','sankey-link')
-      .attr('d',d3.sankeyLinkHorizontal()).attr('stroke',d=>d.source.color).attr('stroke-width',d=>Math.max(1,d.width));
+      .attr('d',d3.sankeyLinkHorizontal()).attr('stroke',d=>d.source.color).attr('stroke-width',d=>Math.max(1,d.width))
+      .attr('data-tip',d=>d.source.name+' → '+d.target.name).attr('data-sub',d=>(total?(d.value/total*100).toFixed(1):'0')+'% of respondents');
     const node=svg.append('g').selectAll('g').data(graph.nodes).enter().append('g').attr('class','sankey-node');
-    node.append('rect').attr('x',d=>d.x0).attr('y',d=>d.y0).attr('width',d=>d.x1-d.x0).attr('height',d=>Math.max(1,d.y1-d.y0)).attr('fill',d=>d.color);
+    node.append('rect').attr('x',d=>d.x0).attr('y',d=>d.y0).attr('width',d=>d.x1-d.x0).attr('height',d=>Math.max(1,d.y1-d.y0)).attr('fill',d=>d.color)
+      .attr('data-tip',d=>d.name).attr('data-sub',d=> total? (d.value/total*100).toFixed(1)+'% of respondents':'');
     node.append('text').attr('class','sankey-label').attr('x',d=>d.x0<W/2?d.x1+5:d.x0-5).attr('y',d=>(d.y0+d.y1)/2).attr('dy','0.35em').attr('text-anchor',d=>d.x0<W/2?'start':'end').text(d=>d.name.replace(/^.*— /,''));
   }
   // table
