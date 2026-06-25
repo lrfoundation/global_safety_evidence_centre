@@ -1,0 +1,9 @@
+# Raw World Risk Poll microdata — licensed; must NOT be published (the repo can be
+# served via GitHub Pages). The explorer ships only the aggregated columnar build
+# (tools/data/wrp_explorer.json + .bin + .bin.gz), produced by build_explorer_data.py.
+*.sav
+tools/data/wrp_25.sav
+
+# Python build artefacts
+__pycache__/
+*.pyc

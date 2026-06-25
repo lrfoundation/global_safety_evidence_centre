@@ -20,6 +20,15 @@ function updateFilterToggle(){ const fp=document.querySelector('.filters'), tf=$
   const c=fp.classList.contains('collapsed'), n=activeFilterCount();
   tf.textContent = c ? ('Show filters'+(n?` (${n})`:'')+' ▾') : 'Hide filters ▴'; }
 let _rt; window.addEventListener('resize', ()=>{ clearTimeout(_rt); _rt=setTimeout(()=>{ if(typeof MAN!=='undefined' && MAN) render(); }, 160); });
+// Robust: re-render the active view whenever the available width actually changes
+// (window resize, devtools, zoom, layout reflow) — not all of these emit a window 'resize'.
+let _lastW = 0;
+function observeResize(){
+  const m = document.querySelector('main'); if(!m) return; _lastW = m.clientWidth;
+  if(!('ResizeObserver' in window)) return;
+  let raf; new ResizeObserver(es=>{ const w = es[0].contentRect.width; if(Math.abs(w-_lastW) < 2) return; _lastW = w;
+    cancelAnimationFrame(raf); raf = requestAnimationFrame(()=>{ if(MAN) render(); }); }).observe(m);
+}
 
 /* ---------- load ---------- */
 async function load(){
@@ -50,7 +59,7 @@ async function load(){
     MAN.metrics.forEach(m=> M[m.key]=m);
     $('#status').classList.add('hidden');
     $('#app').classList.remove('hidden');
-    buildFilters(); buildTabs(); render();
+    buildFilters(); buildTabs(); render(); observeResize();
   }catch(e){
     const s=$('#status'); s.classList.add('err'); s.textContent='Could not load the dataset ('+e.message+'). Run build_explorer_data.py and serve the tools folder.';
   }
