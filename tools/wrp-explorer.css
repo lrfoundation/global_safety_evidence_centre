@@ -62,8 +62,10 @@ main { max-width: none; padding: 1.25rem 2.5rem 4rem; }
 /* ---------- Views ---------- */
 .view { display: none; }
 .view.active { display: block; }
-.view-grid { display: grid; grid-template-columns: 1fr 360px; gap: 1.5rem; align-items: start; }
+.view-grid { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 1.5rem; align-items: start; }
+.view-grid > * { min-width: 0; }   /* let the chart column shrink below its SVG width (no horizontal overflow) */
 @media (max-width: 1080px) { .view-grid { grid-template-columns: 1fr; } }
+.chart-wrap { min-width: 0; }
 .card { background: var(--lrf-white); border: 1px solid var(--lrf-line); border-radius: var(--r); padding: 1.1rem 1.25rem; }
 .card .sec-label { margin-bottom: 0.9rem; }
 .chart-wrap { width: 100%; overflow-x: auto; }
