@@ -23,9 +23,11 @@ main { max-width: none; padding: 1.25rem 2.5rem 4rem; }
 .field select { font-size: 14px; padding: 0.55rem 2rem 0.55rem 0.7rem; background-position: right 0.6rem center; }
 
 /* control bar: question / breakdowns / metrics / sort */
-.controlbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem 1rem; margin-bottom: 1.25rem; }
-.controlbar .field { margin: 0; }
-@media (max-width: 900px) { .controlbar { grid-template-columns: repeat(2, 1fr); } }
+.controlbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem 1rem; margin-bottom: 1.25rem; }
+.controlbar:empty { display: none; }
+.controlbar .field { margin: 0; min-width: 0; }
+.controlbar .field select { width: 100%; }
+@media (max-width: 900px) { .controlbar { grid-template-columns: 1fr; } }
 
 /* filter panel: many compact dimension dropdowns */
 .filters { margin-bottom: 1.5rem; }
@@ -65,14 +67,21 @@ main { max-width: none; padding: 1.25rem 2.5rem 4rem; }
 /* ---------- Views ---------- */
 .view { display: none; }
 .view.active { display: block; }
-.view-grid { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 1.5rem; align-items: start; }
+.view-grid { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 1.5rem; align-items: stretch; }
 .view-grid > * { min-width: 0; }   /* let the chart column shrink below its SVG width (no horizontal overflow) */
 @media (max-width: 1080px) { .view-grid { grid-template-columns: 1fr; } }
 .chart-wrap { min-width: 0; }
-.card { background: var(--lrf-white); border: 1px solid var(--lrf-line); border-radius: var(--r); padding: 1.1rem 1.25rem; }
+.card { background: var(--lrf-white); border: 1px solid var(--lrf-line); border-radius: var(--r); padding: 1.1rem 1.25rem; display: flex; flex-direction: column; }
 .card .sec-label { margin-bottom: 0.9rem; }
 .chart-wrap { width: 100%; overflow-x: auto; }
 .chart-wrap svg { display: block; }
+/* In side-by-side card layouts, keep each card a self-contained flex column so the
+   table card (right) can match the chart card (left) in height. tbl-scroll fills the
+   remaining space inside its own card; the cap stops a long table from pushing the row
+   taller than the chart on the left. */
+.view-grid > .card,
+.view-grid > div { min-height: 0; }
+.view-grid .tbl-scroll { flex: 1 1 0; min-height: 200px; max-height: 70vh; }
 .legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; font-size: 12px; color: var(--lrf-ink-soft); margin-bottom: 0.6rem; }
 .legend .k { display: inline-flex; align-items: center; gap: 0.4rem; }
 .legend .sw { width: 11px; height: 11px; border-radius: 2px; }
@@ -90,6 +99,9 @@ table.dt .heat { color: var(--lrf-ink); font-weight: 600; border-radius: 2px; }
 .tbl-foot button { background: none; border: 1px solid var(--lrf-line); border-radius: var(--r); padding: 0.2rem 0.55rem; cursor: pointer; font: inherit; font-size: 12px; color: var(--lrf-ink); }
 .tbl-foot button:disabled { opacity: 0.4; cursor: default; }
 
+/* tighten the secondary card's leading spacing so it lines up with the chart card's title row */
+.view-grid > .card > .sec-label:first-child { margin-bottom: 0.7rem; }
+
 /* map */
 #map-svg { width: 100%; height: auto; background: #eef1f4; border-radius: var(--r); }
 .map-sphere { fill: #eef1f4; } .map-land-nodata { fill: #ffffff; stroke: #d6dde3; stroke-width: .5; }
@@ -98,12 +110,15 @@ table.dt .heat { color: var(--lrf-ink); font-weight: 600; border-radius: 2px; }
 .map-legend .bar { height: 12px; width: 220px; border-radius: 2px; }
 
 /* scatter + scorecard */
-.scorecard { text-align: center; padding: 1.2rem; }
+.scorecard { text-align: center; padding: 1.2rem 1.2rem 1.4rem; border-bottom: 1px solid var(--lrf-line); margin-bottom: 1rem; }
 .scorecard .big { font-size: 3rem; font-weight: 800; color: var(--lrf-pink); letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
 .scorecard .cap { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--lrf-muted); font-weight: 600; margin-top: 0.4rem; }
 .explain { font-size: 12.5px; line-height: 1.55; color: var(--lrf-ink-soft); }
 .explain h4 { font-size: 12px; font-weight: 800; color: var(--lrf-ink); margin: 0.9rem 0 0.3rem; }
 .explain p { margin: 0 0 0.5rem; }
+.explain-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem 2rem; }
+.explain-grid section h4 { margin-top: 0; }
+@media (max-width: 900px) { .explain-grid { grid-template-columns: 1fr; gap: 0.6rem; } }
 .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .scatter-pt { stroke: #fff; stroke-width: 0.5; }
 .trend { stroke: var(--lrf-pink); stroke-width: 1.5; opacity: 0.7; fill: none; }

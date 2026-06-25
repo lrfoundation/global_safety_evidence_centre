@@ -60,8 +60,9 @@ EXPERIENCE = [  # 1=personally 2=know someone 3=both 4=No 98 99
     ("WP22448", "exp_work", "Experienced harm: work"),
 ]
 TRUST = [  # 1=a lot 2=somewhat 3=not at all 98 99
-    ("WP22231", "govt_cares", "Government cares about your wellbeing"),
-    ("WP22469", "authorities_care", "Authorities care about your wellbeing"),
+    # govt_cares is blended with authorities_care (WP22469) further below:
+    # WP22469 only carries data in Myanmar, where WP22231 is missing.
+    ("WP22231", "govt_cares", "Government / authorities care about your wellbeing"),
     ("WP22232", "neighbours_care", "Neighbours care about your wellbeing"),
 ]
 BINARY = [  # (var, slug, label, yes_codes) — 1=Yes 2=No ...
@@ -102,6 +103,7 @@ def slug_color(code, pos_index):
 
 def main():
     cat_vars = ([v for v, *_ in WORRY] + [v for v, *_ in EXPERIENCE] + [v for v, *_ in TRUST]
+                + ["WP22469"]  # authorities_care — folded into WP22231 below
                 + [v for v, *_ in BINARY] + [v for v, *_ in DISC] + [GREATEST[0]]
                 + ["WP1219", "WP1220RECODED_1", "INCOME_5", "DEGURBA", "EMP_2010",
                    "RegionLRF", "wbi"] + WARN_VARS)
@@ -121,6 +123,14 @@ def main():
     lab["WP3117"] = "Education level"
     print(f"  {n:,} respondents | education (WP3117) coverage {df.WP3117.isin([1,2,3]).mean()*100:.0f}%, "
           f"{df.groupby('COUNTRY_ISO3').WP3117.apply(lambda s: s.isin([1,2,3]).any()).sum()} countries")
+
+    # Blend authorities_care (WP22469, asked only in Myanmar) into government_cares (WP22231)
+    # so the combined item reads as "government / authorities care" across all 140 countries.
+    gov = df["WP22231"].to_numpy(); aut = df["WP22469"].to_numpy()
+    fill = np.isnan(gov) & ~np.isnan(aut)
+    gov_blend = gov.copy(); gov_blend[fill] = aut[fill]
+    df["WP22231"] = gov_blend
+    print(f"  blended WP22469 -> WP22231 for {int(fill.sum()):,} respondents")
 
     # ---- country index + iso ----
     cdf = df[["COUNTRYNEW", "COUNTRY_ISO3"]].dropna(subset=["COUNTRYNEW"]).drop_duplicates("COUNTRYNEW")
@@ -186,22 +196,31 @@ def main():
     def add_question(key, var, label):
         questions.append({"key": key, "col": var, "label": label, "answers": answers_for(var)})
 
-    # worry / threat
+    # worry / threat — Very, Very + Somewhat, Not at all
     for var, slug, label in WORRY:
         add_question(slug, var, label)
+        short = label.split(' could')[0].split(' a threat')[0]
+        is_climate_threat = slug in ("climate", "climate_other")
+        not_word = "not a threat" if is_climate_threat else "not worried"
         metrics.append({"key": f"{slug}_very", "col": var, "num": [1],
-                        "label": f"{label.split(' could')[0].split(' a threat')[0]} — very serious/worried (%)"})
+                        "label": f"{short} — very serious/worried (%)"})
         metrics.append({"key": f"{slug}_concerned", "col": var, "num": [1, 2],
-                        "label": f"{label.split(' could')[0].split(' a threat')[0]} — very or somewhat (%)"})
-    # experience
+                        "label": f"{short} — very or somewhat (%)"})
+        metrics.append({"key": f"{slug}_not", "col": var, "num": [3],
+                        "label": f"{short} — {not_word} at all (%)"})
+    # experience — personally (self or both), any (self / someone / both), not experienced
     for var, slug, label in EXPERIENCE:
         add_question(slug, var, label)
-        metrics.append({"key": slug, "col": var, "num": [1, 2, 3], "label": f"{label} (self or someone) (%)"})
-    # trust
+        metrics.append({"key": f"{slug}_personal", "col": var, "num": [1, 3],
+                        "label": f"{label} — personally (%)"})
+        metrics.append({"key": slug, "col": var, "num": [1, 2, 3], "label": f"{label} — self or someone (%)"})
+        metrics.append({"key": f"{slug}_not", "col": var, "num": [4], "label": f"{label} — not experienced (%)"})
+    # trust / care — a lot, a lot + somewhat, not at all
     for var, slug, label in TRUST:
         add_question(slug, var, label)
         metrics.append({"key": f"{slug}_alot", "col": var, "num": [1], "label": f"{label} — a lot (%)"})
         metrics.append({"key": f"{slug}_any", "col": var, "num": [1, 2], "label": f"{label} — a lot or somewhat (%)"})
+        metrics.append({"key": f"{slug}_not", "col": var, "num": [3], "label": f"{label} — not at all (%)"})
     # binary
     for var, slug, label, yes in BINARY:
         add_question(slug, var, label)
@@ -221,9 +240,9 @@ def main():
                           "answers": [{"code": 1, "label": "Yes", "color": POS_COLOURS[0]},
                                       {"code": 2, "label": "No", "color": SPECIAL_COLOURS[98]}]})
         metrics.append({"key": f"{key}_yes", "col": key, "num": [1], "label": f"{arr_label} (%)"})
-    # index metrics (continuous mean)
+    # index metrics (continuous mean, displayed as 0–100)
     for k, label in INDICES:
-        metrics.append({"key": k, "col": k, "kind": "mean", "label": f"{label} (mean, 0–1)"})
+        metrics.append({"key": k, "col": k, "kind": "mean", "label": f"{label} (0–100)"})
 
     # ---- dimensions (filter + breakdown) ----
     def dim_cats(var):
