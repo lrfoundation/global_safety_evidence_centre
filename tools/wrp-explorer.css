@@ -53,7 +53,10 @@ main { max-width: none; padding: 1.25rem 2.5rem 4rem; }
 .filt-pop input { width: 15px; height: 15px; accent-color: var(--lrf-pink); }
 .filt-clear { background: none; border: none; color: var(--lrf-pink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 
-/* ---------- View tabs ---------- */
+/* ---------- View tabs + download bar ---------- */
+.tabbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.tabbar .segmented { margin-bottom: 0; }
+.downloads { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .segmented { display: inline-grid; grid-auto-flow: column; gap: 1px; background: var(--lrf-line); border: 1.5px solid var(--lrf-ink); border-radius: var(--r); overflow: hidden; margin-bottom: 1.5rem; }
 .seg-btn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 0.55rem 1.1rem; background: var(--lrf-white); color: var(--lrf-ink); border: none; cursor: pointer; transition: background .15s, color .15s; }
 .seg-btn:hover { background: var(--lrf-cream); }
