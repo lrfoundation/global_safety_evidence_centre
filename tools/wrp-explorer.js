@@ -8,12 +8,12 @@ const HEAT1 = ['#ffffff', '#e3076e'];          // metric_1 magenta scale
 const HEAT2 = ['#eef1f4', '#0d2240'];          // metric_2 navy scale
 const MAP_RAMP = ['#fbe0ec', '#e3076e', '#5c0b3a', '#0d2240']; // fuchsia → ink
 
-let MAN, N, WEIGHT, STORE = {}, DIM = {}, Q = {}, M = {}, COUNTRIES = [];
+let MAN, N, WEIGHT, STORE = {}, DIM = {}, Q = {}, M = {}, COUNTRIES = [], CREGION = null, CINCOME = null;
 let ROWS = null; // current passing row indices (null = all)
 const filters = {};           // dimKey -> Set(codes)
 const ctrl = { question:'climate', breakdown1:'countrynew', breakdown2:'countrynew',
                metric1:'climate_very', metric2:'climate_other_very', right:'climate_other', sort:'metric1',
-               profileCountry:null, k:4 };
+               profileCountry:null, k:4, colourBy:'cluster', clusterBy:'worry' };
 let activeView = 'dist';
 
 function activeFilterCount(){ return Object.keys(filters).filter(k=>filters[k]&&filters[k].size).length; }
@@ -55,6 +55,9 @@ async function load(){
     MAN.columns.forEach(c=> STORE[c.key] = view(c));
     WEIGHT = view(MAN.weight);
     COUNTRIES = MAN.countries;
+    CREGION = new Int8Array(COUNTRIES.length).fill(-1); CINCOME = new Int8Array(COUNTRIES.length).fill(-1);
+    { const cc=STORE['country'], rg=STORE['RegionLRF'], wb=STORE['wbi'];
+      for(let i=0;i<N;i++){ const g=cc[i]; if(g<0) continue; if(CREGION[g]<0 && rg[i]>0) CREGION[g]=rg[i]; if(CINCOME[g]<0 && wb[i]>0) CINCOME[g]=wb[i]; } }
     MAN.dimensions.forEach(d=> DIM[d.key]=d);
     MAN.questions.forEach(q=> Q[q.key]=q);
     MAN.metrics.forEach(m=> M[m.key]=m);
@@ -197,9 +200,9 @@ function buildControls(){
     h+=selectField('c-m1','Metric',mOpts(),ctrl.metric1);
     h+=selectField('c-pcountry','Country',[['','All countries']].concat(COUNTRIES.map((c,i)=>[String(i),c.name])), ctrl.profileCountry==null?'':String(ctrl.profileCountry));
   } else if(activeView==='clusters'){
-    h+=selectField('c-m1','Metric 1 (x)',mOpts(),ctrl.metric1);
-    h+=selectField('c-m2','Metric 2 (y)',mOpts(),ctrl.metric2);
+    h+=selectField('c-clusterby','Cluster by',[['worry','Worry'],['experience','Experience'],['both','Worry + experience']],ctrl.clusterBy);
     h+=selectField('c-k','Clusters (k)',[['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],String(ctrl.k));
+    h+=selectField('c-colour','Colour by',[['cluster','Cluster'],['region','Global region'],['income','Income group']].concat(MAN.metrics.map(m=>['m:'+m.key, m.label])),ctrl.colourBy);
   }
   cb.innerHTML=h;
   const bind=(id,key)=>{ const el=$('#'+id); if(el) el.onchange=()=>{ ctrl[key]=el.value; render(); }; };
@@ -207,6 +210,8 @@ function buildControls(){
   bind('c-m1','metric1'); bind('c-m2','metric2'); bind('c-right','right');
   const pc=$('#c-pcountry'); if(pc) pc.onchange=()=>{ ctrl.profileCountry = pc.value===''?null:+pc.value; render(); };
   const kk=$('#c-k'); if(kk) kk.onchange=()=>{ ctrl.k=+kk.value; render(); };
+  const colb=$('#c-colour'); if(colb) colb.onchange=()=>{ ctrl.colourBy=colb.value; render(); };
+  const clb=$('#c-clusterby'); if(clb) clb.onchange=()=>{ ctrl.clusterBy=clb.value; render(); };
 }
 
 /* ---------- UI: tabs ---------- */
@@ -226,7 +231,7 @@ function toCSV(cols, rows){ const q=v=>{ v=(v==null?'':String(v)); return /[",\n
   return [cols.map(q).join(','), ...rows.map(r=>r.map(q).join(','))].join('\r\n'); }
 function dlBlob(name, blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); }
-function activeSvgEl(){ return document.querySelector({dist:'#dist-chart',map:'#map-svg',rel:'#rel-scatter',sankey:'#sankey-svg',profile:'#profile-svg',clusters:'#cluster-scatter'}[activeView]); }
+function activeSvgEl(){ return document.querySelector({dist:'#dist-chart',map:'#map-svg',rel:'#rel-scatter',sankey:'#sankey-svg',profile:'#profile-svg',clusters:'#cluster-svg'}[activeView]); }
 function svgSerialized(svg){ const c=svg.cloneNode(true); c.setAttribute('xmlns','http://www.w3.org/2000/svg');
   const w=svg.getAttribute('width'), h=svg.getAttribute('height'); if(!c.getAttribute('viewBox') && w) c.setAttribute('viewBox',`0 0 ${w} ${h}`);
   return '<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(c); }
@@ -466,7 +471,12 @@ function kmeans(rows, k, iters){
   return assign;
 }
 function renderClusters(){
-  const FEAT=['climate_very','food_very','water_very','crime_very','weather_very','wildfires_very','air_very','mental_health_very','traffic_very','work_very'].filter(k=>M[k]);
+  const WORRY_F=['climate_very','food_very','water_very','crime_very','weather_very','wildfires_very','air_very','mental_health_very','traffic_very','work_very'];
+  const EXP_F=['exp_food','exp_water','exp_crime','exp_weather','exp_prolonged_weather','exp_wildfires','exp_air','exp_traffic','exp_mental_health','exp_work'];
+  const basis=ctrl.clusterBy||'worry';
+  const FEAT=(basis==='experience'?EXP_F : basis==='both'?WORRY_F.concat(EXP_F) : WORRY_F).filter(k=>M[k]);
+  const basisLabel=basis==='experience'?'experienced-harm' : basis==='both'?'worry & experience' : 'worry';
+  const featLabel=k=>k.replace('_very','').replace(/^exp_/,'');
   const maps=FEAT.map(k=>metricByGroup(M[k],'countrynew'));
   const idxs=[...maps[0].keys()].filter(ix=>maps.every(mp=>mp.has(ix)&&!isNaN(mp.get(ix))));
   const raw=idxs.map(ix=>maps.map(mp=>mp.get(ix)));
@@ -476,34 +486,51 @@ function renderClusters(){
   const z=raw.map(r=>r.map((v,q)=>(v-mu[q])/sd[q]));
   const k=Math.max(2,Math.min(ctrl.k||4, z.length||2)), assign=z.length?kmeans(z,k,40):[];
   const CL=['#e3076e','#00a7b3','#7a50de','#f07800','#00785c','#b07d00'];
-  const m1=M[ctrl.metric1], m2=M[ctrl.metric2], g1=metricByGroup(m1,'countrynew'), g2=metricByGroup(m2,'countrynew');
-  const cw=Math.max(420,($('#cluster-scatter').parentElement.clientWidth)||640), W=cw, H=Math.min(460,Math.max(360,Math.round(cw*0.6))), pad={t:14,r:14,b:40,l:46}, pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
-  const pts=idxs.map((ix,i)=>({ix,cl:assign[i],x:g1.get(ix),y:g2.get(ix)})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
-  const xmax=Math.max(...pts.map(p=>p.x),isMean(m1)?1:100), ymax=Math.max(...pts.map(p=>p.y),isMean(m2)?1:100), X=v=>pad.l+v/xmax*pw, Y=v=>pad.t+ph*(1-v/ymax);
-  let s=`<svg id="cluster-scatter" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
-  for(let t=0;t<=1.0001;t+=0.25){ const gy=Y(t*ymax),gx=X(t*xmax); s+=`<line x1="${pad.l}" y1="${gy}" x2="${W-pad.r}" y2="${gy}" stroke="#eef1f4"/><line x1="${gx}" y1="${pad.t}" x2="${gx}" y2="${H-pad.b}" stroke="#eef1f4"/><text x="${pad.l-6}" y="${gy+3}" font-size="10" fill="#6c6c78" text-anchor="end">${isMean(m2)?(t*ymax).toFixed(1):Math.round(t*ymax)+'%'}</text><text x="${gx}" y="${H-pad.b+14}" font-size="10" fill="#6c6c78" text-anchor="middle">${isMean(m1)?(t*xmax).toFixed(1):Math.round(t*xmax)+'%'}</text>`; }
-  pts.forEach(p=>{ s+=`<circle class="scatter-pt" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4" fill="${CL[p.cl%CL.length]}" fill-opacity="0.82" data-tip="${esc(COUNTRIES[p.ix].name)}" data-sub="Cluster ${p.cl+1} · ${m1.key} ${fmtMetric(m1,p.x)} · ${m2.key} ${fmtMetric(m2,p.y)}"></circle>`; });
-  s+=`<text x="${W/2}" y="${H-3}" font-size="10" fill="#6c6c78" text-anchor="middle">${m1.key}</text></svg>`;
-  $('#cluster-scatter').outerHTML=s;
-  $('#cluster-title').textContent=`Country clusters by worry profile, shown on ${m1.key} × ${m2.key}`;
-  $('#cluster-note').innerHTML=`Countries grouped by how similar their worry profile is across ${FEAT.length} harms (k-means, k=${k}, standardised). Axes are the two metrics you pick; colour is the cluster.`;
+  // similarity map: bubbles pulled toward their cluster centroid, packed by collision (no axes)
+  const REGCOL=['#e3076e','#00a7b3','#7a50de','#f07800','#00785c','#b07d00','#2f6fb5','#d91424','#1aa088','#067acc','#af640c','#0a891f','#bf153d','#8c7500','#6c6c78'];
+  const INCCOL={1:'#0d2240',2:'#2f6fb5',3:'#00a7b3',4:'#e3076e',9:'#bdbdbd'};
+  const cb=ctrl.colourBy||'cluster';
+  const W=Math.max(420,($('#cluster-svg').parentElement.clientWidth)||720), H=520, cx0=W/2, cy0=H/2, Rr=Math.min(W,H)*0.30;
+  const anchors=Array.from({length:k},(_,j)=>({x:cx0+Rr*Math.cos(2*Math.PI*j/k-Math.PI/2), y:cy0+Rr*Math.sin(2*Math.PI*j/k-Math.PI/2)}));
+  const rB=Math.max(5,Math.min(12,Math.sqrt((W*H)/((idxs.length||1)*7))));
+  const nodes=idxs.map((ix,i)=>{ const a=anchors[assign[i]], ang=i*2.399963; return {ix,cl:assign[i],x:a.x+Math.cos(ang)*22,y:a.y+Math.sin(ang)*22}; });
+  d3.forceSimulation(nodes).force('x',d3.forceX(d=>anchors[d.cl].x).strength(0.25)).force('y',d3.forceY(d=>anchors[d.cl].y).strength(0.25))
+    .force('collide',d3.forceCollide(rB+1.3)).force('charge',d3.forceManyBody().strength(-4)).stop().tick(280);
+  const regLabel=c=>{ const x=(DIM['GlobalRegion'].cats||[]).find(z=>z.code===c); return x?x.label:''; };
+  let colourOf, legendHTML='', tipExtra=()=>'';
+  if(cb==='region'){ const present=[...new Set(nodes.map(n=>CREGION[n.ix]).filter(c=>c>0))].sort((a,b)=>a-b);
+    colourOf=n=>{ const c=CREGION[n.ix]; return c>0?REGCOL[(c-1)%REGCOL.length]:'#e9e9ee'; };
+    legendHTML=present.map(c=>`<span class="k"><span class="sw" style="background:${REGCOL[(c-1)%REGCOL.length]}"></span>${esc(regLabel(c))}</span>`).join(''); }
+  else if(cb==='income'){ const cats=DIM['CountryIncome'].cats||[], present=new Set(nodes.map(n=>CINCOME[n.ix]).filter(c=>c>0));
+    colourOf=n=>{ const c=CINCOME[n.ix]; return INCCOL[c]||'#e9e9ee'; };
+    legendHTML=cats.filter(c=>present.has(c.code)).map(c=>`<span class="k"><span class="sw" style="background:${INCCOL[c.code]||'#ccc'}"></span>${esc(c.label)}</span>`).join(''); }
+  else if(cb.startsWith('m:')){ const m=M[cb.slice(2)], vb=metricByGroup(m,'countrynew'), vals=[...vb.values()].filter(v=>!isNaN(v)), lo=Math.min(...vals), hi=Math.max(...vals);
+    colourOf=n=>{ const v=vb.get(n.ix); return (v==null||isNaN(v))?'#e9e9ee':rampColor(MAP_RAMP,(v-lo)/(hi-lo||1)); };
+    tipExtra=n=>` · ${m.key} ${fmtMetric(m,vb.get(n.ix))}`;
+    legendHTML=`<span class="k">${fmtMetric(m,lo)}</span><span class="sw" style="width:150px;height:12px;border-radius:2px;background:linear-gradient(to right,${MAP_RAMP.join(',')})"></span><span class="k">${fmtMetric(m,hi)}</span>`; }
+  else { colourOf=n=>CL[n.cl%CL.length]; legendHTML=Array.from({length:k},(_,j)=>`<span class="k"><span class="sw" style="background:${CL[j%CL.length]}"></span>Cluster ${j+1}</span>`).join(''); }
+  let s=`<svg id="cluster-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
+  nodes.forEach(n=>{ const reg=CREGION[n.ix]>0?regLabel(CREGION[n.ix]):''; s+=`<circle class="scatter-pt" cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${rB.toFixed(1)}" fill="${colourOf(n)}" fill-opacity="0.88" data-tip="${esc(COUNTRIES[n.ix].name)}" data-sub="Cluster ${n.cl+1}${reg?' · '+esc(reg):''}${tipExtra(n)}"/>`; });
+  s+='</svg>'; $('#cluster-svg').outerHTML=s; $('#cluster-legend').innerHTML=legendHTML;
+  $('#cluster-title').textContent=`Country clusters by ${basisLabel} profile — coloured by ${cb==='cluster'?'cluster':cb==='region'?'global region':cb==='income'?'income group':M[cb.slice(2)].key}`;
+  $('#cluster-note').innerHTML=`Bubbles that sit together share a similar ${basisLabel} profile across ${FEAT.length} indicators (k-means, k=${k}, standardised). Position reflects similarity — there are no axes. Use “Cluster by” to switch the basis, and “Colour by” to overlay region, income group or any response.`;
   const byCl=Array.from({length:k},()=>[]); idxs.forEach((ix,i)=>byCl[assign[i]].push(i));
   let html='<div class="sec-label">Clusters</div>';
   byCl.forEach((members,ci)=>{ if(!members.length) return;
     const mz=new Array(d).fill(0); members.forEach(i=>z[i].forEach((v,q)=>mz[q]+=v)); for(let q=0;q<d;q++) mz[q]/=members.length;
-    const hi=mz.map((v,q)=>[q,v]).sort((a,b)=>b[1]-a[1]).slice(0,2).map(o=>FEAT[o[0]].replace('_very','')).join(', ');
+    const hi=mz.map((v,q)=>[q,v]).sort((a,b)=>b[1]-a[1]).slice(0,2).map(o=>featLabel(FEAT[o[0]])).join(', ');
     const names=members.map(i=>COUNTRIES[idxs[i]].name).sort();
-    html+=`<div style="margin-bottom:0.85rem"><div style="font-weight:700;color:#0d2240"><span class="dot" style="background:${CL[ci%CL.length]}"></span> Cluster ${ci+1} <span style="color:#6c6c78;font-weight:500">· ${members.length} countries · highest worry: ${esc(hi)}</span></div><div style="font-size:12px;color:#2a2a35;line-height:1.5;margin-top:2px">${names.map(esc).join(', ')}</div></div>`; });
+    html+=`<div style="margin-bottom:0.85rem"><div style="font-weight:700;color:#0d2240"><span class="dot" style="background:${CL[ci%CL.length]}"></span> Cluster ${ci+1} <span style="color:#6c6c78;font-weight:500">· ${members.length} countries · stands out: ${esc(hi)}</span></div><div style="font-size:12px;color:#2a2a35;line-height:1.5;margin-top:2px">${names.map(esc).join(', ')}</div></div>`; });
   html += `<div class="explain" style="margin-top:0.7rem;border-top:1px solid var(--lrf-line);padding-top:0.85rem">
     <h4>What this shows</h4>
-    <p>Each country is sorted into one of ${k} groups so that countries in the same group have the most <b>similar pattern of worries</b> across the ${FEAT.length} harms — not who worries most overall, but the <i>shape</i> of their concern: which harms stand out for them relative to the rest.</p>
+    <p>Each country is sorted into one of ${k} groups so that countries in the same group have the most <b>similar ${basisLabel} pattern</b> across the ${FEAT.length} indicators — not who scores highest overall, but the <i>shape</i> of their responses: which items stand out for them relative to the rest. Use <b>Cluster by</b> to base the grouping on worry, experienced harm, or both.</p>
     <h4>How to read it</h4>
-    <p>Countries with the <b>same colour</b> have a similar worry profile. The dots are placed using the two metrics you chose at the top, but the grouping itself uses all ${FEAT.length} harms together — so two same‑colour dots can sit apart on these axes yet still be alike across the wider picture. "Highest worry" names the harms that most define each group.</p>
+    <p>Each bubble is a country, and bubbles that <b>sit together</b> have a similar ${basisLabel} profile — the layout uses all ${FEAT.length} indicators at once, so there are no axes and position only reflects similarity. By default colour marks the group; switch <b>Colour by</b> to shade the bubbles by region, income group or any response, to see whether the worry‑groups line up with those.</p>
     <h4>Keep in mind</h4>
-    <p>This is a way of <b>describing</b> the data, not a ranking or a verdict — the groups have no order, and a country near a boundary could reasonably belong to either side. Figures are standardised, so groups reflect <b>relative</b> patterns, not absolute levels. Change the number of groups, the metrics, or any filter above and the grouping is recalculated from scratch.</p>
+    <p>This is a way of <b>describing</b> the data, not a ranking or a verdict — the groups have no order, and a country near the edge of a blob could reasonably belong to either side. Figures are standardised, so groups reflect <b>relative</b> patterns, not absolute levels. Change the number of groups or any filter above and the grouping is recalculated; the colour overlay updates instantly.</p>
   </div>`;
   $('#cluster-list').innerHTML=html;
-  lastExport={ name:`wrp_clusters_k${k}`, cols:['Country','ISO3','cluster',...FEAT], rows:idxs.map((ix,i)=>[COUNTRIES[ix].name, COUNTRIES[ix].iso3||'', assign[i]+1, ...raw[i].map(v=>v.toFixed(1))]) };
+  lastExport={ name:`wrp_clusters_${basis}_k${k}`, cols:['Country','ISO3','cluster',...FEAT], rows:idxs.map((ix,i)=>[COUNTRIES[ix].name, COUNTRIES[ix].iso3||'', assign[i]+1, ...raw[i].map(v=>v.toFixed(1))]) };
 }
 
 load();
