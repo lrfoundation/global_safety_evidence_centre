@@ -15,6 +15,12 @@ const ctrl = { question:'climate', breakdown1:'countrynew', breakdown2:'countryn
                metric1:'climate_very', metric2:'climate_other_very', right:'climate_other', sort:'metric1' };
 let activeView = 'dist';
 
+function activeFilterCount(){ return Object.keys(filters).filter(k=>filters[k]&&filters[k].size).length; }
+function updateFilterToggle(){ const fp=document.querySelector('.filters'), tf=$('#toggle-filters'); if(!fp||!tf) return;
+  const c=fp.classList.contains('collapsed'), n=activeFilterCount();
+  tf.textContent = c ? ('Show filters'+(n?` (${n})`:'')+' ▾') : 'Hide filters ▴'; }
+let _rt; window.addEventListener('resize', ()=>{ clearTimeout(_rt); _rt=setTimeout(()=>{ if(typeof MAN!=='undefined' && MAN) render(); }, 160); });
+
 /* ---------- load ---------- */
 async function load(){
   try{
@@ -134,6 +140,10 @@ function buildFilters(){
     document.querySelectorAll('.filt-pop input').forEach(cb=>cb.checked=false);
     document.querySelectorAll('.filt-btn').forEach(b=>{ b.classList.remove('on'); b.querySelector('.fv').textContent='All'; });
     computeRows(); render(); };
+  const fp=document.querySelector('.filters');
+  $('#toggle-filters').onclick=()=>{ fp.classList.toggle('collapsed'); updateFilterToggle(); };
+  if(window.innerWidth<760) fp.classList.add('collapsed');
+  updateFilterToggle();
   document.addEventListener('click', ()=>document.querySelectorAll('.filt-pop').forEach(p=>p.classList.add('hidden')));
 }
 
@@ -180,7 +190,7 @@ function buildTabs(){
 }
 
 /* ---------- render dispatch ---------- */
-function render(){ buildControls();
+function render(){ buildControls(); updateFilterToggle();
   if(activeView==='dist') renderDist();
   else if(activeView==='map') renderMap();
   else if(activeView==='rel') renderRel();
@@ -198,8 +208,9 @@ function renderDist(){
   // legend
   $('#dist-legend').innerHTML = q.answers.map(a=>`<span class="k"><span class="sw" style="background:${a.color}"></span>${a.label}</span>`).join('');
   // chart
-  const svg=$('#dist-chart'); const H=420, pad={t:8,r:8,b:96,l:34};
-  const barW=Math.max(7, Math.min(60, Math.floor(900/Math.max(1,keys.length))));
+  const svg=$('#dist-chart'); const H=460, pad={t:8,r:8,b:96,l:34};
+  const cw=Math.max(360, (svg.parentElement && svg.parentElement.clientWidth) || 760);
+  const barW=Math.max(2, Math.min(56, Math.floor((cw-pad.l-pad.r)/Math.max(1,keys.length))));
   const W=pad.l+pad.r+keys.length*barW; const plotH=H-pad.t-pad.b;
   let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="DM Sans, system-ui, sans-serif" xmlns="http://www.w3.org/2000/svg">`;
   for(let p=0;p<=100;p+=25){ const y=pad.t+plotH*(1-p/100); s+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="#e4e4ea"/><text x="${pad.l-6}" y="${y+3}" font-size="10" fill="#6c6c78" text-anchor="end">${p}%</text>`; }
@@ -216,7 +227,7 @@ function renderDist(){
     return `<tr><td class="rank">${i+1}</td><td class="name">${esc(groupLabel(bd,g))}</td>`+
       `<td class="num heat" style="background:${rampColor(HEAT1,(v1||0)/max1)};color:${(v1||0)/max1>0.6?'#fff':'#1b222c'}">${fmtMetric(m1,v1)}</td>`+
       `<td class="num heat" style="background:${rampColor(HEAT2,(v2||0)/max2)};color:${(v2||0)/max2>0.5?'#fff':'#1b222c'}">${fmtMetric(m2,v2)}</td></tr>`; }).join('');
-  $('#dist-table-card').innerHTML = `<div class="sec-label">Ranking</div><div style="max-height:440px;overflow:auto"><table class="dt"><thead><tr><th></th><th>${DIM[bd].label}</th><th class="num">${shortMetric(m1)}</th><th class="num">${shortMetric(m2)}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  $('#dist-table-card').innerHTML = `<div class="sec-label">Ranking</div><div class="tbl-scroll"><table class="dt"><thead><tr><th class="rank"></th><th>${DIM[bd].label}</th><th class="num">${shortMetric(m1)}</th><th class="num">${shortMetric(m2)}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 const shortMetric = m => m.key;
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -253,7 +264,7 @@ async function renderMap(){
   const rows=keys.map((g,i)=>`<tr><td class="rank">${i+1}</td><td class="name">${esc(COUNTRIES[g].name)}</td>`+
      `<td class="num heat" style="background:${rampColor(HEAT1,(byIdx.get(g)||0)/max1)};color:${(byIdx.get(g)||0)/max1>0.6?'#fff':'#1b222c'}">${fmtMetric(m1,byIdx.get(g))}</td>`+
      `<td class="num heat" style="background:${rampColor(HEAT2,(g2.get(g)||0)/max2)};color:${(g2.get(g)||0)/max2>0.5?'#fff':'#1b222c'}">${fmtMetric(m2,g2.get(g))}</td></tr>`).join('');
-  $('#map-table-card').innerHTML=`<div class="sec-label">Ranking</div><div style="max-height:440px;overflow:auto"><table class="dt"><thead><tr><th></th><th>Country</th><th class="num">${m1.key}</th><th class="num">${m2.key}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  $('#map-table-card').innerHTML=`<div class="sec-label">Ranking</div><div class="tbl-scroll"><table class="dt"><thead><tr><th class="rank"></th><th>Country</th><th class="num">${m1.key}</th><th class="num">${m2.key}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 /* ---------- View 3: relationship ---------- */
@@ -262,7 +273,8 @@ function renderRel(){
   const g1=metricByGroup(m1,bd), g2=metricByGroup(m2,bd);
   const pts=[...g1.keys()].filter(g=>g2.has(g)).map(g=>({g,x:g1.get(g),y:g2.get(g)})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
   $('#rel-title').textContent = `${m1.key} (x) vs ${m2.key} (y) — by ${DIM[bd].label}`;
-  const W=640,H=440,pad={t:14,r:14,b:40,l:46}; const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  const cw=Math.max(420, ($('#rel-scatter').parentElement.clientWidth)||640);
+  const W=cw, H=Math.min(460, Math.max(360, Math.round(cw*0.6))), pad={t:14,r:14,b:40,l:46}; const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
   const xmax=Math.max(...pts.map(p=>p.x),isMean(m1)?1:100), ymax=Math.max(...pts.map(p=>p.y),isMean(m2)?1:100);
   const X=v=>pad.l+v/xmax*pw, Y=v=>pad.t+ph*(1-v/ymax);
   let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
@@ -283,15 +295,17 @@ function renderRel(){
   const odds=keys.map(g=>{ const p1=(g1.get(g)||0)/(isMean(m1)?1:100), p2=(g2.get(g)||0)/(isMean(m2)?1:100);
     const o1=p1/(1-p1||1e-9), o2=p2/(1-p2||1e-9); return {g, ratio:(o2>0?o1/o2:NaN), p1,p2}; }).filter(o=>!isNaN(o.ratio)&&isFinite(o.ratio));
   odds.sort((a,b)=>b.ratio-a.ratio);
-  const OW=Math.max(640,odds.length*9+60),OH=240,opad={t:8,r:8,b:60,l:30}; const oph=OH-opad.t-opad.b; const omax=Math.max(...odds.map(o=>o.ratio),1);
-  const obw=Math.max(6,Math.min(22,Math.floor((OW-opad.l-opad.r)/Math.max(1,odds.length))));
-  let os=`<svg width="${opad.l+opad.r+odds.length*obw}" height="${OH}" viewBox="0 0 ${opad.l+opad.r+odds.length*obw} ${OH}" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
+  const ocw=Math.max(360, ($('#rel-odds').parentElement.clientWidth)||760);
+  const OH=240,opad={t:8,r:8,b:60,l:30}; const oph=OH-opad.t-opad.b; const omax=Math.max(...odds.map(o=>o.ratio),1);
+  const obw=Math.max(2,Math.min(22,Math.floor((ocw-opad.l-opad.r)/Math.max(1,odds.length))));
+  const OW=opad.l+opad.r+odds.length*obw;
+  let os=`<svg width="${OW}" height="${OH}" viewBox="0 0 ${OW} ${OH}" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
   [0,1,2,3,4,5].forEach(v=>{ if(v>omax+0.5)return; const y=opad.t+oph*(1-v/omax); os+=`<line x1="${opad.l}" y1="${y}" x2="${opad.l+odds.length*obw}" y2="${y}" stroke="${v===1?'#0d2240':'#eef1f4'}"/><text x="${opad.l-5}" y="${y+3}" font-size="9" fill="#6c6c78" text-anchor="end">${v}</text>`; });
   odds.forEach((o,i)=>{ const x=opad.l+i*obw, h=o.ratio/omax*oph, y=opad.t+oph-h; os+=`<rect x="${x+0.5}" y="${y.toFixed(1)}" width="${obw-1}" height="${h.toFixed(1)}" fill="#e3076e"><title>${esc(groupLabel(bd,o.g))}: OR ${o.ratio.toFixed(1)}</title></rect>`;
     if(i%Math.ceil(odds.length/40)===0){ const lx=x+obw/2,ly=OH-opad.b+8; os+=`<text x="${lx}" y="${ly}" font-size="8" fill="#2a2a35" text-anchor="end" transform="rotate(-55 ${lx} ${ly})">${esc(groupLabel(bd,o.g).slice(0,16))}</text>`; } });
   os+='</svg>'; $('#rel-odds').outerHTML=os.replace('<svg','<svg id="rel-odds"');
   const otab=odds.map(o=>`<tr><td class="name">${esc(groupLabel(bd,o.g))}</td><td class="num">${(o.p2*100).toFixed(1)}%</td><td class="num heat" style="background:${rampColor(HEAT2,o.ratio/omax)};color:${o.ratio/omax>0.5?'#fff':'#1b222c'}">${o.ratio.toFixed(1)}</td><td class="num">${(o.p1*100).toFixed(1)}%</td></tr>`).join('');
-  $('#odds-table-card').innerHTML=`<div style="max-height:300px;overflow:auto"><table class="dt"><thead><tr><th>${DIM[bd].label}</th><th class="num">${m2.key}</th><th class="num">ratio</th><th class="num">${m1.key}</th></tr></thead><tbody>${otab}</tbody></table></div>`;
+  $('#odds-table-card').innerHTML=`<div class="tbl-scroll"><table class="dt"><thead><tr><th>${DIM[bd].label}</th><th class="num">${m2.key}</th><th class="num">ratio</th><th class="num">${m1.key}</th></tr></thead><tbody>${otab}</tbody></table></div>`;
   $('#odds-explain').innerHTML=`<p class="muted-note"><b>Understanding the odds ratio.</b> How many times more likely a metric-1 response is versus a metric-2 response. 1.0 = balanced; the further from 1.0, the greater the disharmony between the two response groups.</p>`;
 }
 
@@ -306,7 +320,8 @@ function renderSankey(){
   qb.answers.forEach(a=>{ nidx.set('R:'+a.code, nodes.length); nodes.push({name:'Most others — '+a.label, color:a.color}); });
   const links=[]; m.forEach((w,k)=>{ const [x,y]=k.split('|'); const si=nidx.get('L:'+x), ti=nidx.get('R:'+y); if(si==null||ti==null) return; links.push({source:si,target:ti,value:w}); });
   const svg=d3.select('#sankey-svg'); svg.selectAll('*').remove();
-  const W=640,H=460; svg.attr('width',W).attr('height',H).attr('viewBox',`0 0 ${W} ${H}`).attr('font-family','DM Sans,system-ui,sans-serif');
+  const W=Math.max(420, (document.getElementById('sankey-svg').parentElement.clientWidth)||760), H=460;
+  svg.attr('width',W).attr('height',H).attr('viewBox',`0 0 ${W} ${H}`).attr('font-family','DM Sans,system-ui,sans-serif');
   if(!links.length||!window.d3 || !d3.sankey){ svg.append('text').attr('x',W/2).attr('y',H/2).attr('text-anchor','middle').attr('fill','#6c6c78').text('No data for this pair'); }
   else{
     const sk=d3.sankey().nodeWidth(14).nodePadding(12).extent([[6,10],[W-6,H-10]]);
@@ -321,7 +336,7 @@ function renderSankey(){
   const rows=[...m.entries()].map(([k,w])=>{ const [x,y]=k.split('|'); return {x:+x,y:+y,pct:total?w/total*100:0}; }).sort((a,b)=>b.pct-a.pct);
   const lab=(ans,c)=>{ const a=ans.find(z=>z.code===c); return a?a.label:c; };
   const tb=rows.map(r=>`<tr><td>${esc(lab(qb.answers,r.y))}</td><td>${esc(lab(qa.answers,r.x))}</td><td class="num heat" style="background:${rampColor(HEAT1,r.pct/(rows[0].pct||1))};color:${r.pct/(rows[0].pct||1)>0.6?'#fff':'#1b222c'}">${r.pct.toFixed(1)}%</td></tr>`).join('');
-  $('#sankey-table-card').innerHTML=`<div class="sec-label">Crosstab</div><div style="max-height:440px;overflow:auto"><table class="dt"><thead><tr><th>Most others</th><th>This person</th><th class="num">% resp.</th></tr></thead><tbody>${tb}</tbody></table></div>`;
+  $('#sankey-table-card').innerHTML=`<div class="sec-label">Crosstab</div><div class="tbl-scroll"><table class="dt"><thead><tr><th>Most others</th><th>This person</th><th class="num">% resp.</th></tr></thead><tbody>${tb}</tbody></table></div>`;
 }
 
 load();
