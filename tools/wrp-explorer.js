@@ -12,7 +12,8 @@ let MAN, N, WEIGHT, STORE = {}, DIM = {}, Q = {}, M = {}, COUNTRIES = [];
 let ROWS = null; // current passing row indices (null = all)
 const filters = {};           // dimKey -> Set(codes)
 const ctrl = { question:'climate', breakdown1:'countrynew', breakdown2:'countrynew',
-               metric1:'climate_very', metric2:'climate_other_very', right:'climate_other', sort:'metric1' };
+               metric1:'climate_very', metric2:'climate_other_very', right:'climate_other', sort:'metric1',
+               profileCountry:null, k:4 };
 let activeView = 'dist';
 
 function activeFilterCount(){ return Object.keys(filters).filter(k=>filters[k]&&filters[k].size).length; }
@@ -60,6 +61,7 @@ async function load(){
     $('#status').classList.add('hidden');
     $('#app').classList.remove('hidden');
     buildFilters(); buildTabs(); render(); observeResize();
+    $('#dl-svg').onclick = dlChartSVG; $('#dl-png').onclick = dlChartPNG; $('#dl-csv').onclick = dlCSV;
   }catch(e){
     const s=$('#status'); s.classList.add('err'); s.textContent='Could not load the dataset ('+e.message+'). Run build_explorer_data.py and serve the tools folder.';
   }
@@ -191,11 +193,20 @@ function buildControls(){
   } else if(activeView==='sankey'){
     h+=selectField('c-question','Question (left)',qOpts(),ctrl.question);
     h+=selectField('c-right','Question (right)',qOpts(),ctrl.right);
+  } else if(activeView==='profile'){
+    h+=selectField('c-m1','Metric',mOpts(),ctrl.metric1);
+    h+=selectField('c-pcountry','Country',[['','All countries']].concat(COUNTRIES.map((c,i)=>[String(i),c.name])), ctrl.profileCountry==null?'':String(ctrl.profileCountry));
+  } else if(activeView==='clusters'){
+    h+=selectField('c-m1','Metric 1 (x)',mOpts(),ctrl.metric1);
+    h+=selectField('c-m2','Metric 2 (y)',mOpts(),ctrl.metric2);
+    h+=selectField('c-k','Clusters (k)',[['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],String(ctrl.k));
   }
   cb.innerHTML=h;
   const bind=(id,key)=>{ const el=$('#'+id); if(el) el.onchange=()=>{ ctrl[key]=el.value; render(); }; };
   bind('c-question','question'); bind('c-bd1','breakdown1'); bind('c-bd2','breakdown2');
   bind('c-m1','metric1'); bind('c-m2','metric2'); bind('c-right','right');
+  const pc=$('#c-pcountry'); if(pc) pc.onchange=()=>{ ctrl.profileCountry = pc.value===''?null:+pc.value; render(); };
+  const kk=$('#c-k'); if(kk) kk.onchange=()=>{ ctrl.k=+kk.value; render(); };
 }
 
 /* ---------- UI: tabs ---------- */
@@ -208,12 +219,35 @@ function buildTabs(){
   });
 }
 
+/* ---------- downloads: chart (SVG/PNG) + aggregated data (CSV) ---------- */
+let lastExport = null;   // {name, cols, rows} set by each render
+function csvNum(m, v){ if(v==null || isNaN(v)) return ''; return isMean(m) ? v.toFixed(3) : v.toFixed(1); }
+function toCSV(cols, rows){ const q=v=>{ v=(v==null?'':String(v)); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  return [cols.map(q).join(','), ...rows.map(r=>r.map(q).join(','))].join('\r\n'); }
+function dlBlob(name, blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); }
+function activeSvgEl(){ return document.querySelector({dist:'#dist-chart',map:'#map-svg',rel:'#rel-scatter',sankey:'#sankey-svg',profile:'#profile-svg',clusters:'#cluster-scatter'}[activeView]); }
+function svgSerialized(svg){ const c=svg.cloneNode(true); c.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const w=svg.getAttribute('width'), h=svg.getAttribute('height'); if(!c.getAttribute('viewBox') && w) c.setAttribute('viewBox',`0 0 ${w} ${h}`);
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(c); }
+function svgWH(svg){ const vb=(svg.getAttribute('viewBox')||'').split(/[ ,]+/).map(Number); if(vb.length===4 && vb[2]) return [vb[2],vb[3]];
+  const r=svg.getBoundingClientRect(); return [Math.max(1,r.width),Math.max(1,r.height)]; }
+function baseName(){ return (lastExport && lastExport.name) || ('wrp_'+activeView); }
+function dlChartSVG(){ const svg=activeSvgEl(); if(svg) dlBlob(baseName()+'.svg', new Blob([svgSerialized(svg)],{type:'image/svg+xml'})); }
+function dlChartPNG(){ const svg=activeSvgEl(); if(!svg) return; const wh=svgWH(svg), scale=2, img=new Image();
+  img.onload=()=>{ const cv=document.createElement('canvas'); cv.width=wh[0]*scale; cv.height=wh[1]*scale; const ctx=cv.getContext('2d');
+    ctx.setTransform(scale,0,0,scale,0,0); ctx.fillStyle='#fff'; ctx.fillRect(0,0,wh[0],wh[1]); ctx.drawImage(img,0,0); cv.toBlob(b=>dlBlob(baseName()+'.png', b)); };
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgSerialized(svg)); }
+function dlCSV(){ if(!lastExport) return; dlBlob(baseName()+'.csv', new Blob(['﻿'+toCSV(lastExport.cols, lastExport.rows)],{type:'text/csv;charset=utf-8'})); }
+
 /* ---------- render dispatch ---------- */
 function render(){ buildControls(); updateFilterToggle();
   if(activeView==='dist') renderDist();
   else if(activeView==='map') renderMap();
   else if(activeView==='rel') renderRel();
   else if(activeView==='sankey') renderSankey();
+  else if(activeView==='profile') renderProfile();
+  else if(activeView==='clusters') renderClusters();
 }
 
 /* ---------- View 1: ranked distribution ---------- */
@@ -247,6 +281,9 @@ function renderDist(){
       `<td class="num heat" style="background:${rampColor(HEAT1,(v1||0)/max1)};color:${(v1||0)/max1>0.6?'#fff':'#1b222c'}">${fmtMetric(m1,v1)}</td>`+
       `<td class="num heat" style="background:${rampColor(HEAT2,(v2||0)/max2)};color:${(v2||0)/max2>0.5?'#fff':'#1b222c'}">${fmtMetric(m2,v2)}</td></tr>`; }).join('');
   $('#dist-table-card').innerHTML = `<div class="sec-label">Ranking</div><div class="tbl-scroll"><table class="dt"><thead><tr><th class="rank"></th><th>${DIM[bd].label}</th><th class="num">${shortMetric(m1)}</th><th class="num">${shortMetric(m2)}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  lastExport = { name:`wrp_${ctrl.question}_by_${bd}`,
+    cols:[DIM[bd].label, ...q.answers.map(a=>a.label+' (%)'), m1.key+' (%)', m2.key],
+    rows: keys.map(g=>{ const e=groups.get(g); return [groupLabel(bd,g), ...q.answers.map(a=>(e.total?(e.counts.get(a.code)||0)/e.total*100:0).toFixed(1)), csvNum(m1,g1.get(g)), csvNum(m2,g2.get(g))]; }) };
 }
 const shortMetric = m => m.key;
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -270,7 +307,7 @@ async function renderMap(){
   else{
     const W=720,H=380, proj=d3.geoNaturalEarth1().fitExtent([[6,6],[W-6,H-6]],{type:'Sphere'}), path=d3.geoPath(proj);
     const vals=[...iso2val.values()].filter(v=>!isNaN(v)); const lo=Math.min(...vals), hi=Math.max(...vals);
-    svg.append('path').attr('class','map-sphere').attr('d',path({type:'Sphere'}));
+    svg.append('path').attr('class','map-sphere').attr('fill','#eef1f4').attr('d',path({type:'Sphere'}));
     svg.selectAll('path.c').data(world.features.filter(f=>pad3(f.id)!=='010')).enter().append('path')
       .attr('d',path).attr('class',f=>{ const iso=NUM2A3[pad3(f.id)]; return iso2val.has(iso)?'map-land':'map-land-nodata'; })
       .attr('fill',f=>{ const iso=NUM2A3[pad3(f.id)]; if(!iso2val.has(iso)) return '#fff'; return rampColor(MAP_RAMP,(iso2val.get(iso)-lo)/(hi-lo||1)); })
@@ -285,6 +322,8 @@ async function renderMap(){
      `<td class="num heat" style="background:${rampColor(HEAT1,(byIdx.get(g)||0)/max1)};color:${(byIdx.get(g)||0)/max1>0.6?'#fff':'#1b222c'}">${fmtMetric(m1,byIdx.get(g))}</td>`+
      `<td class="num heat" style="background:${rampColor(HEAT2,(g2.get(g)||0)/max2)};color:${(g2.get(g)||0)/max2>0.5?'#fff':'#1b222c'}">${fmtMetric(m2,g2.get(g))}</td></tr>`).join('');
   $('#map-table-card').innerHTML=`<div class="sec-label">Ranking</div><div class="tbl-scroll"><table class="dt"><thead><tr><th class="rank"></th><th>Country</th><th class="num">${m1.key}</th><th class="num">${m2.key}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  lastExport = { name:`wrp_map_${ctrl.metric1}`, cols:['Country','ISO3', m1.key, m2.key],
+    rows: keys.map(g=>[COUNTRIES[g].name, COUNTRIES[g].iso3||'', csvNum(m1,byIdx.get(g)), csvNum(m2,g2.get(g))]) };
 }
 
 /* ---------- View 3: relationship ---------- */
@@ -335,6 +374,9 @@ function renderRel(){
     return `<tr><td class="name">${esc(groupLabel(bd,o.g))}</td><td class="num">${(o.p2*100).toFixed(1)}%</td><td class="num heat" style="background:${rampColor(up?['#ffffff',UP]:['#ffffff',DOWN],tt)};color:${tt>0.6?'#fff':'#1b222c'}">${o.ratio.toFixed(2)}</td><td class="num">${(o.p1*100).toFixed(1)}%</td></tr>`; }).join('');
   $('#odds-table-card').innerHTML=`<div class="tbl-scroll"><table class="dt"><thead><tr><th>${DIM[bd].label}</th><th class="num">${m2.key}</th><th class="num">ratio</th><th class="num">${m1.key}</th></tr></thead><tbody>${otab}</tbody></table></div>`;
   $('#odds-explain').innerHTML=`<p class="muted-note"><b>Understanding the odds ratio.</b> How many times more likely a <b>${m1.key}</b> response is versus a <b>${m2.key}</b> response. <span style="color:${UP};font-weight:700">Above 1</span> = ${m1.key} more likely; <span style="color:${DOWN};font-weight:700">below 1</span> = ${m2.key} more likely; 1.0 = balanced. Plotted on a log scale, so 2× and ½× sit equal distances from the baseline.</p>`;
+  lastExport = { name:`wrp_rel_${ctrl.metric1}_vs_${ctrl.metric2}`,
+    cols:[DIM[bd].label, m1.key+' (%)', m2.key+' (%)', 'odds_ratio'],
+    rows: odds.map(o=>[groupLabel(bd,o.g), (o.p1*100).toFixed(1), (o.p2*100).toFixed(1), o.ratio.toFixed(3)]) };
 }
 
 /* ---------- View 4: sankey ---------- */
@@ -356,9 +398,11 @@ function renderSankey(){
     const graph=sk({nodes:nodes.map(d=>Object.assign({},d)), links:links.map(d=>Object.assign({},d))});
     svg.append('g').selectAll('path').data(graph.links).enter().append('path').attr('class','sankey-link')
       .attr('d',d3.sankeyLinkHorizontal()).attr('stroke',d=>d.source.color).attr('stroke-width',d=>Math.max(1,d.width))
+      .attr('fill','none').attr('stroke-opacity',0.45)
       .attr('data-tip',d=>d.source.name+' → '+d.target.name).attr('data-sub',d=>(total?(d.value/total*100).toFixed(1):'0')+'% of respondents');
     const node=svg.append('g').selectAll('g').data(graph.nodes).enter().append('g').attr('class','sankey-node');
     node.append('rect').attr('x',d=>d.x0).attr('y',d=>d.y0).attr('width',d=>d.x1-d.x0).attr('height',d=>Math.max(1,d.y1-d.y0)).attr('fill',d=>d.color)
+      .attr('stroke','#fff').attr('stroke-width',1)
       .attr('data-tip',d=>d.name).attr('data-sub',d=> total? (d.value/total*100).toFixed(1)+'% of respondents':'');
     node.append('text').attr('class','sankey-label').attr('x',d=>d.x0<W/2?d.x1+5:d.x0-5).attr('y',d=>(d.y0+d.y1)/2).attr('dy','0.35em').attr('text-anchor',d=>d.x0<W/2?'start':'end').text(d=>d.name.replace(/^.*— /,''));
   }
@@ -367,6 +411,99 @@ function renderSankey(){
   const lab=(ans,c)=>{ const a=ans.find(z=>z.code===c); return a?a.label:c; };
   const tb=rows.map(r=>`<tr><td>${esc(lab(qb.answers,r.y))}</td><td>${esc(lab(qa.answers,r.x))}</td><td class="num heat" style="background:${rampColor(HEAT1,r.pct/(rows[0].pct||1))};color:${r.pct/(rows[0].pct||1)>0.6?'#fff':'#1b222c'}">${r.pct.toFixed(1)}%</td></tr>`).join('');
   $('#sankey-table-card').innerHTML=`<div class="sec-label">Crosstab</div><div class="tbl-scroll"><table class="dt"><thead><tr><th>Most others</th><th>This person</th><th class="num">% resp.</th></tr></thead><tbody>${tb}</tbody></table></div>`;
+  lastExport = { name:`wrp_sankey_${ctrl.question}_to_${ctrl.right}`,
+    cols:[qa.label, qb.label, '% respondents'],
+    rows: rows.map(r=>[lab(qa.answers,r.x), lab(qb.answers,r.y), r.pct.toFixed(2)]) };
+}
+
+/* ---------- View 5: demographic profile ---------- */
+function profileAgg(metric, dimCol, countryIdx){
+  const bd=dimCol?col(dimCol):null, cc=col('country'), w=WEIGHT, mean=isMean(metric), arr=col(metric.col), num=mean?null:new Set(metric.num), agg=new Map();
+  forEachRow(i=>{ if(countryIdx!=null && cc[i]!==countryIdx) return; const a=arr[i]; if(a<0) return; const g=bd?bd[i]:0; if(bd && g<0) return;
+    let e=agg.get(g); if(!e){e=[0,0,0]; agg.set(g,e);} const wi=w[i]; e[1]+=wi; e[2]++; if(mean) e[0]+=wi*(a/100); else if(num.has(a)) e[0]+=wi; });
+  return agg; }
+function aggVal(e, mean){ return (e && e[1]) ? (mean ? e[0]/e[1] : e[0]/e[1]*100) : NaN; }
+function renderProfile(){
+  const m=M[ctrl.metric1], mean=isMean(m), ci=ctrl.profileCountry;
+  const dimKeys=['gender','age_5','income_quintiles','education','urban_rural','employment'].filter(k=>DIM[k]);
+  const oe=profileAgg(m,null,ci).get(0), overall=aggVal(oe,mean);
+  const data=dimKeys.map(k=>{ const d=DIM[k], agg=profileAgg(m,d.col,ci);
+    const cats=(d.cats||[]).map(c=>{ const e=agg.get(c.code); return {label:c.label, v:aggVal(e,mean), n:e?e[2]:0}; }).filter(c=>!isNaN(c.v));
+    return {label:d.label, cats}; });
+  let maxV=overall||0; data.forEach(d=>d.cats.forEach(c=>{ if(c.v>maxV) maxV=c.v; }));
+  if(!isFinite(maxV)||maxV<=0) maxV=mean?1:100; maxV*=1.12;
+  const cols=2, cellW=360, labW=120, barMax=cellW-labW-50, pad=14;
+  const cellH=28+Math.max(...data.map(d=>d.cats.length),1)*23+14, rowsN=Math.ceil(data.length/cols);
+  const W=cols*cellW+pad, H=rowsN*cellH+pad+4, xOf=v=>labW+(v/maxV)*barMax;
+  let s=`<svg id="profile-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
+  data.forEach((d,di)=>{ const cx=pad+(di%cols)*cellW, cy=pad+Math.floor(di/cols)*cellH;
+    s+=`<text x="${cx}" y="${cy+12}" font-size="12" font-weight="800" fill="#0d2240">${esc(d.label)}</text>`;
+    const ox=(cx+xOf(overall)).toFixed(1); s+=`<line x1="${ox}" y1="${cy+20}" x2="${ox}" y2="${cy+26+d.cats.length*23}" stroke="#0d2240" stroke-dasharray="3 3" stroke-width="1"/>`;
+    d.cats.forEach((c,i)=>{ const ry=cy+28+i*23, bw=Math.max(1,xOf(c.v)-labW), up=c.v>=overall, small=c.n<30;
+      s+=`<text x="${cx+labW-6}" y="${ry+12}" font-size="10.5" fill="#2a2a35" text-anchor="end">${esc(String(c.label).slice(0,16))}</text>`;
+      s+=`<rect x="${cx+labW}" y="${ry+3}" width="${bw.toFixed(1)}" height="14" rx="2" fill="${up?'#e3076e':'#00a7b3'}"${small?' opacity="0.4"':''} data-tip="${esc(d.label)} · ${esc(c.label)}" data-sub="${fmtMetric(m,c.v)} (n=${c.n})${small?' · small base':''}"/>`;
+      s+=`<text x="${(cx+labW+bw+5).toFixed(1)}" y="${ry+14}" font-size="10" fill="#2a2a35">${fmtMetric(m,c.v)}</text>`; }); });
+  s+='</svg>'; $('#profile-svg').outerHTML=s;
+  $('#profile-title').textContent=`${m.label} — ${ci==null?'all countries':COUNTRIES[ci].name} · by demographic (overall ${fmtMetric(m,overall)}; dashed line)`;
+  const trows=[['(overall)','',csvNum(m,overall), oe?oe[2]:0]];
+  data.forEach(d=>d.cats.forEach(c=>trows.push([d.label,c.label,csvNum(m,c.v),c.n])));
+  $('#profile-table-card').innerHTML=`<div class="sec-label">Values</div><div class="tbl-scroll"><table class="dt"><thead><tr><th>Dimension</th><th>Group</th><th class="num">${m.key}</th><th class="num">n</th></tr></thead><tbody>${trows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="num">${r[2]}</td><td class="num">${r[3]}</td></tr>`).join('')}</tbody></table></div>`;
+  lastExport={ name:`wrp_profile_${ctrl.metric1}_${ci==null?'all':(COUNTRIES[ci].iso3||ci)}`, cols:['Dimension','Group',m.key,'base_n'], rows:trows };
+}
+
+/* ---------- View 6: dynamic clusters (k-means on the worry profile) ---------- */
+function kmeans(rows, k, iters){
+  const n=rows.length, d=rows[0].length;
+  const order=rows.map((r,i)=>i).sort((a,b)=>rows[a][0]-rows[b][0]); // deterministic init (stable across renders)
+  let cent=[]; for(let j=0;j<k;j++) cent.push(rows[order[Math.floor(j*(n-1)/((k-1)||1))]].slice());
+  const assign=new Array(n).fill(0);
+  for(let it=0; it<iters; it++){
+    for(let i=0;i<n;i++){ let best=0,bd=Infinity; for(let j=0;j<k;j++){ let q,sm=0; for(q=0;q<d;q++){ const dd=rows[i][q]-cent[j][q]; sm+=dd*dd; } if(sm<bd){bd=sm;best=j;} } assign[i]=best; }
+    const sum=Array.from({length:k},()=>new Array(d).fill(0)), cnt=new Array(k).fill(0);
+    for(let i=0;i<n;i++){ cnt[assign[i]]++; for(let q=0;q<d;q++) sum[assign[i]][q]+=rows[i][q]; }
+    for(let j=0;j<k;j++) if(cnt[j]) for(let q=0;q<d;q++) cent[j][q]=sum[j][q]/cnt[j];
+  }
+  return assign;
+}
+function renderClusters(){
+  const FEAT=['climate_very','food_very','water_very','crime_very','weather_very','wildfires_very','air_very','mental_health_very','traffic_very','work_very'].filter(k=>M[k]);
+  const maps=FEAT.map(k=>metricByGroup(M[k],'countrynew'));
+  const idxs=[...maps[0].keys()].filter(ix=>maps.every(mp=>mp.has(ix)&&!isNaN(mp.get(ix))));
+  const raw=idxs.map(ix=>maps.map(mp=>mp.get(ix)));
+  const d=FEAT.length, mu=new Array(d).fill(0), sd=new Array(d).fill(0);
+  raw.forEach(r=>r.forEach((v,q)=>mu[q]+=v)); for(let q=0;q<d;q++) mu[q]/=(raw.length||1);
+  raw.forEach(r=>r.forEach((v,q)=>sd[q]+=(v-mu[q])**2)); for(let q=0;q<d;q++) sd[q]=Math.sqrt(sd[q]/(raw.length||1))||1;
+  const z=raw.map(r=>r.map((v,q)=>(v-mu[q])/sd[q]));
+  const k=Math.max(2,Math.min(ctrl.k||4, z.length||2)), assign=z.length?kmeans(z,k,40):[];
+  const CL=['#e3076e','#00a7b3','#7a50de','#f07800','#00785c','#b07d00'];
+  const m1=M[ctrl.metric1], m2=M[ctrl.metric2], g1=metricByGroup(m1,'countrynew'), g2=metricByGroup(m2,'countrynew');
+  const cw=Math.max(420,($('#cluster-scatter').parentElement.clientWidth)||640), W=cw, H=Math.min(460,Math.max(360,Math.round(cw*0.6))), pad={t:14,r:14,b:40,l:46}, pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  const pts=idxs.map((ix,i)=>({ix,cl:assign[i],x:g1.get(ix),y:g2.get(ix)})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
+  const xmax=Math.max(...pts.map(p=>p.x),isMean(m1)?1:100), ymax=Math.max(...pts.map(p=>p.y),isMean(m2)?1:100), X=v=>pad.l+v/xmax*pw, Y=v=>pad.t+ph*(1-v/ymax);
+  let s=`<svg id="cluster-scatter" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
+  for(let t=0;t<=1.0001;t+=0.25){ const gy=Y(t*ymax),gx=X(t*xmax); s+=`<line x1="${pad.l}" y1="${gy}" x2="${W-pad.r}" y2="${gy}" stroke="#eef1f4"/><line x1="${gx}" y1="${pad.t}" x2="${gx}" y2="${H-pad.b}" stroke="#eef1f4"/><text x="${pad.l-6}" y="${gy+3}" font-size="10" fill="#6c6c78" text-anchor="end">${isMean(m2)?(t*ymax).toFixed(1):Math.round(t*ymax)+'%'}</text><text x="${gx}" y="${H-pad.b+14}" font-size="10" fill="#6c6c78" text-anchor="middle">${isMean(m1)?(t*xmax).toFixed(1):Math.round(t*xmax)+'%'}</text>`; }
+  pts.forEach(p=>{ s+=`<circle class="scatter-pt" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4" fill="${CL[p.cl%CL.length]}" fill-opacity="0.82" data-tip="${esc(COUNTRIES[p.ix].name)}" data-sub="Cluster ${p.cl+1} · ${m1.key} ${fmtMetric(m1,p.x)} · ${m2.key} ${fmtMetric(m2,p.y)}"></circle>`; });
+  s+=`<text x="${W/2}" y="${H-3}" font-size="10" fill="#6c6c78" text-anchor="middle">${m1.key}</text></svg>`;
+  $('#cluster-scatter').outerHTML=s;
+  $('#cluster-title').textContent=`Country clusters by worry profile, shown on ${m1.key} × ${m2.key}`;
+  $('#cluster-note').innerHTML=`Countries grouped by how similar their worry profile is across ${FEAT.length} harms (k-means, k=${k}, standardised). Axes are the two metrics you pick; colour is the cluster.`;
+  const byCl=Array.from({length:k},()=>[]); idxs.forEach((ix,i)=>byCl[assign[i]].push(i));
+  let html='<div class="sec-label">Clusters</div>';
+  byCl.forEach((members,ci)=>{ if(!members.length) return;
+    const mz=new Array(d).fill(0); members.forEach(i=>z[i].forEach((v,q)=>mz[q]+=v)); for(let q=0;q<d;q++) mz[q]/=members.length;
+    const hi=mz.map((v,q)=>[q,v]).sort((a,b)=>b[1]-a[1]).slice(0,2).map(o=>FEAT[o[0]].replace('_very','')).join(', ');
+    const names=members.map(i=>COUNTRIES[idxs[i]].name).sort();
+    html+=`<div style="margin-bottom:0.85rem"><div style="font-weight:700;color:#0d2240"><span class="dot" style="background:${CL[ci%CL.length]}"></span> Cluster ${ci+1} <span style="color:#6c6c78;font-weight:500">· ${members.length} countries · highest worry: ${esc(hi)}</span></div><div style="font-size:12px;color:#2a2a35;line-height:1.5;margin-top:2px">${names.map(esc).join(', ')}</div></div>`; });
+  html += `<div class="explain" style="margin-top:0.7rem;border-top:1px solid var(--lrf-line);padding-top:0.85rem">
+    <h4>What this shows</h4>
+    <p>Each country is sorted into one of ${k} groups so that countries in the same group have the most <b>similar pattern of worries</b> across the ${FEAT.length} harms — not who worries most overall, but the <i>shape</i> of their concern: which harms stand out for them relative to the rest.</p>
+    <h4>How to read it</h4>
+    <p>Countries with the <b>same colour</b> have a similar worry profile. The dots are placed using the two metrics you chose at the top, but the grouping itself uses all ${FEAT.length} harms together — so two same‑colour dots can sit apart on these axes yet still be alike across the wider picture. "Highest worry" names the harms that most define each group.</p>
+    <h4>Keep in mind</h4>
+    <p>This is a way of <b>describing</b> the data, not a ranking or a verdict — the groups have no order, and a country near a boundary could reasonably belong to either side. Figures are standardised, so groups reflect <b>relative</b> patterns, not absolute levels. Change the number of groups, the metrics, or any filter above and the grouping is recalculated from scratch.</p>
+  </div>`;
+  $('#cluster-list').innerHTML=html;
+  lastExport={ name:`wrp_clusters_k${k}`, cols:['Country','ISO3','cluster',...FEAT], rows:idxs.map((ix,i)=>[COUNTRIES[ix].name, COUNTRIES[ix].iso3||'', assign[i]+1, ...raw[i].map(v=>v.toFixed(1))]) };
 }
 
 load();

@@ -91,7 +91,7 @@ INDICES = [
 # dimensions usable as filter + breakdown: (key, var, label)
 DEMOG = [
     ("gender", "WP1219", "Gender"), ("age_5", "WP1220RECODED_1", "Age (5 groups)"),
-    ("education", "WP9811", "Education level"), ("income_quintiles", "INCOME_5", "Income quintile"),
+    ("education", "WP3117", "Education level"), ("income_quintiles", "INCOME_5", "Income quintile"),
     ("urban_rural", "DEGURBA", "Urban / rural"), ("employment", "EMP_2010", "Employment status"),
 ]
 
@@ -103,16 +103,24 @@ def slug_color(code, pos_index):
 def main():
     cat_vars = ([v for v, *_ in WORRY] + [v for v, *_ in EXPERIENCE] + [v for v, *_ in TRUST]
                 + [v for v, *_ in BINARY] + [v for v, *_ in DISC] + [GREATEST[0]]
-                + ["WP1219", "WP1220RECODED_1", "WP9811", "INCOME_5", "DEGURBA", "EMP_2010",
+                + ["WP1219", "WP1220RECODED_1", "INCOME_5", "DEGURBA", "EMP_2010",
                    "RegionLRF", "wbi"] + WARN_VARS)
     idx_vars = [k for k, _ in INDICES]
-    need = list(dict.fromkeys(["COUNTRYNEW", "COUNTRY_ISO3", "PROJWT"] + cat_vars + idx_vars))
+    need = list(dict.fromkeys(["WPID", "COUNTRYNEW", "COUNTRY_ISO3", "PROJWT"] + cat_vars + idx_vars))
     print(f"Reading {len(need)} columns from wrp_25.sav ...")
     df, meta = pyreadstat.read_sav(SAV, usecols=need)
     n = len(df)
     vl = meta.variable_value_labels
     lab = meta.column_names_to_labels
-    print(f"  {n:,} respondents")
+    # Blend in full-coverage education from the fuller release: WP3117 covers all 140
+    # countries, whereas wrp_25's own WP9811 only covers 49. Joined per respondent on WPID.
+    FULL = os.path.join(DATA, "Lloyds_2025_022026_w_projection_weight.sav")
+    edu, _ = pyreadstat.read_sav(FULL, usecols=["WPID", "WP3117"])
+    df = df.merge(edu, on="WPID", how="left")
+    vl["WP3117"] = {1.0: "Elementary or less", 2.0: "Secondary / some tertiary", 3.0: "Completed tertiary (degree)"}
+    lab["WP3117"] = "Education level"
+    print(f"  {n:,} respondents | education (WP3117) coverage {df.WP3117.isin([1,2,3]).mean()*100:.0f}%, "
+          f"{df.groupby('COUNTRY_ISO3').WP3117.apply(lambda s: s.isin([1,2,3]).any()).sum()} countries")
 
     # ---- country index + iso ----
     cdf = df[["COUNTRYNEW", "COUNTRY_ISO3"]].dropna(subset=["COUNTRYNEW"]).drop_duplicates("COUNTRYNEW")
@@ -150,6 +158,9 @@ def main():
     add_i8("any_form_discrimination", any_disc)
     for var in cat_vars:
         add_i8(var, enc_cat(var))
+    # blended education (WP3117): keep substantive codes 1/2/3, drop DK(4)/RF(5) -> missing
+    edu_arr = np.full(n, -1, np.int8); ev = df["WP3117"].to_numpy(); em = np.isin(ev, [1, 2, 3]); edu_arr[em] = ev[em].astype(np.int8)
+    columns.append(("WP3117", edu_arr, "i8"))
     # indices -> 0..100 int8
     for k, _ in INDICES:
         a = df[k].to_numpy()

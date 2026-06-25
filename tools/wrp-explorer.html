@@ -64,12 +64,21 @@
     <!-- Per-view controls -->
     <div class="controlbar" id="controlbar"></div>
 
-    <!-- View tabs -->
-    <div class="segmented" id="view-tabs">
-      <button class="seg-btn active" data-view="dist">Ranked distribution</button>
-      <button class="seg-btn" data-view="map">Map</button>
-      <button class="seg-btn" data-view="rel">Relationship</button>
-      <button class="seg-btn" data-view="sankey">Sankey</button>
+    <!-- View tabs + downloads -->
+    <div class="tabbar">
+      <div class="segmented" id="view-tabs">
+        <button class="seg-btn active" data-view="dist">Ranked distribution</button>
+        <button class="seg-btn" data-view="map">Map</button>
+        <button class="seg-btn" data-view="rel">Relationship</button>
+        <button class="seg-btn" data-view="sankey">Sankey</button>
+        <button class="seg-btn" data-view="profile">Profile</button>
+        <button class="seg-btn" data-view="clusters">Clusters</button>
+      </div>
+      <div class="downloads">
+        <button class="btn btn-small" id="dl-svg" title="Download this chart as SVG">Chart SVG</button>
+        <button class="btn btn-small" id="dl-png" title="Download this chart as PNG">Chart PNG</button>
+        <button class="btn btn-small btn-primary" id="dl-csv" title="Download the aggregated data behind this view">Data CSV</button>
+      </div>
     </div>
 
     <!-- View 1: ranked distribution -->
@@ -127,6 +136,22 @@
           <div class="chart-wrap"><svg id="sankey-svg"></svg></div>
         </div>
         <div class="card" id="sankey-table-card"></div>
+      </div>
+    </div>
+
+    <!-- View 5: demographic profile -->
+    <div id="view-profile" class="view">
+      <div class="view-grid">
+        <div class="card"><div class="sec-label" id="profile-title">Demographic profile</div><div class="chart-wrap"><svg id="profile-svg"></svg></div></div>
+        <div class="card" id="profile-table-card"></div>
+      </div>
+    </div>
+
+    <!-- View 6: country clusters -->
+    <div id="view-clusters" class="view">
+      <div class="view-grid">
+        <div class="card"><div class="sec-label" id="cluster-title">Country clusters</div><div class="chart-wrap"><svg id="cluster-scatter"></svg></div><div class="muted-note" id="cluster-note"></div></div>
+        <div class="card" id="cluster-list"></div>
       </div>
     </div>
   </div>
