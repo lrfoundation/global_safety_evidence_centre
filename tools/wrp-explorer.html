@@ -78,12 +78,14 @@
     <!-- View tabs + downloads -->
     <div class="tabbar">
       <div class="segmented" id="view-tabs">
-        <button class="seg-btn active" data-view="dist">Ranked distribution</button>
-        <button class="seg-btn" data-view="map">Map</button>
-        <button class="seg-btn" data-view="rel">Relationship</button>
-        <button class="seg-btn" data-view="sankey">Sankey</button>
-        <button class="seg-btn" data-view="profile">Profile</button>
-        <button class="seg-btn" data-view="clusters">Clusters</button>
+        <button class="seg-btn active single-wave-only" data-view="dist">Ranked distribution</button>
+        <button class="seg-btn single-wave-only" data-view="map">Map</button>
+        <button class="seg-btn single-wave-only" data-view="rel">Relationship</button>
+        <button class="seg-btn single-wave-only" data-view="sankey">Sankey</button>
+        <button class="seg-btn single-wave-only" data-view="profile">Profile</button>
+        <button class="seg-btn single-wave-only" data-view="clusters">Clusters</button>
+        <button class="seg-btn trended-only" data-view="trend-course">Time course</button>
+        <button class="seg-btn trended-only" data-view="trend-map">Change between waves</button>
       </div>
       <div class="downloads">
         <button class="btn btn-small" id="dl-svg" title="Download this chart as SVG">Chart SVG</button>
@@ -155,6 +157,29 @@
       <div class="view-grid">
         <div class="card"><div class="sec-label" id="profile-title">Demographic profile</div><div class="chart-wrap"><svg id="profile-svg"></svg></div></div>
         <div class="card" id="profile-table-card"></div>
+      </div>
+    </div>
+
+    <!-- Trends view 1: stacked time course (single question, full distribution per year) -->
+    <div id="view-trend-course" class="view">
+      <div class="card">
+        <div class="sec-label" id="tc-title">Time course</div>
+        <div class="legend" id="tc-legend"></div>
+        <div class="chart-wrap"><svg id="tc-chart"></svg></div>
+        <div class="muted-note" id="tc-note"></div>
+      </div>
+    </div>
+
+    <!-- Trends view 2: per-country change between two waves on a chosen metric -->
+    <div id="view-trend-map" class="view">
+      <div class="view-grid">
+        <div class="card">
+          <div class="sec-label" id="tm-title">Change between waves</div>
+          <svg id="tm-svg" viewBox="0 0 720 380" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="map-legend" id="tm-legend"></div>
+          <div class="muted-note" id="tm-note"></div>
+        </div>
+        <div class="card" id="tm-table-card"></div>
       </div>
     </div>
 

@@ -48,7 +48,12 @@ function applyWaveChrome(){
   const w = WAVES[WAVE];
   document.getElementById('hero-eyebrow').textContent = w.eyebrow;
   document.getElementById('hero-lede').textContent = w.lede;
+  document.body.classList.toggle('wave-trended', WAVE === 'trended');
 }
+const TREND_VIEWS = ['trend-course', 'trend-map'];
+const PERWAVE_VIEWS = ['dist','map','rel','sankey','profile','clusters'];
+function isTrendView(v){ return TREND_VIEWS.includes(v); }
+function defaultViewForWave(){ return WAVE === 'trended' ? 'trend-course' : 'dist'; }
 
 function activeFilterCount(){ return Object.keys(filters).filter(k=>filters[k]&&filters[k].size).length; }
 function updateFilterToggle(){ const fp=document.querySelector('.filters'), tf=$('#toggle-filters'); if(!fp||!tf) return;
@@ -116,6 +121,11 @@ async function load(){
     const note = document.getElementById('wave-note');        if(note) note.textContent = `${(MAN.countries||[]).length} countries · ${N.toLocaleString()} respondents · ${(MAN.questions||[]).length} questions`;
     // make sure ctrl points at something valid for this wave's catalogue
     pickInitialCtrl();
+    // and the active view is appropriate for the wave (trended has its own two)
+    if(WAVE === 'trended' && !isTrendView(activeView)) activeView = 'trend-course';
+    if(WAVE !== 'trended' && isTrendView(activeView)) activeView = 'dist';
+    document.querySelectorAll('#view-tabs .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===activeView));
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id === 'view-'+activeView));
     $('#status').classList.add('hidden');
     $('#app').classList.remove('hidden');
     buildFilters(); buildTabs(); buildWaveTabs(); render(); observeResize();
@@ -291,6 +301,15 @@ function buildControls(){
     h+=selectField('c-clusterby','Cluster by',[['worry','Worry'],['experience','Experience'],['both','Worry + experience']],ctrl.clusterBy);
     h+=selectField('c-k','Clusters (k)',[['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],String(ctrl.k));
     h+=selectField('c-colour','Colour by',[['cluster','Cluster'],['region','Global region'],['income','Income group']].concat(MAN.metrics.map(m=>['m:'+m.key, m.label])),ctrl.colourBy);
+  } else if(activeView==='trend-course'){
+    h+=selectField('c-question','Question',qOpts(),ctrl.question);
+  } else if(activeView==='trend-map'){
+    h+=selectField('c-m1','Metric',mOpts(),ctrl.metric1);
+    const years = (DIM['year']||{cats:[]}).cats.map(c=>[String(c.code), c.label]);
+    if(!ctrl.tmFromYear || !years.find(y=>y[0]===String(ctrl.tmFromYear))) ctrl.tmFromYear = years[0] ? +years[0][0] : null;
+    if(!ctrl.tmToYear   || !years.find(y=>y[0]===String(ctrl.tmToYear)))   ctrl.tmToYear   = years[years.length-1] ? +years[years.length-1][0] : null;
+    h+=selectField('c-tm-from','From wave',years,String(ctrl.tmFromYear));
+    h+=selectField('c-tm-to',  'To wave',  years,String(ctrl.tmToYear));
   }
   cb.innerHTML=h;
   const bind=(id,key)=>{ const el=$('#'+id); if(el) el.onchange=()=>{ ctrl[key]=el.value; render(); }; };
@@ -300,6 +319,8 @@ function buildControls(){
   const kk=$('#c-k'); if(kk) kk.onchange=()=>{ ctrl.k=+kk.value; render(); };
   const colb=$('#c-colour'); if(colb) colb.onchange=()=>{ ctrl.colourBy=colb.value; render(); };
   const clb=$('#c-clusterby'); if(clb) clb.onchange=()=>{ ctrl.clusterBy=clb.value; render(); };
+  const tmf=$('#c-tm-from');   if(tmf) tmf.onchange=()=>{ ctrl.tmFromYear=+tmf.value; render(); };
+  const tmt=$('#c-tm-to');     if(tmt) tmt.onchange=()=>{ ctrl.tmToYear  =+tmt.value; render(); };
 }
 
 /* ---------- UI: tabs ---------- */
@@ -319,7 +340,7 @@ function toCSV(cols, rows){ const q=v=>{ v=(v==null?'':String(v)); return /[",\n
   return [cols.map(q).join(','), ...rows.map(r=>r.map(q).join(','))].join('\r\n'); }
 function dlBlob(name, blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); }
-function activeSvgEl(){ return document.querySelector({dist:'#dist-chart',map:'#map-svg',rel:'#rel-scatter',sankey:'#sankey-svg',profile:'#profile-svg',clusters:'#cluster-svg'}[activeView]); }
+function activeSvgEl(){ return document.querySelector({dist:'#dist-chart',map:'#map-svg',rel:'#rel-scatter',sankey:'#sankey-svg',profile:'#profile-svg',clusters:'#cluster-svg','trend-course':'#tc-chart','trend-map':'#tm-svg'}[activeView]); }
 function svgSerialized(svg){ const c=svg.cloneNode(true); c.setAttribute('xmlns','http://www.w3.org/2000/svg');
   const w=svg.getAttribute('width'), h=svg.getAttribute('height'); if(!c.getAttribute('viewBox') && w) c.setAttribute('viewBox',`0 0 ${w} ${h}`);
   return '<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(c); }
@@ -341,6 +362,8 @@ function render(){ buildControls(); updateFilterToggle();
   else if(activeView==='sankey') renderSankey();
   else if(activeView==='profile') renderProfile();
   else if(activeView==='clusters') renderClusters();
+  else if(activeView==='trend-course') renderTrendCourse();
+  else if(activeView==='trend-map')    renderTrendMap();
 }
 
 /* ---------- View 1: ranked distribution ---------- */
@@ -677,6 +700,155 @@ function renderClusters(){
       </section>
     </div>`; }
   lastExport={ name:`wrp_clusters_${basis}_k${k}`, cols:['Country','ISO3','cluster',...FEAT], rows:idxs.map((ix,i)=>[COUNTRIES[ix].name, COUNTRIES[ix].iso3||'', assign[i]+1, ...raw[i].map(v=>v.toFixed(1))]) };
+}
+
+/* ---------- Trends view 1: stacked time course (single question, distribution per year) ---------- */
+function renderTrendCourse(){
+  const q = Q[ctrl.question]; if(!q){ return; }
+  const yearDim = DIM['year']; if(!yearDim){ $('#tc-title').textContent = 'Time course (year dimension missing)'; return; }
+  const groups = distribution(ctrl.question, 'year');   // Map(code → {total, counts:Map(answerCode→w)})
+  const years = [...groups.keys()].sort((a,b)=>a-b);
+  if(!years.length){ $('#tc-title').textContent = q.label + ' — no data'; return; }
+  const yearLabel = code => { const c = (yearDim.cats||[]).find(c=>c.code===code); return c ? c.label : String(code); };
+
+  $('#tc-title').textContent = q.label + ' — by wave';
+  $('#tc-legend').innerHTML = q.answers.map(a=>`<span class="k"><span class="sw" style="background:${a.color}"></span>${esc(a.label)}</span>`).join('');
+
+  const host = document.getElementById('tc-chart').parentElement;
+  const W = Math.max(640, (host && host.clientWidth) || 900);
+  const H = 460, pad = {t:10, r:18, b:46, l:48};
+  const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+  const slotW = pw / years.length;
+  const barW = Math.min(180, Math.max(40, slotW * 0.62));
+
+  let s = `<svg id="tc-chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
+  for(let p=0; p<=100; p+=25){
+    const y = pad.t + ph * (1 - p/100);
+    s += `<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="#e4e4ea"/>`;
+    s += `<text x="${pad.l-8}" y="${y+3}" font-size="10" fill="#6c6c78" text-anchor="end">${p}%</text>`;
+  }
+  const xCentre = i => pad.l + slotW * i + slotW/2;
+  const bars = years.map((yr, i)=>{
+    const e = groups.get(yr); const cx = xCentre(i), x = cx - barW/2;
+    let acc = pad.t;
+    const segs = q.answers.map(a=>{
+      const w = e.counts.get(a.code)||0;
+      const frac = e.total ? w / e.total : 0;
+      const h = frac * ph;
+      const seg = {a, frac, h, y0: acc, y1: acc + h};
+      acc += h;
+      return seg;
+    });
+    return {yr, e, cx, x, segs};
+  });
+  // Connecting ribbons between adjacent waves so the eye reads the trend
+  for(let i=0; i<bars.length-1; i++){
+    const A = bars[i], B = bars[i+1];
+    const x1 = A.x + barW, x2 = B.x;
+    A.segs.forEach((sa, k)=>{ const sb = B.segs[k]; if(!sa || !sb || (sa.frac===0 && sb.frac===0)) return;
+      const path = `M ${x1} ${sa.y0.toFixed(1)} L ${x2} ${sb.y0.toFixed(1)} L ${x2} ${sb.y1.toFixed(1)} L ${x1} ${sa.y1.toFixed(1)} Z`;
+      s += `<path d="${path}" fill="${sa.a.color}" fill-opacity="0.16"/>`;
+    });
+  }
+  bars.forEach((b)=>{
+    b.segs.forEach(seg=>{
+      if(seg.h <= 0.1) return;
+      s += `<rect x="${b.x.toFixed(1)}" y="${seg.y0.toFixed(1)}" width="${barW.toFixed(1)}" height="${seg.h.toFixed(1)}" fill="${seg.a.color}" data-tip="${esc(yearLabel(b.yr))} — ${esc(seg.a.label)}" data-sub="${(seg.frac*100).toFixed(1)}% of respondents"/>`;
+    });
+    s += `<text x="${b.cx.toFixed(1)}" y="${(H - pad.b + 16).toFixed(1)}" font-size="12" fill="#2a2a35" text-anchor="middle" font-weight="700">${esc(yearLabel(b.yr))}</text>`;
+    s += `<text x="${b.cx.toFixed(1)}" y="${(H - pad.b + 32).toFixed(1)}" font-size="10" fill="#6c6c78" text-anchor="middle">n = ${Math.round(b.e.total).toLocaleString()}</text>`;
+  });
+  s += '</svg>'; $('#tc-chart').outerHTML = s;
+
+  $('#tc-note').textContent = "Bars sum to 100% within each wave. Don't know / Refused are kept in the denominator. Ribbons connect equivalent answer bands across waves so the eye reads the trend; the n underneath each bar is the unweighted respondent count for that wave.";
+
+  lastExport = { name:`wrp_trend_course_${ctrl.question}`,
+    cols:['Wave', 'Answer', 'Percent'],
+    rows: bars.flatMap(b => b.segs.map(seg => [yearLabel(b.yr), seg.a.label, (seg.frac*100).toFixed(2)])) };
+}
+
+/* ---------- Trends view 2: per-country change between two waves on one metric ---------- */
+function metricByCountryAndYear(metric, yearCode){
+  const bd = col(DIM['countrynew'].col), yr = col(DIM['year'].col), w = WEIGHT, agg = new Map();
+  if(isMean(metric)){
+    const v = col(metric.col);
+    forEachRow(i=>{ if(yr[i] !== yearCode) return; const x = v[i]; if(x < 0) return; const g = bd[i]; if(g < 0) return;
+      let e = agg.get(g); if(!e){ e=[0,0]; agg.set(g,e); } e[0] += w[i] * (x/100); e[1] += w[i]; });
+    const out = new Map(); agg.forEach((e,g)=>out.set(g, e[1] ? e[0]/e[1] : NaN)); return out;
+  }
+  const q = col(metric.col), num = new Set(metric.num);
+  forEachRow(i=>{ if(yr[i] !== yearCode) return; const a = q[i]; if(a < 0) return; const g = bd[i]; if(g < 0) return;
+    let e = agg.get(g); if(!e){ e=[0,0]; agg.set(g,e); } e[1] += w[i]; if(num.has(a)) e[0] += w[i]; });
+  const out = new Map(); agg.forEach((e,g)=>out.set(g, e[1] ? e[0]/e[1]*100 : NaN)); return out;
+}
+
+async function renderTrendMap(){
+  const m = M[ctrl.metric1]; if(!m){ return; }
+  const yearDim = DIM['year']; if(!yearDim){ $('#tm-title').textContent = 'Change between waves (year dimension missing)'; return; }
+  const fromC = ctrl.tmFromYear, toC = ctrl.tmToYear;
+  if(!fromC || !toC || fromC === toC){ $('#tm-title').textContent = 'Pick two different waves to compare'; return; }
+  const yLab = code => { const c = (yearDim.cats||[]).find(c=>c.code===code); return c ? c.label : String(code); };
+  $('#tm-title').textContent = `${m.label} — change from ${yLab(fromC)} to ${yLab(toC)}`;
+
+  const a = metricByCountryAndYear(m, fromC), b = metricByCountryAndYear(m, toC);
+  const deltas = new Map();
+  a.forEach((va, g)=>{ const vb = b.get(g); if(va==null || vb==null || isNaN(va) || isNaN(vb)) return; deltas.set(g, vb - va); });
+  const iso2val = new Map(); deltas.forEach((d, idx)=>{ const iso = COUNTRIES[idx] && COUNTRIES[idx].iso3; if(iso) iso2val.set(iso, d); });
+  const vals = [...iso2val.values()];
+  const maxAbs = Math.max(0.5, ...vals.map(Math.abs));
+
+  const DIVERGE = ['#0d6e6e', '#7fc5c3', '#f4eef0', '#e89cbf', '#9b0b50'];
+  const colour = d => { const t = Math.max(-1, Math.min(1, d / maxAbs)); return rampColor(DIVERGE, (t + 1) / 2); };
+
+  const world = await ensureWorld();
+  const svg = d3.select('#tm-svg'); svg.selectAll('*').remove();
+  if(!world){ svg.append('text').attr('x', 360).attr('y', 190).attr('text-anchor','middle').attr('fill', '#6c6c78').text('Map unavailable (offline)'); }
+  else{
+    const W = 720, H = 380, proj = d3.geoNaturalEarth1().fitExtent([[6,6],[W-6,H-6]], {type:'Sphere'}), path = d3.geoPath(proj);
+    svg.append('path').attr('class','map-sphere').attr('fill','#eef1f4').attr('d', path({type:'Sphere'}));
+    svg.selectAll('path.c').data(world.features.filter(f=>pad3(f.id)!=='010')).enter().append('path')
+      .attr('d', path).attr('class', f=>{ const iso = NUM2A3[pad3(f.id)]; return iso2val.has(iso) ? 'map-land' : 'map-land-nodata'; })
+      .attr('fill', f=>{ const iso = NUM2A3[pad3(f.id)]; if(!iso2val.has(iso)) return '#fff'; return colour(iso2val.get(iso)); })
+      .attr('data-tip', f=> (f.properties && f.properties.name) || '')
+      .attr('data-sub', f=>{ const iso = NUM2A3[pad3(f.id)]; if(!iso2val.has(iso)) return 'No data';
+        const d = iso2val.get(iso); const sign = d >= 0 ? '+' : ''; return `${m.label}: ${sign}${isMean(m) ? Math.round(d*100) : d.toFixed(1)+' pp'} (${yLab(fromC)} → ${yLab(toC)})`; });
+  }
+
+  const fmtDelta = d => (d >= 0 ? '+' : '') + (isMean(m) ? String(Math.round(d*100)) : d.toFixed(1) + ' pp');
+  $('#tm-legend').innerHTML =
+    `<span>${fmtDelta(-maxAbs)}</span>` +
+    `<span class="bar" style="background:linear-gradient(to right,${DIVERGE.join(',')})"></span>` +
+    `<span>${fmtDelta(maxAbs)}</span>` +
+    `<span style="margin-left:1rem;color:var(--lrf-muted)">0 = no change</span>`;
+  $('#tm-note').textContent = isMean(m)
+    ? `Change in ${m.label.replace(/\s*\(0[–-]100\)\s*$/,'')} between the two waves, on the 0–100 index scale. ${[...iso2val].length} countries with data in both waves.`
+    : `Change in percentage points between the two waves. ${[...iso2val].length} countries with data in both waves. A +5 pp shift means an extra 5 in 100 respondents now picking that answer.`;
+
+  const keys = [...deltas.keys()].sort((a,b)=>deltas.get(b)-deltas.get(a));
+  const rows = keys.map((g,i)=>{
+    const d = deltas.get(g), va = a.get(g), vb = b.get(g), t = Math.max(0, Math.min(1, Math.abs(d) / maxAbs));
+    const up = d >= 0;
+    return `<tr>
+      <td class="rank">${i+1}</td>
+      <td class="name">${esc(COUNTRIES[g].name)}</td>
+      <td class="num">${fmtMetric(m, va)}</td>
+      <td class="num">${fmtMetric(m, vb)}</td>
+      <td class="num heat" style="background:${rampColor(up?['#ffffff','#9b0b50']:['#ffffff','#0d6e6e'], t)};color:${t>0.55?'#fff':'#1b222c'}">${fmtDelta(d)}</td>
+    </tr>`;
+  }).join('');
+  $('#tm-table-card').innerHTML = `<div class="sec-label">Change ranking</div>
+    <div class="tbl-scroll">
+      <table class="dt"><thead><tr>
+        <th class="rank"></th><th>Country</th>
+        <th class="num">${yLab(fromC)}</th>
+        <th class="num">${yLab(toC)}</th>
+        <th class="num">Δ</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+
+  lastExport = { name:`wrp_change_${ctrl.metric1}_${fromC}_to_${toC}`,
+    cols:['Country','ISO3', yLab(fromC), yLab(toC), 'delta'],
+    rows: keys.map(g=>[COUNTRIES[g].name, COUNTRIES[g].iso3||'', csvNum(m, a.get(g)), csvNum(m, b.get(g)), (deltas.get(g)).toFixed(3)]) };
 }
 
 load();
