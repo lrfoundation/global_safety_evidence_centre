@@ -16,6 +16,11 @@ main { max-width: none; padding: 1.25rem 2.5rem 4rem; }
 .wave-segmented { margin: 0; }
 .wave-bar-note { font-size: 12px; color: var(--lrf-muted); }
 
+/* Trends mode swaps which view tabs are visible — the trended dataset gets its
+   own two purpose-built views; the six per-wave views hide. */
+body:not(.wave-trended) #view-tabs .seg-btn.trended-only { display: none; }
+body.wave-trended #view-tabs .seg-btn.single-wave-only { display: none; }
+
 /* Collapsible filter panel */
 .filters.collapsed .filters-grid { display: none; }
 .filters-head { gap: 0.6rem; }
@@ -38,9 +43,11 @@ main { max-width: none; padding: 1.25rem 2.5rem 4rem; }
 /* filter panel: many compact dimension dropdowns */
 .filters { margin-bottom: 1.5rem; }
 .filters-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.7rem; gap: 1rem; }
-.filters-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.55rem; }
-@media (max-width: 1100px) { .filters-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 640px) { .filters-grid { grid-template-columns: repeat(2, 1fr); } }
+/* 5 × 4 = 20 filter slots per single-year wave (plus the country one). */
+.filters-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.55rem; }
+@media (max-width: 1200px) { .filters-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 900px)  { .filters-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px)  { .filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* custom multi-select filter */
 .filt { position: relative; }
