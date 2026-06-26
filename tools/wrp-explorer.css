@@ -10,6 +10,12 @@
 main { max-width: none; padding: 1.25rem 2.5rem 4rem; }
 @media (max-width: 900px) { main { padding: 1rem 1rem 3rem; } }
 
+/* Wave switcher in the hero — segmented control + a small label and a status note */
+.wave-bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.4rem; padding-top: 1.2rem; border-top: 1px solid var(--lrf-line); }
+.wave-bar-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; color: var(--lrf-muted); }
+.wave-segmented { margin: 0; }
+.wave-bar-note { font-size: 12px; color: var(--lrf-muted); }
+
 /* Collapsible filter panel */
 .filters.collapsed .filters-grid { display: none; }
 .filters-head { gap: 0.6rem; }

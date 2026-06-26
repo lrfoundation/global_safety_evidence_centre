@@ -1,0 +1,530 @@
+variable,label_2025_or_trended,in_2019,in_2021,in_2023,in_2025,in_trended,trended_nm_2019,trended_nm_2021,trended_nm_2023,in_2025_catalogue
+Age,Age,0,1,1,0,1,100,100,100,0
+AgeGroups,Age cohort (4 group),1,0,0,0,0,,,,0
+AgeGroups3,Age - 3 categories,0,0,1,0,1,100,100,100,0
+AgeGroups4,Age cohort (4 group),0,1,0,0,0,,,,0
+AgeGroups5,Age - 5 categories,0,0,1,0,1,100,100,100,0
+COUNTRYNEW,Country Name,0,0,0,1,0,,,,1
+COUNTRY_ISO2,Country ISO alpha-2 code,0,0,1,1,1,100,100,100,0
+COUNTRY_ISO3,Country ISO alpha-3 code,0,0,1,1,1,100,100,100,1
+ChildrenInHousehold,Children Under 15,1,1,0,0,1,100,100,100,0
+Country,Country Name,0,1,1,0,1,100,100,100,0
+CountryIncomeLevel2019,World Bank Country Income Classification corresponding to 2019 data,0,1,0,0,0,,,,0
+CountryIncomeLevel2021,World Bank Country Income Classification corresponding to 2021 data,0,1,0,0,0,,,,0
+CountryIncomeLevel2023,World Bank Income Categories (2023-24 definiton),0,0,1,0,1,100,100,100,0
+DEGURBA,Degree of Urbanisation,0,0,0,1,0,,,,1
+EMP8B,Primary Occupation/Job Title (Coded Response),1,0,0,0,0,,,,0
+EMP_2010,Employment Status,1,1,1,1,1,100,97,100,1
+EMP_FTEMP,Employed Full Time for an Employer Index (workforce),1,0,0,0,0,,,,0
+EMP_FTEMP_POP,Payroll to Population Index (P2P),1,0,0,0,0,,,,0
+EMP_LFPR,Labor Force Participation Index,1,0,0,0,0,,,,0
+EMP_UNDER,Underemployment Index,1,0,0,0,0,,,,0
+EMP_UNEMP,Unemployment Index,1,0,0,0,0,,,,0
+EMP_WORK_HOURS,Total Number of Hours Work Per Week,1,0,0,0,0,,,,0
+Education,Education Level,1,1,1,0,1,100,100,100,0
+Experienced.Index,Experienced Index,1,0,0,0,0,,,,0
+FIELD_DATE,Study Completion Date,1,0,0,1,0,,,,0
+Gender,Gender,0,1,1,0,1,100,100,100,0
+GlobalRegion,Global region respondent lives in,0,1,1,0,1,100,100,100,0
+HHSIZE,Total Number Living in Household for Per Capita Income,0,0,0,1,0,,,,0
+HHWEIGHT2,hhweight2,0,0,0,1,0,,,,0
+HouseholdSize,Household SIze,1,1,0,0,1,100,100,100,0
+INCOME_5,Per Capita Income Quintiles,1,1,1,1,1,99,100,100,1
+IncomeFeelings,Feelings About Household Income,1,1,0,0,0,,,,0
+L1,"When Hear The Word Risk, Think More About Opportunity or Danger",1,0,0,0,0,,,,0
+L10,Wear a Seatbelt in a Motorized Vehicle When One is Available,1,0,0,0,0,,,,0
+L11,Able to Swim Without Assistance,1,0,0,0,0,,,,0
+L12,"10% is Bigger, Smaller or the Same as 1 out of 10",1,0,0,0,0,,,,0
+L13A,Look to Friends or Family for Food Safety Information,1,0,0,0,0,,,,0
+L13B,Look to Medical Professionals for Food Safety Information,1,0,0,0,0,,,,0
+L13C,"Look to Newspapers, Television, or Radio for Food Safety Information",1,0,0,0,0,,,,0
+L13D,Look to Internet/Social Media for Food Safety Information,1,0,0,0,0,,,,0
+L13E,Look to (Food Safety Authority) for Food Safety Information,1,0,0,0,0,,,,0
+L13F,Look to Packaging or Label on Food for Food Safety Information,1,0,0,0,0,,,,0
+L13G,Look to a Famous Person for Food Safety Information,1,0,0,0,0,,,,0
+L13H,Look to Local Religious Leaders for Food Safety Information,1,0,0,0,0,,,,0
+L14,Trust Most to Provide Information About Food Safety,1,0,0,0,0,,,,0
+L15,Government Should Require Businesses to Adopt Safety Procedures and Rules,1,0,0,0,0,,,,0
+L16A,Government Does a Good Job Ensuring the Food You Buy is Safe,1,0,0,0,0,,,,0
+L16B,Government Does a Good Job Ensuring the Water You Drink is Safe,1,0,0,0,0,,,,0
+L16C,Government Does a Good Job Ensuring the Powerlines in the City or Area Where You Live are Safe,1,0,0,0,0,,,,0
+L17A,How Likely a Neighbor Would be to Return a Small Bag of Great Financial Value to You if Found,1,0,0,0,0,,,,0
+L17B,How Likely a Stranger Would be to Return a Small Bag of Great Financial Value to You if Found,1,0,0,0,0,,,,0
+L17C,How Likely the Police Would be to Return a Small Bag of Great Financial Value to You if Found,1,0,0,0,0,,,,0
+L18,How Likely to be Injured While Working in Next Two Years,1,0,0,0,0,,,,0
+L19,Ever Been Seriously Injured While Working,1,0,0,0,0,,,,0
+L2,"Feel More Safe, Less Safe or About as Safe Compared to Five Years Ago",1,0,0,0,0,,,,0
+L20A,Risk to Personal Safety While Working: Operating Equipment or Heavy Machinery,1,0,0,0,0,,,,0
+L20B,Risk to Personal Safety While Working: Fire,1,0,0,0,0,,,,0
+L20C,Risk to Personal Safety While Working: Exposure to Chemical or Biological Substances,1,0,0,0,0,,,,0
+L20D,Risk to Personal Safety While Working: Physical Harassment or Violence,1,0,0,0,0,,,,0
+L20E,Risk to Personal Safety While Working: Tripping or Falling,1,0,0,0,0,,,,0
+L21A,Experienced Injury or Harm While Working in Past Two Years: Operating Equipment or Heavy Machinery,1,0,0,0,0,,,,0
+L21B,Experienced Injury or Harm While Working in Past Two Years: Fire,1,0,0,0,0,,,,0
+L21C,Experienced Injury or Harm While Working in Past Two Years: Exposure to Chemicals or Biological Substances,1,0,0,0,0,,,,0
+L21D,Experienced Injury or Harm While Working in Past Two Years: Physical Harassment or Violence,1,0,0,0,0,,,,0
+L21E,Experienced Injury or Harm While Working in Past Two Years: Tripping or Falling,1,0,0,0,0,,,,0
+L22,Free To Report Safety Problems To Employer Without Fear of Punishment,1,0,0,0,0,,,,0
+L23,Who is Most Responsible for Your Safety While Working Other Than Yourself,1,0,0,0,0,,,,0
+L24A,Care About Your Safety While Working: Your Co-workers,1,0,0,0,0,,,,0
+L24B,Care About Your Safety While Working: Your Boss or Supervisor,1,0,0,0,0,,,,0
+L24C,Care About Your Safety While Working: The Trade or Labour Union,1,0,0,0,0,,,,0
+L25,Safety Rules at Work Are Good or Make Job More Difficult,1,0,0,0,0,,,,0
+L26,"Used Internet, Including Social Media, in Past 30 Days",1,0,0,0,0,,,,0
+L27A,Worry When Using the Internet or Social Media: Online Bullying,1,0,0,0,0,,,,0
+L27B,Worry When Using the Internet or Social Media: Receiving False Information,1,0,0,0,0,,,,0
+L27C,Worry When Using the Internet or Social Media: Fraud,1,0,0,0,0,,,,0
+L3_A,Greatest Source of Risk to Safety in Your Daily Life (Coded Response),1,0,0,0,0,,,,0
+L3_B,Another Major Source of Risk to Safety In Your Daily Life (Coded Response),1,0,0,0,0,,,,0
+L4A,Help or Harm People in Country in Next 20 Years: Genetically-Modified Food,1,0,0,0,0,,,,0
+L4B,Help or Harm People in Country in Next 20 Years: Use of Nuclear Power for Electricity,1,0,0,0,0,,,,0
+L4C,Help or Harm People in Country in Next 20 Years: Artificial Intelligence,1,0,0,0,0,,,,0
+L5,Climate Change a Threat to People in Country in Next 20 Years,1,0,0,0,0,,,,0
+L6A,Worried Food You Eat Could Cause You Serious Harm,1,0,0,0,0,,,,0
+L6B,Worried Water You Drink Could Cause You Serious Harm,1,0,0,0,0,,,,0
+L6C,Worried Violent Crime Could Cause You Serious Harm,1,0,0,0,0,,,,0
+L6D,Worried Severe Weather Events Could Cause You Serious Harm,1,0,0,0,0,,,,0
+L6E,Worried Electrical Power Lines Could Cause You Serious Harm,1,0,0,0,0,,,,0
+L6F,Worked Household Appliances Could Cause You Serious Harm,1,0,0,0,0,,,,0
+L6G,Worried Mental Health Issues Could Cause You Serious Harm,1,0,0,0,0,,,,0
+L7A,How Likely Food You Eat Could Cause you Serious Harm in Next Two Years,1,0,0,0,0,,,,0
+L7B,How Likely Water You Drink Could Cause You Serious Harm in Next Two Years,1,0,0,0,0,,,,0
+L7C,How Likely Violent Crime Could Cause You Serious Harm in Next Two Years,1,0,0,0,0,,,,0
+L7D,How Likely Severe Weather Events Could Cause You Serious Harm in Next Two Years,1,0,0,0,0,,,,0
+L7E,How Likely Electrical Power Lines Could Cause You Serious Harm in Next Two Years,1,0,0,0,0,,,,0
+L7F,How Likely Household Appliances Could Cause You Serious Harm in Next Two Years,1,0,0,0,0,,,,0
+L7G,How Likely Mental Health Issues Could Cause You Serious Harm in Next Two Years,1,0,0,0,0,,,,0
+L8A,Experienced Serious Harm From Eating Food in Past Two Years,1,0,0,0,0,,,,0
+L8B,Experienced Serious Harm From Drinking Water in Past Two Years,1,0,0,0,0,,,,0
+L8C,Experienced Serious Harm From Violent Crime in Past Two Years,1,0,0,0,0,,,,0
+L8D,Experienced Serious Harm From Severe Weather Events in Past Two Years,1,0,0,0,0,,,,0
+L8E,Experienced Serious Harm From Electrical Power Lines in Past Two Years,1,0,0,0,0,,,,0
+L8F,Experienced Serious Harm From Household Appliances in Past Two Years,1,0,0,0,0,,,,0
+L8G,Experienced Serious Harm From Mental Health Issues in Past Two Years,1,0,0,0,0,,,,0
+L9A,How Likely You Are to Be in a Traffic Accident in Next Two Years,1,0,0,0,0,,,,0
+L9B,How Likely You Are to Be Physically Attacked by Someone in Next Two Years,1,0,0,0,0,,,,0
+L9C,How Likely You Are to Be in an Airplane Accident in Next Two Years,1,0,0,0,0,,,,0
+L9D,How Likely You Are to Drown in Next Two Years,1,0,0,0,0,,,,0
+L9E,How Likely You Are to be Struck by Lightning in Next Two Years,1,0,0,0,0,,,,0
+MODE,Mode,0,0,0,1,0,,,,0
+PROJWT,"Population projection weight, applied within year only (time-series or single year analysis)",0,0,1,1,1,100,100,100,1
+PROJWT_2019,Projection weight to be used for multicountry analysis for 2019 data ONLY,0,1,0,0,0,,,,0
+PROJWT_2021,Projection weight to be used for multicountry analysis for 2021 data ONLY,0,1,0,0,0,,,,0
+REG2_GLOBAL,Region 2 Global,1,1,0,0,0,,,,0
+REGION1_KAZ,Region 1 Kazakhstan,0,1,0,0,1,1,1,1,0
+REGION1_NOR,Region 1 Norway,0,1,0,0,0,,,,0
+REGION1_PAN,Region 1 Panama,0,1,0,0,1,1,0,1,0
+REGION1_PHL,Region 1 Philippines,0,1,0,0,1,1,1,1,0
+REGION2_AFG,Region2 Afghanistan,1,0,0,0,1,1,1,1,0
+REGION2_ALB,Region 2 Albania,1,0,0,0,1,1,1,1,0
+REGION2_ARG,Region 2 Argentina,1,0,0,0,1,1,1,1,0
+REGION2_ARM,Region 2 Armenia,1,0,0,0,1,1,1,1,0
+REGION2_AZE,Region 2 Azerbaijan,0,1,0,0,1,1,0,1,0
+REGION2_BEN,Region 2 Benin,1,0,0,0,1,1,1,1,0
+REGION2_BFA,Region 2 Burkina Faso,1,0,0,0,1,1,1,1,0
+REGION2_BGR,Region 2 Bulgaria,1,0,0,0,1,1,1,1,0
+REGION2_BIH,Region 2 Bosnia,1,0,0,0,1,0,1,1,0
+REGION2_BLR,Region2 Belarus,0,1,0,0,0,,,,0
+REGION2_BOL,Region 2 Bolivia,1,0,0,0,1,1,1,1,0
+REGION2_BRA,Region 2 Brazil,1,0,0,0,1,1,1,1,0
+REGION2_BWA,Region 2 Botswana,0,1,0,0,1,1,0,1,0
+REGION2_CAM,Region 2 Cameroon,1,0,0,0,1,1,1,1,0
+REGION2_CAN,Region 2 Canada,1,0,0,0,1,1,1,1,0
+REGION2_CHE,Region 2 Switzerland,0,1,0,0,1,1,1,1,0
+REGION2_CHL,Region 2 Chile,0,1,0,0,1,1,1,1,0
+REGION2_CHN,Region 2 China,0,1,0,0,1,2,3,2,0
+REGION2_CIV,Region 2 Ivory Coast,1,0,0,0,1,1,1,1,0
+REGION2_COL,Region2 Colombia,1,0,0,0,1,1,1,1,0
+REGION2_CRI,Region 2 Costa Rica,0,1,0,0,0,,,,0
+REGION2_CZE,Region 2 Czech Republic,1,0,0,0,1,0,1,1,0
+REGION2_DNK,Region2 Denmark,1,0,0,0,1,1,1,1,0
+REGION2_DOM,Region2 Dominican Republic,1,0,0,0,1,1,1,1,0
+REGION2_DZA,Region 2 Algeria,1,0,0,0,1,1,1,1,0
+REGION2_ECU,Region 2 Ecuador,1,0,0,0,1,1,1,1,0
+REGION2_EGY,Region 2 Egypt,1,0,0,0,1,1,1,1,0
+REGION2_ESP,Region 2 Spain,1,0,0,0,1,1,1,1,0
+REGION2_EST,Region 2 Estonia,1,0,0,0,1,1,1,1,0
+REGION2_GEO,Region2 Georgia,0,1,0,0,1,1,1,1,0
+REGION2_GMB,Region 2 Gambia,0,1,0,0,1,1,0,1,0
+REGION2_GTM,Region 2 Guatemala,0,1,0,0,1,1,0,1,0
+REGION2_GUI,Region 2 Guinea,1,0,0,0,1,1,1,1,0
+REGION2_HND,REGION 2 Honduras,1,0,0,0,1,1,1,1,0
+REGION2_HRV,Region 2 Croatia,1,0,0,0,1,1,1,1,0
+REGION2_HUN,Region 2 Hungary,1,0,0,0,1,1,1,1,0
+REGION2_IDN,Region2 Indonesia,1,0,0,0,1,1,1,1,0
+REGION2_IND,Region 2 India,1,0,0,0,1,2,2,2,0
+REGION2_IRL,Region 2 Ireland,1,0,0,0,1,1,1,1,0
+REGION2_IRN,Region 2 Iran,1,0,0,0,1,1,1,1,0
+REGION2_ITA,Region 2 Italy,1,0,0,0,1,1,1,1,0
+REGION2_KAZ,Region 2 Kazakhstan,1,0,0,0,1,1,1,1,0
+REGION2_KEN,Region 2 Kenya,1,0,0,0,1,1,1,1,0
+REGION2_KGZ,Region 2 Kyrgyzstan,1,0,0,0,1,1,1,1,0
+REGION2_KHM,Region 2 Cambodia,1,0,0,0,1,1,1,1,0
+REGION2_KOS,Region 2 Kosovo,1,0,0,0,1,1,1,1,0
+REGION2_LAO,Region 2 Laos,1,0,0,0,1,1,1,1,0
+REGION2_LBN,Region 2 Lebanon,0,1,0,0,0,,,,0
+REGION2_MDA,Region2 Moldova,1,0,0,0,1,1,1,1,0
+REGION2_MDG,Region 2 Madagascar,0,1,0,0,1,1,0,1,0
+REGION2_MEX,Region 2 Mexico,1,0,0,0,1,1,1,1,0
+REGION2_MKD,Region 2 Macedonia,1,0,0,0,1,1,1,1,0
+REGION2_MLI,Region 2 Mali,1,0,0,0,1,1,1,1,0
+REGION2_MLW,Region 2 Malawi,0,1,0,0,1,1,0,1,0
+REGION2_MNE,Region 2 Montenegro,0,1,0,0,1,1,0,1,0
+REGION2_MNG,Region 2 Mongolia,1,0,0,0,1,1,1,1,0
+REGION2_MOZ,Region 2 Mozambique,1,0,0,0,1,1,1,1,0
+REGION2_MRT,Region 2 Mauritania,0,1,0,0,1,1,0,1,0
+REGION2_MUS,Region 2 Mauritius,1,0,0,0,1,1,1,1,0
+REGION2_NAM,Region 2 Namibia,1,0,0,0,1,1,1,1,0
+REGION2_NER,Region 2 Niger,0,1,0,0,1,1,0,1,0
+REGION2_NGA,Region 2 Nigeria,1,0,0,0,1,1,1,1,0
+REGION2_NIC,Region 2 Nicaragua,1,0,0,0,1,1,1,1,0
+REGION2_NLD,Region 2 Netherlands,0,1,0,0,0,,,,0
+REGION2_NOR,Region 2 Norway,0,1,0,0,0,,,,0
+REGION2_NPL,Region2 Nepal,1,0,0,0,0,,,,0
+REGION2_NZL,Region 2 New Zealand,1,0,0,0,1,1,1,1,0
+REGION2_PAK,Region 2 Pakistan,1,0,0,0,1,1,1,1,0
+REGION2_PAN,Region 2 Panama,1,0,0,0,1,1,1,1,0
+REGION2_PER,Region 2 Peru,1,0,0,0,1,1,1,1,0
+REGION2_PHL,Region 2 Philippines,1,0,0,0,1,1,1,1,0
+REGION2_POL,Region 2 Poland,0,1,0,0,0,,,,0
+REGION2_PRT,Region 2 Portugal,1,0,0,0,1,1,1,1,0
+REGION2_PRY,Region 2 Paraguay,1,0,0,0,1,1,1,1,0
+REGION2_PSE,Region 2 Palestine,0,1,0,0,1,1,0,1,0
+REGION2_ROU,Region Romania,1,0,0,0,1,1,1,1,0
+REGION2_RWA,Region 2 Rwanda,0,1,0,0,0,,,,0
+REGION2_SAU,Region 2 Saudi Arabia,1,0,0,0,1,1,1,1,0
+REGION2_SEN,Region 2 Senegal,1,0,0,0,1,1,1,1,0
+REGION2_SLE,Region2 Sierra Leone,1,0,0,0,0,,,,0
+REGION2_SLV,Region 2 El Salvador,0,1,0,0,1,1,1,1,0
+REGION2_SRB,Region 2 Serbia,1,0,0,0,1,1,1,1,0
+REGION2_SVK,Region 2 Slovakia,1,0,0,0,1,1,1,1,0
+REGION2_SWE,Region 2 Sweden,1,0,0,0,1,1,1,1,0
+REGION2_TCD,Region 2 Chad,0,1,0,0,1,1,0,1,0
+REGION2_THA,Region 2 Thailand,1,0,0,0,1,1,1,1,0
+REGION2_TJK,Region 2 Tajikistan,1,0,0,0,1,1,1,1,0
+REGION2_TKM,Region 2 Turkmenistan,0,1,0,0,0,,,,0
+REGION2_TOG,Region 2 Togo,1,0,0,0,1,1,1,1,0
+REGION2_TUN,Region 2 Tunisia,1,0,0,0,1,1,1,1,0
+REGION2_TUR,Region 2 Turkey,1,0,0,0,1,1,1,1,0
+REGION2_TZA,Region 2 Tanzania,1,0,0,0,1,1,1,1,0
+REGION2_UGA,Region 2 Uganda,1,0,0,0,1,1,1,1,0
+REGION2_UKR,Region 2 Ukraine,1,0,0,0,1,1,1,1,0
+REGION2_URY,Region 2 Uruguay,1,0,0,0,1,1,1,1,0
+REGION2_USA,Region 2 USA,1,0,0,0,1,1,1,1,0
+REGION2_UZB,Region 2 Uzbekistan,1,0,0,0,1,1,1,1,0
+REGION2_VEN,Region 2 Venezuela,1,0,0,0,1,1,1,1,0
+REGION2_VNM,Region 2 Vietnam,1,0,0,0,1,1,1,1,0
+REGION2_YEM,Region 2 Yemen,0,1,0,0,1,1,0,1,0
+REGION2_ZMB,Region 2 Zambia,1,0,0,0,1,1,1,1,0
+REGION3_AZE,Region 3 Azerbaijan,0,1,0,0,0,,,,0
+REGION3_BHR,Region3 Bahrain,0,1,0,0,1,1,0,1,0
+REGION3_CIV,Region 3 Ivory Coast,0,1,0,0,1,1,1,1,0
+REGION3_FRA,Region 3 France,1,0,0,0,1,1,1,1,0
+REGION3_GHA,Region 3 Ghana,1,0,0,0,1,0,1,1,0
+REGION3_JMC,Region 3 Jamaica,0,1,0,0,0,,,,0
+REGION3_MAR,Region 3 Morocco,1,0,0,0,1,1,1,1,0
+REGION3_NOR,Region 3 Norway,1,0,0,0,1,0,1,1,0
+REGION3_POL,Region 3 Poland,1,0,0,0,1,1,1,1,0
+REGION3_RUS,Region 3 Russia,1,0,0,0,1,1,2,1,0
+REGION3_TUR,Region 3 Turkey,0,1,0,0,1,1,1,1,0
+REGION3_TZA,Region 3 Tanzania,0,1,0,0,1,1,1,1,0
+REGION4_JMC,Region 4 Jamaica,1,0,0,0,0,,,,0
+REGION4_NOR,Region 4 Norway,0,1,0,0,1,0,1,1,0
+REGION_AFG,Region Afghanistan,0,1,0,0,1,1,1,1,0
+REGION_ALB,Region Albania,0,1,0,0,1,1,1,1,0
+REGION_ARE,Region United Arab Emirates,1,0,0,0,1,1,1,1,0
+REGION_ARG,Region Argentina,0,1,0,0,1,1,1,1,0
+REGION_ARM,Region Armenia,0,1,0,0,1,1,1,1,0
+REGION_AUS,Region Australia,1,0,0,0,1,1,1,1,0
+REGION_AUT,Region Austria,1,0,0,0,1,1,1,1,0
+REGION_BEL,Region Belgium,1,0,0,0,1,1,1,1,0
+REGION_BEN,Region Benin,0,1,0,0,0,,,,0
+REGION_BFA,Region Burkina Faso,0,1,0,0,1,1,1,1,0
+REGION_BGD,Region Bangladesh,1,0,0,0,1,1,1,1,0
+REGION_BGR,Region Bulgaria,0,1,0,0,1,1,1,1,0
+REGION_BIH,Region Bosnia and Herzegovina,0,1,0,0,1,1,1,1,0
+REGION_BLR,Region Belarus,0,1,0,0,0,,,,0
+REGION_BOL,Region Bolivia,0,1,0,0,1,1,1,1,0
+REGION_BRA,Region Brazil,0,1,0,0,1,1,1,1,0
+REGION_BWA,Region Botswana,0,1,0,0,0,,,,0
+REGION_CAM,Region Cameroon,0,1,0,0,1,1,1,1,0
+REGION_CAN,Region Canada,0,1,0,0,1,1,1,1,0
+REGION_CHE,Region Switzerland,1,0,0,0,1,1,1,1,0
+REGION_CHL,Region Chile,1,0,0,0,1,1,1,1,0
+REGION_CHN,Region China,1,0,0,0,1,2,3,2,0
+REGION_COG,Region Congo Brazzaville,1,0,0,0,1,1,1,1,0
+REGION_COL,Region Colombia,0,1,0,0,1,1,1,1,0
+REGION_CRI,Region Costa Rica,1,0,0,0,1,1,1,1,0
+REGION_CYP,Region Cyprus,1,0,0,0,1,1,1,1,0
+REGION_CZE,Region Czech Republic,0,1,0,0,1,0,1,1,0
+REGION_DEU,Region Germany,1,0,0,0,1,1,1,1,0
+REGION_DOM,Region Dominican Republic,0,1,0,0,1,1,1,1,0
+REGION_DZA,Region Algeria,0,1,0,0,1,1,1,1,0
+REGION_ECU,Region Ecuador,0,1,0,0,1,1,1,1,0
+REGION_EGY,Region Egypt,0,1,0,0,1,1,1,1,0
+REGION_ESP,Region Spain,0,1,0,0,1,1,1,1,0
+REGION_EST,Region Estonia,0,1,0,0,1,1,1,1,0
+REGION_ETH,Region Ethiopia,0,1,0,0,1,1,0,1,0
+REGION_FIN,Region Finland,1,0,0,0,1,1,1,1,0
+REGION_GAB,Region Gabon,1,0,0,0,1,1,1,1,0
+REGION_GBR,Region United Kingdom,1,0,0,0,1,1,1,1,0
+REGION_GEO,Region Georgia,1,0,0,0,1,1,1,1,0
+REGION_GHA,Region Ghana,0,1,0,0,1,1,1,1,0
+REGION_GMB,Region Gambia,0,1,0,0,1,1,0,1,0
+REGION_GRC,Region Greece,1,0,0,0,1,1,1,1,0
+REGION_GTM,Region Guatemala,0,1,0,0,1,1,0,1,0
+REGION_GUI,Region Guinea,0,1,0,0,1,1,1,1,0
+REGION_HKG,Region Hong Kong,1,0,0,0,1,1,1,1,0
+REGION_HND,Region Honduras,0,1,0,0,1,1,1,1,0
+REGION_HRV,Region Croatia,0,1,0,0,1,1,1,1,0
+REGION_HUN,Region Hungary,0,1,0,0,1,1,1,1,0
+REGION_ICL,Region Iceland,1,0,0,0,1,0,0,0,0
+REGION_IDN,Region Indonesia,0,1,0,0,1,1,1,1,0
+REGION_IND,Region India,0,1,0,0,1,2,2,2,0
+REGION_IRL,Region Ireland,0,1,0,0,1,1,1,1,0
+REGION_IRN,Region Iran,0,1,0,0,1,1,1,1,0
+REGION_IRQ,Region Iraq,1,0,0,0,1,1,1,1,0
+REGION_ISR,Region Israel,1,0,0,0,1,1,1,1,0
+REGION_ITA,Region Italy,0,1,0,0,1,1,1,1,0
+REGION_JOR,Region Jordan,1,0,0,0,1,1,1,1,0
+REGION_JPN,Region Japan,1,0,0,0,1,1,1,1,0
+REGION_KEN,Region Kenya,0,1,0,0,1,1,1,1,0
+REGION_KGZ,Region Kyrgyzstan,0,1,0,0,1,1,1,1,0
+REGION_KHM,Region Cambodia,0,1,0,0,1,1,1,1,0
+REGION_KOR,Region South Korea,1,0,0,0,1,1,1,1,0
+REGION_KOS,Region Kosovo,0,1,0,0,1,1,1,1,0
+REGION_KWT,Region Kuwait,0,1,0,0,1,1,0,1,0
+REGION_LAO,Region Laos,0,1,0,0,1,1,1,1,0
+REGION_LBN,Region Lebanon,1,0,0,0,1,1,1,1,0
+REGION_LBR,Region Liberia,0,1,0,0,1,1,0,1,0
+REGION_LKA,Region Sri Lanka,0,1,0,0,1,1,1,1,0
+REGION_LSO,Region Lesotho,0,1,0,0,0,,,,0
+REGION_LTU,Region Lithuania,1,0,0,0,1,1,1,1,0
+REGION_LUX,Region Luxembourg,0,1,0,0,1,1,0,1,0
+REGION_LVA,Region Latvia,1,0,0,0,1,1,1,1,0
+REGION_LYB,Region Libya,0,1,0,0,1,1,0,1,0
+REGION_MAR,Region Morocco,0,1,0,0,0,,,,0
+REGION_MDA,Region Moldova,0,1,0,0,1,1,1,1,0
+REGION_MDG,Region Madagascar,0,1,0,0,1,1,0,1,0
+REGION_MEX,Region Mexico,0,1,0,0,1,1,1,1,0
+REGION_MKD,Region Macedonia,0,1,0,0,1,1,1,1,0
+REGION_MLI,Region Mali,0,1,0,0,1,1,1,1,0
+REGION_MLT,Region Malta,1,0,0,0,1,1,1,1,0
+REGION_MLW,Region Malawi,0,1,0,0,1,1,0,1,0
+REGION_MMR,Region Myanmar,1,0,0,0,1,1,1,1,0
+REGION_MNE,Region Montenegro,0,1,0,0,1,1,0,1,0
+REGION_MNG,Region Mongolia,0,1,0,0,1,1,1,1,0
+REGION_MOZ,Region Mozambique,0,1,0,0,1,1,1,1,0
+REGION_MRT,Region Mauritania,0,1,0,0,1,1,0,1,0
+REGION_MUS,Region Mauritius,0,1,0,0,1,1,1,1,0
+REGION_MYS,Region Malaysia,1,0,0,0,1,1,1,1,0
+REGION_NAM,Region Namibia,0,1,0,0,1,1,1,1,0
+REGION_NGA,Region Nigeria,0,1,0,0,1,1,1,1,0
+REGION_NIC,Region Nicaragua,0,1,0,0,1,1,1,1,0
+REGION_NLD,Region Netherlands,1,0,0,0,1,1,1,1,0
+REGION_NPL,Region Nepal,0,1,0,0,0,,,,0
+REGION_NZL,Region New Zealand,0,1,0,0,1,1,1,1,0
+REGION_PAK,Region Pakistan,0,1,0,0,1,1,1,1,0
+REGION_PAN,Region Panama,0,1,0,0,0,,,,0
+REGION_PER,Region Peru,0,1,0,0,1,1,1,1,0
+REGION_POL,Region Poland,0,1,0,0,1,1,1,1,0
+REGION_PRT,Region Portugal,0,1,0,0,1,1,1,1,0
+REGION_PRY,Region Paraguay,0,1,0,0,1,1,1,1,0
+REGION_PSE,Region Palestine,0,1,0,0,1,1,0,1,0
+REGION_ROU,Region Romania,0,1,0,0,1,1,1,1,0
+REGION_RUS,Region Russia,0,1,0,0,1,1,2,1,0
+REGION_RWA,Region Rwanda,0,1,0,0,0,,,,0
+REGION_SAU,Region Saudi Arabia,0,1,0,0,1,1,1,1,0
+REGION_SEN,Region Senegal,0,1,0,0,1,1,1,1,0
+REGION_SLE,Region Sierra Leone,0,1,0,0,0,,,,0
+REGION_SLV,Region El Salvador,1,0,0,0,1,1,1,1,0
+REGION_SRB,Region Serbia,0,1,0,0,1,1,1,1,0
+REGION_SVK,Region Slovakia,0,1,0,0,1,1,1,1,0
+REGION_SVN,Region Slovenia,1,0,0,0,1,1,1,1,0
+REGION_SWE,Region Sweden,0,1,0,0,1,1,1,1,0
+REGION_SWZ,Region Swaziland,0,1,0,0,1,1,0,1,0
+REGION_TCD,Region Chad,0,1,0,0,1,1,0,1,0
+REGION_THA,Region Thailand,0,1,0,0,1,1,1,1,0
+REGION_TJK,Region Tajikistan,0,1,0,0,1,1,1,1,0
+REGION_TKM,Region Turkmenistan,0,1,0,0,0,,,,0
+REGION_TOG,Region Togo,0,1,0,0,1,1,1,1,0
+REGION_TUN,Region Tunisia,0,1,0,0,1,1,1,1,0
+REGION_TUR,Region Turkey,0,1,0,0,1,1,1,1,0
+REGION_TWN,Region Taiwan,1,0,0,0,1,1,1,1,0
+REGION_UKR,Region Ukraine,0,1,0,0,0,,,,0
+REGION_URY,Region Uruguay,0,1,0,0,1,1,1,1,0
+REGION_USA,Region USA,0,1,0,0,1,1,1,1,0
+REGION_UZB,Region Uzbekistan,0,1,0,0,1,1,1,1,0
+REGION_VEN,Region Venezuela,0,1,0,0,1,1,1,1,0
+REGION_VNM,Region Vietnam,0,1,0,0,1,1,1,1,0
+REGION_YEM,Region Yemen,0,1,0,0,1,1,0,1,0
+REGION_ZAF,Region South Africa,1,0,0,0,1,1,1,1,0
+REGION_ZWE,Region Zimbabwe,1,0,0,0,1,1,1,1,0
+REG_GLOBAL,Global Region,1,1,0,0,0,,,,0
+RegionLRF,Region for LRF Report,0,0,0,1,0,,,,1
+RegionReport,Global region (as used in World Risk Poll analytical report),1,0,0,0,0,,,,0
+Urbanicity,Urban/Rural,1,1,1,0,1,100,100,100,0
+WAVE,Wave of Data Collection,0,0,0,1,0,,,,0
+WBI,World Bank Country Income Classifications (2019-2020 definition),1,0,0,0,0,,,,0
+WGT,Weight,1,1,0,1,1,100,100,100,0
+WP1219,Gender,1,0,0,1,0,,,,1
+WP1220,Age,0,0,0,1,0,,,,0
+WP1220RECODED_1,Age Recoded – 5 Categories,0,0,0,1,0,,,,1
+WP1220RECODED_2,Age Recoded – 3 Categories,0,0,0,1,0,,,,0
+WP12258,Sampling Stratification,1,0,0,0,0,,,,0
+WP12258A,Sampling Stratification 2,1,0,0,0,0,,,,0
+WP12259,Sampling Stage 1 (PSU),1,0,0,0,0,,,,0
+WP14,Urban/Rural,1,0,0,0,0,,,,0
+WP20711,"Feel More, Less or About as Safe Compared With Five Years Ago",0,1,1,0,1,100,97,100,0
+WP20719,Climate Change a Threat to Country in Next 20 Years,0,1,1,1,1,100,100,100,1
+WP20720,Worried Food You Eat Could Cause Serious Harm,0,1,1,1,1,100,100,100,1
+WP20721,Worried Water You Drink Could Cause Serious Harm,0,1,1,1,1,100,100,100,1
+WP20722,Worried Violent Crime Could Cause Serious Harm,0,1,1,1,1,100,100,100,1
+WP20723,Worried Severe Weather Events Could Cause Serious Harm,0,1,1,1,1,100,100,100,1
+WP20726,Worried Mental Health Issues Could Cause Serious Harm,0,1,1,1,1,100,100,100,1
+WP22213,Worried Traffic or Roadside Accident Could Cause Serious Harm,0,1,1,1,1,0,100,100,1
+WP22214,Worried The Work You Do Could Cause Serious Harm,0,1,1,1,1,0,61,59,1
+WP22222,"Used Internet, Including Social Media, in Past 30 Days",0,1,0,0,0,,,,0
+WP22223,Worry About Personal Information: Being Stolen,0,1,0,0,0,,,,0
+WP22224,Worry About Personal Information: Being Used by Government,0,1,0,0,0,,,,0
+WP22225,Worry About Personal Information: Being Used by Companies,0,1,0,0,0,,,,0
+WP22226,Feel Safe in Car Driven by Computer Without a Human Driver,0,1,0,0,0,,,,0
+WP22227,Artificial Intelligence Will Help or Harm People in Next 20 Years,0,1,0,0,0,,,,0
+WP22228,How Long Household Could Cover Basic Needs If Income Was Lost,0,1,1,1,1,0,100,100,1
+WP22229,Household Could Cover Basic Needs If Income Was Lost: Weeks,0,1,1,1,1,0,28,33,0
+WP22230,Household Could Cover Basic Needs If Income Was Lost: Months,0,1,0,1,1,0,64,59,0
+WP22231,Government of (Country) Cares About You and Your Wellbeing,0,1,0,1,1,0,93,95,1
+WP22231_ALL,Government of country cares about you and your wellbeing (combined version),0,0,1,0,1,0,95,96,0
+WP22232,Neighbors Care About You and Your Wellbeing,0,1,1,1,1,0,100,100,1
+WP22233,Look to National Weather Service for Information About Disaster,0,1,0,0,0,,,,0
+WP22234,Look to Disaster Management Agency for Information About Disaster,0,1,0,0,0,,,,0
+WP22235,Look to Local News for Information About Disaster,0,1,0,0,0,,,,0
+WP22236,Look to Local Religious Leaders for Information About Disaster,0,1,0,0,0,,,,0
+WP22237,Look to Famous Person for Information About Disaster,0,1,0,0,0,,,,0
+WP22238,Look to Emergency Services for Information About Disaster,0,1,0,0,0,,,,0
+WP22239,Look to Internet/Social Media for Information About Disaster,0,1,0,0,0,,,,0
+WP22240,Trust Most to Provide Information About a Disaster,0,1,0,0,0,,,,0
+WP22241,Well Prepared to Deal With a Disaster: The National Government,0,1,0,0,0,,,,0
+WP22242,Well Prepared to Deal With a Disaster: Hospitals,0,1,0,0,0,,,,0
+WP22243,Well Prepared to Deal With a Disaster: You and Your Family,0,1,0,0,0,,,,0
+WP22244,Well Prepared to Deal With a Disaster: Local Government,0,1,0,0,0,,,,0
+WP22245,Experienced a Disaster in Past Five Years,0,1,0,0,1,0,0,0,0
+WP22247,Type of Disaster Experienced in Past Five Years (Coded),0,1,1,0,1,0,24,28,0
+WP22248,Received Warning About Disaster From Internet/Social Media,0,1,1,0,1,0,24,28,0
+WP22249,Received Warning About Disaster From Local Government or Police,0,1,1,0,1,0,24,28,0
+WP22250,"Received Warning About Disaster From Radio, TV, or Newspapers",0,1,1,0,1,0,24,28,0
+WP22251,Received Warning About Disaster From Local Community Organization,0,1,1,0,1,0,24,28,0
+WP22252,Could Protect Yourself or Family in a Future Disaster,0,1,1,1,1,0,100,100,1
+WP22253,Plan for Future Disaster Known by All Household Members,0,1,0,0,1,0,0,0,0
+WP22254,Happened for More Than a Day: Gone Without Electricity,0,1,0,0,0,,,,0
+WP22255,Happened for More Than a Day: Been Without Clean Drinking Water,0,1,0,0,0,,,,0
+WP22256,Happened for More Than a Day: Been Unable to Obtain Food,0,1,0,0,0,,,,0
+WP22257,Happened for More Than a Day: Unable to Obtain Medical Help/Medicine,0,1,0,0,0,,,,0
+WP22258,Happened for More Than a Day: Been Unable to Access a Telephone,0,1,0,0,0,,,,0
+WP22259,Experienced Discrimination Due to the Color of Your Skin,0,1,1,1,1,0,96,98,1
+WP22260,Experienced Discrimination Due to Your Religion,0,1,1,1,1,0,95,97,1
+WP22261,Experienced Discrimination Due to Your Nationality/Ethnic Group,0,1,1,1,1,0,95,97,1
+WP22262,Experienced Discrimination Due to Your Gender,0,1,1,1,1,0,96,98,1
+WP22263,Experienced Discrimination Due to a Disability,0,1,1,1,1,0,96,98,1
+WP22331,Greatest Source of Risk to Safety in Your Daily Life (Coded),0,1,1,1,1,0,97,100,1
+WP22400,Ever Experienced Physical Violence/Harassment at Work,0,1,0,0,0,,,,0
+WP22400_ALL,Ever Experienced Physical Violence/Harassment at Work (all countries),0,1,0,0,0,,,,0
+WP22401,How Many Times You Experienced Physical Violence/Harassment at Work,0,1,0,0,0,,,,0
+WP22402,Last Time You Experienced Physical Violence/Harassment at Work,0,1,0,0,0,,,,0
+WP22403,Ever Experienced Psychological Violence/Harassment at Work,0,1,0,0,0,,,,0
+WP22403_ALL,Ever Experienced Psychological Violence/Harassment (or Psychologically Hurting) at Work,0,1,0,0,0,,,,0
+WP22404,How Many Times You Experienced Psychological Violence/Harassment at Work,0,1,0,0,0,,,,0
+WP22404_ALL,How Many Times You Experienced Psychological Violence/Harassment (or Psychologically Hurting) at Work,0,1,0,0,0,,,,0
+WP22405,Last Time You Experienced Psychological Violence/Harassment at Work,0,1,0,0,0,,,,0
+WP22405_ALL,Last Time You Experienced Psychological Violence/Harassment (or Psychologically Hurting)  at Work,0,1,0,0,0,,,,0
+WP22406,Ever Experienced Sexual Violence/Harassment at Work,0,1,0,0,0,,,,0
+WP22406_ALL,Ever Experienced Sexual Violence/Harassment (or Unwanted Intimate Physical Contact) at Work,0,1,0,0,0,,,,0
+WP22407,How Many Times You Experienced Sexual Violence/Harassment at Work,0,1,0,0,0,,,,0
+WP22407_ALL,How Many Times You Experienced Sexual Violence/Harassment (or Unwanted Intimate Physical Contact) at Work,0,1,0,0,0,,,,0
+WP22408,Last Time You Experienced Sexual Violence/Harassment at Work,0,1,0,0,0,,,,0
+WP22408_ALL,Last Time You Experienced Sexual Violence/Harassment (or Unwanted Intimate Physical Contact) at Work,0,1,0,0,0,,,,0
+WP22409,Told Someone About Violence/Harassment Experienced at Work,0,1,0,0,0,,,,0
+WP22410,Told Your Employer or Supervisor About Violence/Harassment Experienced at Work,0,1,0,0,0,,,,0
+WP22411,Told Co-worker About Violence/Harassment Experienced at Work,0,1,0,0,0,,,,0
+WP22412,Told Friend or Family About Violence/Harassment Experienced at Work,0,1,0,0,0,,,,0
+WP22413,Told a Trade Union Representative About Violence/Harassment Experienced at Work,0,1,0,0,0,,,,0
+WP22414,Told Social Services or Not-For-Profit Organization About Violence/Harassment Experienced at Work,0,1,0,0,0,,,,0
+WP22415,Reason You Did Not Tell Someone About Violence/Harassment Experienced at Work: Thought it Was a Waste of Time,0,1,0,0,0,,,,0
+WP22416,Reason You Did Not Tell Someone About Violence/Harassment Experienced at Work: You Did Not Know What to Do,0,1,0,0,0,,,,0
+WP22417,Reason You Did Not Tell Someone About Violence/Harassment Experienced at Work: Procedures at Work Were Unclear,0,1,0,0,0,,,,0
+WP22418,Reason You Did Not Tell Someone About Violence/Harassment Experienced at Work: Worried People at Work Would Find Out,0,1,0,0,0,,,,0
+WP22419,Reason You Did Not Tell Someone About Violence/Harassment Experienced at Work: Fear of Punishment,0,1,0,0,0,,,,0
+WP22420,Reason You Did Not Tell Someone About Violence/Harassment Experienced at Work: Fear for Your Reputation,0,1,0,0,0,,,,0
+WP22421,Told Police/Community Leader/Labor Inspector About Violence/Harassment Experienced at Work,0,1,0,0,0,,,,0
+WP22422,Reason You Did Not Tell Someone About Violence/Harassment Experienced at Work: Lack of Trust in Police/Community Leaders/Labor Inspectors,0,1,0,0,0,,,,0
+WP22442,Experienced Harm in Past Two Years: Eating Food (You/Someone You Know),0,1,1,1,1,0,100,100,1
+WP22443,Experienced Harm in Past Two Years: Drinking Water (You/Someone You Know),0,1,1,1,1,0,100,100,1
+WP22444,Experienced Harm in Past Two Years: Violent Crime (You/Someone You Know),0,1,1,1,1,0,100,100,1
+WP22445,Experienced Harm in Past Two Years: Severe Weather Events (You/Someone You Know),0,1,1,1,1,0,100,100,1
+WP22446,Experienced Harm in Past Two Years: Traffic/Roadside Accident (You/Someone You Know),0,1,1,1,1,0,100,100,1
+WP22447,Experienced Harm in Past Two Years: Mental Health Issues (You/Someone You Know),0,1,1,1,1,0,100,100,1
+WP22448,Experienced Harm in Past Two Years: Work (You/Someone You Know),0,1,1,1,1,0,100,100,1
+WP22468,Worry About Personal Information: Being Used by the Authorities,0,1,0,0,0,,,,0
+WP22469,Authorities of (Country) Care About You and Your Wellbeing,0,1,0,1,1,0,1,1,1
+WP22500,Ever Experienced Someone Psychologically Hurting You at Work,0,1,0,0,0,,,,0
+WP22501,How Many Times You Experienced Someone Psychologically Hurting You at Work,0,1,0,0,0,,,,0
+WP22502,Last Time You Experienced Someone Psychologically Hurting You at Work,0,1,0,0,0,,,,0
+WP22503,Ever Experienced Unwanted Intimate Physical Contact at Work,0,1,0,0,0,,,,0
+WP22504,How Many Times You Experienced Unwanted Intimate Physical Contact at Work,0,1,0,0,0,,,,0
+WP22505,Last Time You Experienced Unwanted Intimate Physical Contact at Work,0,1,0,0,0,,,,0
+WP22513,Ever Experienced Physical Violence/Harassment at Work (e.g. Hitting/Restraining),0,1,0,0,0,,,,0
+WP22524,Worry About Personal Information: Being Used by Government in Power,0,1,0,0,0,,,,0
+WP22525,Government of Myanmar Cares About You and Your Wellbeing,0,1,0,1,0,,,,0
+WP22526,Well Prepared to Deal With a Disaster: The Government in Power,0,1,0,0,0,,,,0
+WP23335,Told Someone About Harm Experienced at Work,0,0,1,0,1,0,0,10,0
+WP23336,Last Time Employed or Self-Employed,0,0,1,0,1,0,0,100,0
+WP23337,Received Health or Safety Training About Your Work,0,0,1,0,1,0,0,84,0
+WP23338,Received Health or Safety Training About Your Work in Past Two Years,0,0,1,0,1,0,0,28,0
+WP23340,Job Sector (Coded),0,0,1,0,1,0,0,100,0
+WP23341,Most Common Type of Material in Household Waste,0,0,1,0,1,0,0,100,0
+WP23342,Household Waste Is Separated,0,0,1,0,1,0,0,100,0
+WP23343,What Happens to Household Waste Once Taken Outside of Home,0,0,1,0,1,0,0,100,0
+WP23344,Experienced a Disaster in Past Five Years in This Country,0,0,1,0,1,0,0,100,0
+WP23345,Plan for Future Disaster Known by All Household Members Over 10 Years Old,0,0,1,1,1,0,0,100,1
+WP24173,Worried Wildfires Could Cause Serious Harm,0,0,0,1,0,,,,1
+WP24174,Worried Severe Prolonged Weather Events Could Cause Serious Harm,0,0,0,1,0,,,,1
+WP24175,Worried the Air You Breathe Could Cause Serious Harm,0,0,0,1,0,,,,1
+WP24176,Experienced Harm in Past Two Years: Wildfires (You/Someone You Know),0,0,0,1,0,,,,1
+WP24177,Experienced Harm in Past Two Years: Severe Prolonged Weather Events (You/Someone You Know),0,0,0,1,0,,,,1
+WP24178,Experienced Harm in Past Two Years: The Air You/They Breathe (You/Someone You Know),0,0,0,1,0,,,,1
+WP24180,Type of Most Impactful Disaster Experienced in Past Five Years (Coded),0,0,0,1,0,,,,0
+WP24181,"Received Warning About Disaster From Internet, Social Media, Websites or Apps",0,0,0,1,0,,,,1
+WP24182,Received Warning About Disaster From Radio,0,0,0,1,0,,,,1
+WP24183,Received Warning About Disaster From Television,0,0,0,1,0,,,,1
+WP24184,Received Warning About Disaster From Printed Newspapers or Magazines,0,0,0,1,0,,,,1
+WP24185,Received Warning About Disaster From WhatsApp,0,0,0,1,0,,,,1
+WP24186,Received Warning About Disaster From SMS/Text Messages on Mobile Phone,0,0,0,1,0,,,,1
+WP24187,Received Warning About Disaster From Billboard,0,0,0,1,0,,,,1
+WP24188,"Received Warning About Disaster From Megaphone, Microphone, or Loudspeaker",0,0,0,1,0,,,,1
+WP24198,National Government Is Well Prepared to Deal With a Disaster,0,0,0,1,0,,,,1
+WP24199,Local Government Is Well Prepared to Deal With a Disaster,0,0,0,1,0,,,,0
+WP24213,Impacted by a Disaster in Past Five Years in (Country),0,0,0,1,0,,,,1
+WP24215,Able to Take Action Ahead of Disaster as Result of Advance Warning,0,0,0,1,0,,,,1
+WP24225,Most Other People in (Country) View Climate Change as Threat to Country in Next 20 Years,0,0,0,1,0,,,,1
+WP24386,Government Currently in Power Is Well Prepared to Deal With a Disaster,0,0,0,1,0,,,,1
+WP3117,,0,0,0,0,0,,,,1
+WP5,Country,0,1,1,1,1,100,100,100,0
+WP5889,Questionnaire Serial Number,0,0,0,1,0,,,,0
+WP5AA,Country (by alpha),1,0,0,0,0,,,,0
+WP9811,Education Level,0,0,0,1,0,,,,0
+WPID,Unique Case ID,0,0,0,1,0,,,,1
+WPID_RANDOM,Random Unique Case ID,1,1,1,1,1,100,100,100,0
+Worried.Index,Worried Index,1,0,0,0,0,,,,0
+YEAR_CALENDAR,Calendar Year,0,0,0,1,0,,,,0
+YEAR_WAVE,Wave Year,1,0,0,1,0,,,,0
+Year,Wave year,0,1,0,0,1,,,,0
+countrynew,Country Name,1,0,0,0,0,,,,0
+experience_index,Experience Index in 2025,0,0,0,1,0,,,,1
+resilience_com,Resilience: Community Dimension,0,0,1,1,0,,,,1
+resilience_hhl,Resilience: Household Dimension,0,0,1,1,0,,,,1
+resilience_idv,Resilience: Individual Dimension,0,0,1,1,0,,,,1
+resilience_index,Resilience Index,0,0,1,1,1,0,96,99,1
+resilience_soc,Resilience: Society Dimension,0,0,1,1,0,,,,1
+wbi,World Bank country classification by income level (2025-26 definiton),0,0,0,1,0,,,,1
+worry_exp_gap,Worry and experience gap,1,0,0,0,0,,,,0
+worry_index,Worry Index in 2025,0,0,0,1,0,,,,1
