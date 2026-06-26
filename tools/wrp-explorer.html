@@ -35,15 +35,26 @@
 <section class="hero">
   <div class="hero-inner">
     <div>
-      <div class="eyebrow">World Risk Poll 2025</div>
+      <div class="eyebrow" id="hero-eyebrow">World Risk Poll 2025</div>
       <h1>Data <span class="accent">Explorer</span><span class="period">.</span></h1>
-      <p class="lede">Explore the 2025 World Risk Poll across every theme — worry, experienced harm, disaster resilience, trust and discrimination. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.</p>
+      <p class="lede" id="hero-lede">Explore the 2025 World Risk Poll across every theme — worry, experienced harm, disaster resilience, trust and discrimination. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.</p>
     </div>
     <div class="hero-stats">
-      <div class="stat"><div class="stat-num">140</div><div class="stat-lbl">Countries</div></div>
-      <div class="stat"><div class="stat-num">143,459</div><div class="stat-lbl">Respondents</div></div>
+      <div class="stat"><div class="stat-num" id="stat-countries">140</div><div class="stat-lbl">Countries</div></div>
+      <div class="stat"><div class="stat-num" id="stat-respondents">143,459</div><div class="stat-lbl">Respondents</div></div>
       <div class="stat"><div class="stat-num">PROJWT</div><div class="stat-lbl">Population-weighted</div></div>
     </div>
+  </div>
+  <div class="wave-bar">
+    <span class="wave-bar-label">Wave</span>
+    <div class="segmented wave-segmented" id="wave-tabs">
+      <button class="seg-btn" data-wave="2019">2019</button>
+      <button class="seg-btn" data-wave="2021">2021</button>
+      <button class="seg-btn" data-wave="2023">2023</button>
+      <button class="seg-btn active" data-wave="2025">2025</button>
+      <button class="seg-btn" data-wave="trended">Trends</button>
+    </div>
+    <span class="wave-bar-note" id="wave-note"></span>
   </div>
 </section>
 

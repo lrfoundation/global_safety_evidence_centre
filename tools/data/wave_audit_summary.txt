@@ -1,0 +1,151 @@
+
+=== Wave audit summary ===
+wave             rows   cols  catalogue Qs covered
+2019          154,195    227    3 / 65
+2021          280,106    252   28 / 65
+2023          146,910     63   34 / 65
+2025          143,459     84   64 / 65
+trended       421,793    321   32 / 65
+
+--- 2019: 62 catalogue items NOT in per-wave file ---
+   COUNTRYNEW          via   -      
+   COUNTRY_ISO3        via trended  trended non-miss in 2019: 100%
+   DEGURBA             via   -      
+   PROJWT              via trended  trended non-miss in 2019: 100%
+   RegionLRF           via   -      
+   WP1220RECODED_1     via   -      
+   WP20719             via trended  trended non-miss in 2019: 100%
+   WP20720             via trended  trended non-miss in 2019: 100%
+   WP20721             via trended  trended non-miss in 2019: 100%
+   WP20722             via trended  trended non-miss in 2019: 100%
+   WP20723             via trended  trended non-miss in 2019: 100%
+   WP20726             via trended  trended non-miss in 2019: 100%
+   WP22213             via trended  trended non-miss in 2019: 0%
+   WP22214             via trended  trended non-miss in 2019: 0%
+   WP22228             via trended  trended non-miss in 2019: 0%
+   WP22231             via trended  trended non-miss in 2019: 0%
+   WP22232             via trended  trended non-miss in 2019: 0%
+   WP22252             via trended  trended non-miss in 2019: 0%
+   WP22259             via trended  trended non-miss in 2019: 0%
+   WP22260             via trended  trended non-miss in 2019: 0%
+   WP22261             via trended  trended non-miss in 2019: 0%
+   WP22262             via trended  trended non-miss in 2019: 0%
+   WP22263             via trended  trended non-miss in 2019: 0%
+   WP22331             via trended  trended non-miss in 2019: 0%
+   WP22442             via trended  trended non-miss in 2019: 0%
+   WP22443             via trended  trended non-miss in 2019: 0%
+   WP22444             via trended  trended non-miss in 2019: 0%
+   WP22445             via trended  trended non-miss in 2019: 0%
+   WP22446             via trended  trended non-miss in 2019: 0%
+   WP22447             via trended  trended non-miss in 2019: 0%
+   WP22448             via trended  trended non-miss in 2019: 0%
+   WP22469             via trended  trended non-miss in 2019: 0%
+   WP23345             via trended  trended non-miss in 2019: 0%
+   WP24173             via   -      
+   WP24174             via   -      
+   WP24175             via   -      
+   WP24176             via   -      
+   WP24177             via   -      
+   WP24178             via   -      
+   WP24181             via   -      
+   WP24182             via   -      
+   WP24183             via   -      
+   WP24184             via   -      
+   WP24185             via   -      
+   WP24186             via   -      
+   WP24187             via   -      
+   WP24188             via   -      
+   WP24198             via   -      
+   WP24213             via   -      
+   WP24215             via   -      
+   WP24225             via   -      
+   WP24386             via   -      
+   WP3117              via   -      
+   WPID                via   -      
+   experience_index    via   -      
+   resilience_com      via   -      
+   resilience_hhl      via   -      
+   resilience_idv      via   -      
+   resilience_index    via trended  trended non-miss in 2019: 0%
+   resilience_soc      via   -      
+   wbi                 via   -      
+   worry_index         via   -      
+
+--- 2021: 37 catalogue items NOT in per-wave file ---
+   COUNTRYNEW          via   -      
+   COUNTRY_ISO3        via trended  trended non-miss in 2021: 100%
+   DEGURBA             via   -      
+   PROJWT              via trended  trended non-miss in 2021: 100%
+   RegionLRF           via   -      
+   WP1219              via   -      
+   WP1220RECODED_1     via   -      
+   WP23345             via trended  trended non-miss in 2021: 0%
+   WP24173             via   -      
+   WP24174             via   -      
+   WP24175             via   -      
+   WP24176             via   -      
+   WP24177             via   -      
+   WP24178             via   -      
+   WP24181             via   -      
+   WP24182             via   -      
+   WP24183             via   -      
+   WP24184             via   -      
+   WP24185             via   -      
+   WP24186             via   -      
+   WP24187             via   -      
+   WP24188             via   -      
+   WP24198             via   -      
+   WP24213             via   -      
+   WP24215             via   -      
+   WP24225             via   -      
+   WP24386             via   -      
+   WP3117              via   -      
+   WPID                via   -      
+   experience_index    via   -      
+   resilience_com      via   -      
+   resilience_hhl      via   -      
+   resilience_idv      via   -      
+   resilience_index    via trended  trended non-miss in 2021: 96%
+   resilience_soc      via   -      
+   wbi                 via   -      
+   worry_index         via   -      
+
+--- 2023: 31 catalogue items NOT in per-wave file ---
+   COUNTRYNEW          via   -      
+   DEGURBA             via   -      
+   RegionLRF           via   -      
+   WP1219              via   -      
+   WP1220RECODED_1     via   -      
+   WP22231             via trended  trended non-miss in 2023: 95%
+   WP22469             via trended  trended non-miss in 2023: 1%
+   WP24173             via   -      
+   WP24174             via   -      
+   WP24175             via   -      
+   WP24176             via   -      
+   WP24177             via   -      
+   WP24178             via   -      
+   WP24181             via   -      
+   WP24182             via   -      
+   WP24183             via   -      
+   WP24184             via   -      
+   WP24185             via   -      
+   WP24186             via   -      
+   WP24187             via   -      
+   WP24188             via   -      
+   WP24198             via   -      
+   WP24213             via   -      
+   WP24215             via   -      
+   WP24225             via   -      
+   WP24386             via   -      
+   WP3117              via   -      
+   WPID                via   -      
+   experience_index    via   -      
+   wbi                 via   -      
+   worry_index         via   -      
+
+--- Weight / Year column inventory ---
+   2019       weight: ['WGT']                                                 year: []
+   2021       weight: ['WGT', 'PROJWT_2021', 'PROJWT_2019']                   year: ['Year']
+   2023       weight: ['PROJWT']                                              year: []
+   2025       weight: ['WGT', 'HHWEIGHT2', 'PROJWT']                          year: ['WAVE']
+   trended    weight: ['PROJWT', 'WGT']                                       year: ['Year']

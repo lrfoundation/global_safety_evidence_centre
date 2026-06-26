@@ -16,6 +16,40 @@ const ctrl = { question:'climate', breakdown1:'countrynew', breakdown2:'countryn
                profileScope:'all', k:4, colourBy:'cluster', clusterBy:'worry' };
 let activeView = 'dist';
 
+/* ---------- wave switching (loads a different manifest in-tool) ---------- */
+const WAVES = {
+  '2019':   { manifest:'data/wrp_explorer_2019.json',    bin:'data/wrp_explorer_2019.bin',    binGz:'data/wrp_explorer_2019.bin.gz',    label:'2019',  eyebrow:'World Risk Poll 2019',  lede:'Explore the 2019 World Risk Poll — worry, experienced harm and the greatest perceived source of risk. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.' },
+  '2021':   { manifest:'data/wrp_explorer_2021.json',    bin:'data/wrp_explorer_2021.bin',    binGz:'data/wrp_explorer_2021.bin.gz',    label:'2021',  eyebrow:'World Risk Poll 2021',  lede:'Explore the 2021 World Risk Poll across worry, experienced harm, disaster resilience, trust and discrimination. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.' },
+  '2023':   { manifest:'data/wrp_explorer_2023.json',    bin:'data/wrp_explorer_2023.bin',    binGz:'data/wrp_explorer_2023.bin.gz',    label:'2023',  eyebrow:'World Risk Poll 2023',  lede:'Explore the 2023 World Risk Poll across worry, experienced harm, disaster resilience, trust and discrimination. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.' },
+  '2025':   { manifest:'data/wrp_explorer.json',         bin:'data/wrp_explorer.bin',         binGz:'data/wrp_explorer.bin.gz',         label:'2025',  eyebrow:'World Risk Poll 2025',  lede:'Explore the 2025 World Risk Poll across every theme — worry, experienced harm, disaster resilience, trust and discrimination. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.' },
+  'trended':{ manifest:'data/wrp_explorer_trended.json', bin:'data/wrp_explorer_trended.bin', binGz:'data/wrp_explorer_trended.bin.gz', label:'2019–2023', eyebrow:'World Risk Poll — Trends', lede:'Cross-wave view: every respondent from 2019, 2021 and 2023 in a single dataset. Use the survey-year filter or breakdown to see how worry, experienced harm and resilience have moved over time. All figures are population-weighted.' },
+};
+function currentWave(){ const p=new URLSearchParams(location.search).get('wave'); return WAVES[p] ? p : '2025'; }
+let WAVE = currentWave();
+function buildWaveTabs(){
+  document.querySelectorAll('#wave-tabs .seg-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.wave === WAVE);
+    b.onclick = ()=>{
+      const next = b.dataset.wave;
+      if(next === WAVE) return;
+      // reset transient UI state that may reference vanished slugs / metrics
+      Object.keys(filters).forEach(k=>delete filters[k]);
+      ROWS = null;
+      // update URL and rebuild from the new manifest
+      const u = new URL(location.href);
+      if(next === '2025') u.searchParams.delete('wave'); else u.searchParams.set('wave', next);
+      history.replaceState(null, '', u.toString());
+      WAVE = next;
+      switchWave();
+    };
+  });
+}
+function applyWaveChrome(){
+  const w = WAVES[WAVE];
+  document.getElementById('hero-eyebrow').textContent = w.eyebrow;
+  document.getElementById('hero-lede').textContent = w.lede;
+}
+
 function activeFilterCount(){ return Object.keys(filters).filter(k=>filters[k]&&filters[k].size).length; }
 function updateFilterToggle(){ const fp=document.querySelector('.filters'), tf=$('#toggle-filters'); if(!fp||!tf) return;
   const c=fp.classList.contains('collapsed'), n=activeFilterCount();
@@ -34,17 +68,24 @@ function observeResize(){
 /* ---------- load ---------- */
 async function load(){
   try{
-    MAN = await fetch('data/wrp_explorer.json').then(r=>{ if(!r.ok) throw new Error('manifest '+r.status); return r.json(); });
+    const cfg = WAVES[WAVE];
+    applyWaveChrome();
+    document.getElementById('status').classList.remove('hidden');
+    document.getElementById('status').classList.remove('err');
+    document.getElementById('status').textContent = `Loading World Risk Poll ${cfg.label} data…`;
+    // wipe stale state — switching wave must not leak metric/dim keys from another wave
+    STORE = {}; DIM = {}; Q = {}; M = {}; COUNTRIES = [];
+    MAN = await fetch(cfg.manifest).then(r=>{ if(!r.ok) throw new Error('manifest '+r.status); return r.json(); });
     let buf;
     try{
-      const res = await fetch('data/wrp_explorer.bin.gz');
+      const res = await fetch(cfg.binGz);
       if(!res.ok) throw 0;
       if('DecompressionStream' in window){
         const ds = res.body.pipeThrough(new DecompressionStream('gzip'));
         buf = await new Response(ds).arrayBuffer();
       } else { throw 0; }
     }catch(e){
-      buf = await fetch('data/wrp_explorer.bin').then(r=>{ if(!r.ok) throw new Error('bin '+r.status); return r.arrayBuffer(); });
+      buf = await fetch(cfg.bin).then(r=>{ if(!r.ok) throw new Error('bin '+r.status); return r.arrayBuffer(); });
     }
     N = MAN.n;
     const view = (c)=>{ const o=c.off, l=c.len;
@@ -56,18 +97,59 @@ async function load(){
     WEIGHT = view(MAN.weight);
     COUNTRIES = MAN.countries;
     CREGION = new Int8Array(COUNTRIES.length).fill(-1); CINCOME = new Int8Array(COUNTRIES.length).fill(-1);
-    { const cc=STORE['country'], rg=STORE['RegionLRF'], wb=STORE['wbi'];
-      for(let i=0;i<N;i++){ const g=cc[i]; if(g<0) continue; if(CREGION[g]<0 && rg[i]>0) CREGION[g]=rg[i]; if(CINCOME[g]<0 && wb[i]>0) CINCOME[g]=wb[i]; } }
     MAN.dimensions.forEach(d=> DIM[d.key]=d);
+    // Resolve region / income-group columns via the manifest's dimension list — the
+    // raw column key varies across waves (2025 uses RegionLRF/wbi, others use
+    // GlobalRegion/CountryIncomeLevel2023). Skip silently if a wave has neither.
+    { const cc=STORE['country'];
+      const rg = (DIM['GlobalRegion'] && STORE[DIM['GlobalRegion'].col]) || null;
+      const wb = (DIM['CountryIncome'] && STORE[DIM['CountryIncome'].col]) || null;
+      if(cc && (rg || wb)){
+        for(let i=0;i<N;i++){ const g=cc[i]; if(g<0) continue;
+          if(rg && CREGION[g]<0 && rg[i]>0) CREGION[g]=rg[i];
+          if(wb && CINCOME[g]<0 && wb[i]>0) CINCOME[g]=wb[i]; } } }
     MAN.questions.forEach(q=> Q[q.key]=q);
     MAN.metrics.forEach(m=> M[m.key]=m);
+    // hero stats — update from manifest (was hard-coded for 2025)
+    const ctry = document.getElementById('stat-countries');   if(ctry) ctry.textContent = String((MAN.countries||[]).length);
+    const resp = document.getElementById('stat-respondents'); if(resp) resp.textContent = N.toLocaleString();
+    const note = document.getElementById('wave-note');        if(note) note.textContent = `${(MAN.countries||[]).length} countries · ${N.toLocaleString()} respondents · ${(MAN.questions||[]).length} questions`;
+    // make sure ctrl points at something valid for this wave's catalogue
+    pickInitialCtrl();
     $('#status').classList.add('hidden');
     $('#app').classList.remove('hidden');
-    buildFilters(); buildTabs(); render(); observeResize();
+    buildFilters(); buildTabs(); buildWaveTabs(); render(); observeResize();
     $('#dl-svg').onclick = dlChartSVG; $('#dl-png').onclick = dlChartPNG; $('#dl-csv').onclick = dlCSV;
   }catch(e){
-    const s=$('#status'); s.classList.add('err'); s.textContent='Could not load the dataset ('+e.message+'). Run build_explorer_data.py and serve the tools folder.';
+    const s=$('#status'); s.classList.add('err'); s.classList.remove('hidden');
+    s.textContent='Could not load the '+WAVES[WAVE].label+' dataset ('+e.message+'). Run scripts/build_explorer_wave.py and serve the tools folder.';
+    $('#app').classList.add('hidden');
+    // wave tabs still need to be clickable even on load failure
+    buildWaveTabs();
   }
+}
+
+/* Re-load everything against the now-current WAVE. Called when user clicks a wave tab. */
+async function switchWave(){
+  await load();
+}
+
+/* When a wave is loaded, the previous ctrl.* slugs may refer to vanished questions
+   or metrics. Pick the first available item so views render instead of throwing. */
+function pickInitialCtrl(){
+  const qkeys = MAN.questions.map(q=>q.key);
+  const mkeys = MAN.metrics.map(m=>m.key);
+  const dkeys = MAN.dimensions.filter(d=>d.type==='country'||d.cats).map(d=>d.key);
+  const pick = (cur, list, fallback) => list.includes(cur) ? cur : (list[0] || fallback);
+  ctrl.question   = pick(ctrl.question,   qkeys, 'climate');
+  ctrl.right      = pick(ctrl.right,      qkeys, ctrl.question);
+  // prefer the climate-very metric when it exists; otherwise the first metric
+  const wantedM1 = ['climate_very','climate_concerned','food_very', mkeys[0]];
+  ctrl.metric1   = wantedM1.find(k => k && mkeys.includes(k)) || mkeys[0];
+  ctrl.metric2   = mkeys.find(k => k !== ctrl.metric1) || ctrl.metric1;
+  ctrl.breakdown1 = pick(ctrl.breakdown1, dkeys, 'countrynew');
+  ctrl.breakdown2 = pick(ctrl.breakdown2, dkeys, 'countrynew');
+  ctrl.profileScope = 'all';
 }
 
 /* ---------- hover tooltip (delegated; works for string-built and d3-built SVG) ---------- */
