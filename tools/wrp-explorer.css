@@ -61,18 +61,28 @@ body.wave-dataset .tabbar { display: none; }
 .combo-opt.hide { display: none; }
 
 /* Dataset details view */
-.dataset-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.7rem; }
+.dataset-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.7rem; flex-wrap: wrap; }
 #ds-search { font: inherit; font-size: 13px; padding: 0.45rem 0.7rem; border: 1.5px solid var(--lrf-line); border-radius: var(--r); min-width: 260px; }
 #ds-search:focus { outline: none; border-color: var(--lrf-pink); }
-.dataset-scroll { max-height: 70vh; overflow: auto; border: 1px solid var(--lrf-line); border-radius: var(--r); }
-.dataset-table { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: auto; }
-.dataset-table th { position: sticky; top: 0; background: var(--lrf-white); z-index: 1; box-shadow: 0 1px 0 var(--lrf-line); padding: 0.6rem; text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--lrf-muted); font-weight: 700; white-space: nowrap; }
+.dataset-scroll { max-height: 72vh; overflow: auto; border: 1px solid var(--lrf-line); border-radius: var(--r); }
+.dataset-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+.dataset-table th { position: sticky; top: 0; background: var(--lrf-white); z-index: 1; box-shadow: 0 1px 0 var(--lrf-line);
+  padding: 0.55rem 0.7rem; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--lrf-muted); font-weight: 700; white-space: nowrap; }
+.dataset-table th.wave-grp { font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--lrf-ink); border-left: 1px solid var(--lrf-line); }
+.dataset-table th.wave-grp + th, .dataset-table th.col-waves, .dataset-table th.col-total { border-left: 1px solid var(--lrf-line); }
 .dataset-table th.num, .dataset-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.dataset-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--lrf-line); }
+.dataset-table th.col-country, .dataset-table td.name { text-align: left; }
+.dataset-table td { padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--lrf-line); white-space: nowrap; }
 .dataset-table tr:last-child td { border-bottom: none; }
-.dataset-table td.name { font-weight: 600; white-space: nowrap; }
+.dataset-table td.name { font-weight: 600; }
 .dataset-table td.absent { color: var(--lrf-muted); text-align: right; }
-.dataset-table tfoot td { background: var(--lrf-cream); font-weight: 700; }
+.dataset-table tfoot td { background: var(--lrf-cream); font-weight: 700; border-top: 1.5px solid var(--lrf-line); }
+/* Explicit column widths so values aren't crushed into 1ch slots. Country
+   column flexes; numeric columns share equal slots. */
+.dataset-table col.col-country { width: 180px; }
+.dataset-table col.col-num     { width: 7.5%; }
+.dataset-table col.col-waves   { width: 60px; }
+.dataset-table col.col-total   { width: 100px; }
 
 /* control bar: question / breakdowns / metrics / sort */
 .controlbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem 1rem; margin-bottom: 1.25rem; }
