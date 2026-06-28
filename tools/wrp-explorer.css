@@ -166,9 +166,11 @@ table.dt .heat { color: var(--lrf-ink); font-weight: 600; border-radius: 2px; }
 /* tighten the secondary card's leading spacing so it lines up with the chart card's title row */
 .view-grid > .card > .sec-label:first-child { margin-bottom: 0.7rem; }
 
-/* map */
-#map-svg { width: 100%; height: auto; background: #eef1f4; border-radius: var(--r); }
-.map-sphere { fill: #eef1f4; } .map-land-nodata { fill: #ffffff; stroke: #d6dde3; stroke-width: .5; }
+/* map — wave page and trended change-between-waves use identical chrome:
+   no rectangular background, just the rounded Natural Earth sphere. */
+#map-svg, #tm-svg { width: 100%; height: auto; display: block; }
+.map-sphere { fill: #eef1f4; }
+.map-land-nodata { fill: #ffffff; stroke: #d6dde3; stroke-width: .5; }
 .map-land { stroke: #ffffff; stroke-width: .4; }
 .map-legend { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; font-size: 12px; color: var(--lrf-muted); }
 .map-legend .bar { height: 12px; width: 220px; border-radius: 2px; }
