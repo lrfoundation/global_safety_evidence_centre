@@ -6,7 +6,9 @@ const $ = s => document.querySelector(s);
 const WRP = { very:'#e3076e', somewhat:'#00a7b3', not:'#00785c', dk:'#bdbdbd', refused:'#0d2240' };
 const HEAT1 = ['#ffffff', '#e3076e'];          // metric_1 fuchsia scale
 const HEAT2 = ['#eef1f4', '#0d2240'];          // metric_2 navy scale
-const MAP_RAMP = ['#fbe0ec', '#e3076e', '#5c0b3a', '#0d2240']; // fuchsia → ink
+// 5-stop fuchsia ramp shared by the wave-page Map view and the trended
+// Change-between-waves map's "warm" side, so both feel like the same chart.
+const MAP_RAMP = ['#fde6ee', '#f5a6c5', '#ec3a87', '#a30b5a', '#5a0531']; // pale → fuchsia → maroon
 
 let MAN, N, WEIGHT, STORE = {}, DIM = {}, Q = {}, M = {}, COUNTRIES = [], CREGION = null, CINCOME = null;
 let ROWS = null; // current passing row indices (null = all)
