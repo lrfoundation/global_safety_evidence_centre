@@ -22,7 +22,10 @@ const WAVES = {
   '2021':   { manifest:'data/wrp_explorer_2021.json',    bin:'data/wrp_explorer_2021.bin',    binGz:'data/wrp_explorer_2021.bin.gz',    label:'2021',  eyebrow:'World Risk Poll 2021',  lede:'Explore the 2021 World Risk Poll across worry, experienced harm, disaster resilience, trust and discrimination. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.' },
   '2023':   { manifest:'data/wrp_explorer_2023.json',    bin:'data/wrp_explorer_2023.bin',    binGz:'data/wrp_explorer_2023.bin.gz',    label:'2023',  eyebrow:'World Risk Poll 2023',  lede:'Explore the 2023 World Risk Poll across worry, experienced harm, disaster resilience, trust and discrimination. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.' },
   '2025':   { manifest:'data/wrp_explorer.json',         bin:'data/wrp_explorer.bin',         binGz:'data/wrp_explorer.bin.gz',         label:'2025',  eyebrow:'World Risk Poll 2025',  lede:'Explore the 2025 World Risk Poll across every theme — worry, experienced harm, disaster resilience, trust and discrimination. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.' },
-  'trended':{ manifest:'data/wrp_explorer_trended.json', bin:'data/wrp_explorer_trended.bin', binGz:'data/wrp_explorer_trended.bin.gz', label:'2019–2023', eyebrow:'World Risk Poll — Trends', lede:'Cross-wave view: every respondent from 2019, 2021 and 2023 in a single dataset. Use the survey-year filter or breakdown to see how worry, experienced harm and resilience have moved over time. All figures are population-weighted.' },
+  'trended':{ manifest:'data/wrp_explorer_trended.json', bin:'data/wrp_explorer_trended.bin', binGz:'data/wrp_explorer_trended.bin.gz', label:'2019–2025', eyebrow:'World Risk Poll — Trends', lede:'Cross-wave view: every respondent from 2019, 2021, 2023 and 2025 in a single dataset. Use the survey-year filter or breakdown to see how worry, experienced harm and resilience have moved over time. All figures are population-weighted.' },
+  // "dataset" isn't a wave — it's a meta-view showing per-country coverage
+  // across every wave. We special-case its load below: no manifest fetch.
+  'dataset':{ manifest:null, label:'Datasets', eyebrow:'World Risk Poll — Dataset details', lede:'Country-level coverage across every wave of the World Risk Poll: how many respondents were surveyed in each country in each wave, and what each wave projects to in population terms.' },
 };
 function currentWave(){ const p=new URLSearchParams(location.search).get('wave'); return WAVES[p] ? p : '2025'; }
 let WAVE = currentWave();
@@ -49,6 +52,7 @@ function applyWaveChrome(){
   document.getElementById('hero-eyebrow').textContent = w.eyebrow;
   document.getElementById('hero-lede').textContent = w.lede;
   document.body.classList.toggle('wave-trended', WAVE === 'trended');
+  document.body.classList.toggle('wave-dataset', WAVE === 'dataset');
 }
 const TREND_VIEWS = ['trend-course', 'trend-map'];
 const PERWAVE_VIEWS = ['dist','map','rel','sankey','profile','clusters'];
@@ -75,6 +79,16 @@ async function load(){
   try{
     const cfg = WAVES[WAVE];
     applyWaveChrome();
+    // The dataset-details view doesn't have a manifest — skip the binary load.
+    if(WAVE === 'dataset'){
+      $('#status').classList.add('hidden');
+      $('#app').classList.remove('hidden');
+      activeView = 'dataset';
+      document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id === 'view-dataset'));
+      buildWaveTabs();
+      renderDataset();
+      return;
+    }
     document.getElementById('status').classList.remove('hidden');
     document.getElementById('status').classList.remove('err');
     document.getElementById('status').textContent = `Loading World Risk Poll ${cfg.label} data…`;
@@ -123,7 +137,7 @@ async function load(){
     pickInitialCtrl();
     // and the active view is appropriate for the wave (trended has its own two)
     if(WAVE === 'trended' && !isTrendView(activeView)) activeView = 'trend-course';
-    if(WAVE !== 'trended' && isTrendView(activeView)) activeView = 'dist';
+    if(WAVE !== 'trended' && (isTrendView(activeView) || activeView === 'dataset')) activeView = 'dist';
     document.querySelectorAll('#view-tabs .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===activeView));
     document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id === 'view-'+activeView));
     $('#status').classList.add('hidden');
@@ -287,7 +301,7 @@ function bindCombo(id, onChange){
   const list  = wrap.querySelector('.combo-list');
   const opts  = [...list.querySelectorAll('.combo-opt')];
   let activeIdx = -1;
-  const open = ()=>{ list.classList.remove('hidden'); applyFilter(input.value); };
+  const open = ()=>{ list.classList.remove('hidden'); };
   const close= ()=>{ list.classList.add('hidden'); activeIdx=-1; };
   const applyFilter = (q)=>{ const needle = (q||'').trim().toLowerCase();
     opts.forEach(o=>{ const m = !needle || o.textContent.toLowerCase().includes(needle); o.classList.toggle('hide', !m); });
@@ -295,7 +309,9 @@ function bindCombo(id, onChange){
   const highlight = ()=>{ opts.forEach((o,i)=>o.classList.toggle('active', i===activeIdx));
     const a = opts[activeIdx]; if(a){ const r = a.offsetTop; if(r < list.scrollTop || r+a.offsetHeight > list.scrollTop+list.clientHeight) list.scrollTop = r - 20; } };
   const pick = (o)=>{ const v = o.dataset.val; input.value = o.textContent; input.dataset.current = v; close(); onChange(v); };
-  input.addEventListener('focus', ()=>{ input.select(); open(); });
+  // On focus: show ALL options (don't filter by the current label) and select
+  // the text so the first keystroke replaces it. Filter only kicks in on input.
+  input.addEventListener('focus', ()=>{ input.select(); applyFilter(''); open(); });
   input.addEventListener('input', ()=>{ applyFilter(input.value); open(); });
   input.addEventListener('keydown', e=>{
     if(e.key === 'ArrowDown'){ e.preventDefault(); open();
