@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="lrf-theme.css">
-<link rel="stylesheet" href="wrp-explorer.css">
+<link rel="stylesheet" href="wrp-explorer.css?v=20260628b">
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12"></script>
@@ -86,6 +86,7 @@
         <button class="seg-btn single-wave-only" data-view="clusters">Clusters</button>
         <button class="seg-btn trended-only" data-view="trend-course">Time course</button>
         <button class="seg-btn trended-only" data-view="trend-map">Change between waves</button>
+        <button class="seg-btn" data-view="dataset">Dataset details</button>
       </div>
       <div class="downloads">
         <button class="btn btn-small" id="dl-svg" title="Download this chart as SVG">Chart SVG</button>
@@ -160,6 +161,19 @@
       </div>
     </div>
 
+    <!-- Dataset details: per-country roll-up across all four waves -->
+    <div id="view-dataset" class="view">
+      <div class="card">
+        <div class="sec-label" id="ds-title">Country coverage across waves</div>
+        <div class="dataset-controls">
+          <input type="text" id="ds-search" placeholder="Filter countries…" autocomplete="off">
+          <span class="muted-note" id="ds-summary"></span>
+        </div>
+        <div class="dataset-scroll"><table class="dt dataset-table" id="ds-table"></table></div>
+        <div class="muted-note" id="ds-note"></div>
+      </div>
+    </div>
+
     <!-- Trends view 1: stacked time course (single question, full distribution per year) -->
     <div id="view-trend-course" class="view">
       <div class="card">
@@ -201,6 +215,6 @@
 </footer>
 
 <div class="tip" id="tip"></div>
-<script src="wrp-explorer.js"></script>
+<script src="wrp-explorer.js?v=20260628b"></script>
 </body>
 </html>
