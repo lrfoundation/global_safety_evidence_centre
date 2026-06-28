@@ -21,6 +21,12 @@ main { max-width: none; padding: 1.25rem 2.5rem 4rem; }
 body:not(.wave-trended) #view-tabs .seg-btn.trended-only { display: none; }
 body.wave-trended #view-tabs .seg-btn.single-wave-only { display: none; }
 
+/* Dataset-details mode hides everything wave-specific (filters, control bar,
+   view tabs, downloads) — it's a meta-view, not a wave. */
+body.wave-dataset .filters,
+body.wave-dataset .controlbar,
+body.wave-dataset .tabbar { display: none; }
+
 /* Collapsible filter panel */
 .filters.collapsed .filters-grid { display: none; }
 .filters-head { gap: 0.6rem; }
