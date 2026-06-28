@@ -181,42 +181,42 @@ FILTER_SLOTS = [
 KNOWN_QUESTIONS = [
     # ---- worry / threat ----
     ("climate",            "WP20719", "worry",  "Climate change a threat to country (next 20 yrs)"),
-    ("climate_2019",       "L5",      "worry",  "Climate change a threat to country (2019)"),
+    ("climate_2019",       "L5",      "worry",  "Climate change a threat to country"),
     ("climate_other",      "WP24225", "worry",  "Most others see climate as a threat"),
     ("food",               "WP20720", "worry",  "Worried food could cause serious harm"),
-    ("food_2019",          "L6A",     "worry",  "Worried food could cause harm (2019)"),
+    ("food_2019",          "L6A",     "worry",  "Worried food could cause harm"),
     ("water",              "WP20721", "worry",  "Worried water could cause serious harm"),
-    ("water_2019",         "L6B",     "worry",  "Worried water could cause harm (2019)"),
+    ("water_2019",         "L6B",     "worry",  "Worried water could cause harm"),
     ("crime",              "WP20722", "worry",  "Worried violent crime could cause serious harm"),
-    ("crime_2019",         "L6C",     "worry",  "Worried violent crime could cause harm (2019)"),
+    ("crime_2019",         "L6C",     "worry",  "Worried violent crime could cause harm"),
     ("weather",            "WP20723", "worry",  "Worried severe weather could cause serious harm"),
-    ("weather_2019",       "L6D",     "worry",  "Worried severe weather could cause harm (2019)"),
-    ("power_2019",         "L6E",     "worry",  "Worried electrical power lines (2019)"),
+    ("weather_2019",       "L6D",     "worry",  "Worried severe weather could cause harm"),
+    ("power_2019",         "L6E",     "worry",  "Worried electrical power lines"),
     ("mental_health",      "WP20726", "worry",  "Worried mental health could cause serious harm"),
-    ("mental_2019",        "L6G",     "worry",  "Worried mental health (2019)"),
+    ("mental_2019",        "L6G",     "worry",  "Worried mental health"),
     ("traffic",            "WP22213", "worry",  "Worried traffic could cause serious harm"),
     ("work",               "WP22214", "worry",  "Worried work could cause serious harm"),
-    ("prolonged_weather",  "WP24174", "worry",  "Worried prolonged severe weather (2025)"),
-    ("wildfires",          "WP24173", "worry",  "Worried wildfires (2025)"),
-    ("air",                "WP24175", "worry",  "Worried the air could cause harm (2025)"),
+    ("prolonged_weather",  "WP24174", "worry",  "Worried prolonged severe weather"),
+    ("wildfires",          "WP24173", "worry",  "Worried wildfires"),
+    ("air",                "WP24175", "worry",  "Worried the air could cause harm"),
     # ---- experience (post-2020) ----
     ("exp_food",            "WP22442", "exp",    "Experienced harm: eating food"),
     ("exp_water",           "WP22443", "exp",    "Experienced harm: drinking water"),
     ("exp_crime",           "WP22444", "exp",    "Experienced harm: violent crime"),
     ("exp_weather",         "WP22445", "exp",    "Experienced harm: severe weather"),
-    ("exp_prolonged_weather","WP24177","exp",    "Experienced harm: prolonged severe weather (2025)"),
-    ("exp_wildfires",       "WP24176", "exp",    "Experienced harm: wildfires (2025)"),
-    ("exp_air",             "WP24178", "exp",    "Experienced harm: the air (2025)"),
+    ("exp_prolonged_weather","WP24177","exp",    "Experienced harm: prolonged severe weather"),
+    ("exp_wildfires",       "WP24176", "exp",    "Experienced harm: wildfires"),
+    ("exp_air",             "WP24178", "exp",    "Experienced harm: the air"),
     ("exp_traffic",         "WP22446", "exp",    "Experienced harm: traffic"),
     ("exp_mental_health",   "WP22447", "exp",    "Experienced harm: mental health"),
     ("exp_work",            "WP22448", "exp",    "Experienced harm: work"),
     # ---- 2019 experience (binary, L-coded) ----
-    ("exp_crime_2019",      "L8C",     "single", "Experienced harm: violent crime (2019)"),
-    ("exp_mental_2019",     "L8G",     "single", "Experienced harm: mental health (2019)"),
+    ("exp_crime_2019",      "L8C",     "single", "Experienced harm: violent crime"),
+    ("exp_mental_2019",     "L8G",     "single", "Experienced harm: mental health"),
     # ---- 2019 likelihood (next two years) ----
-    ("likely_crime_2019",   "L7C",     "worry",  "Likely violent crime harm next 2 yrs (2019)"),
-    ("likely_mental_2019",  "L7G",     "worry",  "Likely mental-health harm next 2 yrs (2019)"),
-    ("likely_traffic_2019", "L9A",     "worry",  "Likely traffic-accident harm next 2 yrs (2019)"),
+    ("likely_crime_2019",   "L7C",     "worry",  "Likely violent crime harm next 2 yrs"),
+    ("likely_mental_2019",  "L7G",     "worry",  "Likely mental-health harm next 2 yrs"),
+    ("likely_traffic_2019", "L9A",     "worry",  "Likely traffic-accident harm next 2 yrs"),
     # ---- bridge experience (trended/2019) ----
     ("exp_food_trended",    "harm_food_trended",          "single", "Experienced harm: food (trended)"),
     ("exp_water_trended",   "harm_water_trended",         "single", "Experienced harm: water (trended)"),
@@ -229,7 +229,7 @@ KNOWN_QUESTIONS = [
     ("neighbours_care",     "WP22232", "trust",  "Neighbours care about your wellbeing"),
     # ---- disaster / resilience ----
     ("impacted_disaster_t", "disaster_experienced", "single", "Experienced a disaster in past 5 yrs (trended)"),
-    ("impacted_disaster",   "WP24213", "single", "Experienced a disaster in past 5 yrs (2025)"),
+    ("impacted_disaster",   "WP24213", "single", "Experienced a disaster in past 5 yrs"),
     ("plan_known_t",        "disaster_plan",        "single", "Household disaster plan known by all (trended)"),
     ("plan_known",          "WP23345", "single",  "Household disaster plan known by all members"),
     ("could_protect",       "WP22252", "single",  "Could protect self/family in a future disaster"),
@@ -243,7 +243,7 @@ KNOWN_QUESTIONS = [
     ("disc_disability",     "WP22263", "single", "Experienced discrimination: disability"),
     # ---- greatest source of risk ----
     ("greatest",            "WP22331", "greatest", "Greatest source of risk to daily safety"),
-    ("greatest_2019",       "WP20713", "greatest_2019", "Greatest source of risk to daily safety (2019)"),
+    ("greatest_2019",       "WP20713", "greatest_2019", "Greatest source of risk to daily safety"),
     # ---- safer / safer than 5 yrs ago ----
     ("safer_5yr",           "WP20711", "worry",   "Feel safer than five years ago"),
     # ---- indices ----
@@ -317,6 +317,35 @@ def auto_slug(var):
     return re.sub(r"[^A-Za-z0-9]+", "_", var).strip("_").lower()
 
 
+def load_drop_set(wave):
+    """Read the editable per-wave audit CSV, return slugs the user marked as drop."""
+    import csv as _csv
+    path = os.path.join(DATA, f"questions_{wave}.csv")
+    drops = set()
+    if not os.path.exists(path):
+        return drops
+    with open(path, encoding="utf-8-sig") as f:
+        for row in _csv.DictReader(f):
+            mark = (row.get("drop") or "").strip().lower()
+            if mark in ("drop", "yes", "y", "1", "x", "true"):
+                drops.add((row.get("slug") or "").strip())
+    return drops
+
+
+def emit_audit_csv(wave, candidates, drops_in_csv, df):
+    """Rewrite the audit CSV — keeping the user's drop marks for slugs they
+    flagged previously, and adding new candidates with empty marks."""
+    import csv as _csv
+    path = os.path.join(DATA, f"questions_{wave}.csv")
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+        w = _csv.writer(f)
+        w.writerow(["slug", "source_var", "label", "n_answers", "non_missing_%", "drop"])
+        for c in candidates:
+            v = c["var"]; cov = (df[v].notna().mean() * 100) if v in df.columns else 0
+            mark = "drop" if c["slug"] in drops_in_csv else ""
+            w.writerow([c["slug"], v, c["label"], c["n_answers"], f"{cov:.1f}", mark])
+
+
 def answers_for(var, vl):
     d = vl.get(var, {})
     codes = sorted(int(c) for c in d.keys())
@@ -374,7 +403,11 @@ def load_wrp25_for_trended():
 
 
 def blend_projwt(df, source, year):
-    """Bring PROJWT in from another .sav (the trended one) on WPID_RANDOM."""
+    """Bring PROJWT in from another .sav (the trended one) on WPID_RANDOM.
+    Some respondents in the per-wave file aren't represented in the trended
+    file — for those rows, fall back to the per-wave WGT column scaled up to
+    typical PROJWT magnitude so their countries' bars don't collapse to zero.
+    """
     src_path = os.path.join(DATA, source)
     df_src, _ = pyreadstat.read_sav(src_path, usecols=["WPID_RANDOM", "Year", "PROJWT", "COUNTRY_ISO3"])
     sub = df_src[df_src["Year"] == year][["WPID_RANDOM", "PROJWT", "COUNTRY_ISO3"]]
@@ -384,6 +417,28 @@ def blend_projwt(df, source, year):
         df = df.rename(columns={"PROJWT_blend": "PROJWT"})
     if "COUNTRY_ISO3" not in df.columns and "COUNTRY_ISO3_blend" in df.columns:
         df = df.rename(columns={"COUNTRY_ISO3_blend": "COUNTRY_ISO3"})
+    unmatched = df["PROJWT"].isna()
+    if unmatched.any():
+        # Some respondents in the per-wave file aren't in trended (e.g. five 2019
+        # countries — Belarus, Jamaica, Rwanda, Lesotho, Turkmenistan — that
+        # Gallup excluded from the trended file). Without a fallback they'd
+        # collapse to zero weight and the chart would show empty bar slots.
+        # If WGT is in the per-wave file we scale it to PROJWT magnitude;
+        # otherwise we give every unmatched row the mean PROJWT so per-country
+        # bars compute correctly. Cross-country aggregates for these countries
+        # then treat them at roughly average per-respondent weight.
+        countrycol = next((c for c in ("countrynew","Country") if c in df.columns), None)
+        countries_filled = df.loc[unmatched, countrycol].dropna().unique() if countrycol else []
+        mean_proj = df.loc[~unmatched, "PROJWT"].mean()
+        if "WGT" in df.columns and df.loc[unmatched, "WGT"].notna().any():
+            mean_wgt = df.loc[unmatched, "WGT"].mean()
+            df.loc[unmatched, "PROJWT"] = df.loc[unmatched, "WGT"] * (mean_proj / mean_wgt if mean_wgt else 1)
+            how = "scaled WGT"
+        else:
+            df.loc[unmatched, "PROJWT"] = mean_proj if mean_proj else 1.0
+            how = f"mean PROJWT ({mean_proj:.0f})"
+        print(f"  filled PROJWT with {how} for {int(unmatched.sum()):,} rows "
+              f"in {len(countries_filled)} countries not in {source}: {list(countries_filled)}")
     print(f"  blended PROJWT from {source} (Year={year}): {df['PROJWT'].notna().sum():,} rows have weight (was {n_before:,})")
     return df
 
@@ -418,6 +473,23 @@ def build_for(wave):
     vl = meta.variable_value_labels
     lab = meta.column_names_to_labels
 
+    # For the trended page, restrict the catalogue to questions that actually
+    # TREND — present in at least 2 of the waves at ≥5% non-missing. Anything
+    # asked in only one wave can't have a meaningful time course.
+    cross_wave_vars = None
+    if c["include_year_dim"] and "Year" in df.columns:
+        years = sorted({int(y) for y in df["Year"].dropna().unique() if y > 0})
+        cross_wave_vars = set()
+        for var in df.columns:
+            if var == "Year" or df[var].dtype.kind not in "fi":
+                continue
+            waves_present = sum(1 for yr in years
+                                if df.loc[df["Year"] == yr, var].notna().mean() >= 0.05)
+            if waves_present >= 2:
+                cross_wave_vars.add(var)
+        print(f"  cross-wave restriction: {len(cross_wave_vars)} vars present in "
+              f"at least 2 of {len(years)} waves {years}")
+
     # ---- country index ----
     cname = c["country_col"]; ciso = c["iso3_col"]
     if cname not in df.columns:
@@ -439,8 +511,16 @@ def build_for(wave):
     columns = []           # (key, np.array, dtype)
     questions, metrics = [], []
     seen_vars = set()
+    drops = load_drop_set(wave)
+    candidates = []  # every question we'd offer, before drops are applied
 
     def add_question_record(slug, var, label, kind, extras=None):
+        # record candidate (so the CSV always lists every available question,
+        # whether or not the user has it dropped)
+        n_ans = len((vl.get(var) or {}).keys())
+        candidates.append({"slug": slug, "var": var, "label": label, "n_answers": n_ans})
+        if slug in drops:
+            return
         # encode column
         if var in seen_vars:
             return
@@ -514,6 +594,8 @@ def build_for(wave):
             continue
         if df[var].notna().mean() * 100 < 0.5:
             continue
+        if cross_wave_vars is not None and var not in cross_wave_vars:
+            continue  # trended only keeps questions present in every wave
         label = rest[0]
         extras = rest[1] if len(rest) > 1 else None
         add_question_record(slug, var, label, kind, extras)
@@ -531,6 +613,8 @@ def build_for(wave):
         coverage = df[var].notna().mean() * 100
         if coverage < 1.0:
             continue
+        if cross_wave_vars is not None and var not in cross_wave_vars:
+            continue  # trended only keeps questions present in every wave
         # skip wildly-multi-code vars (look like sample-design or country lists)
         codes = [int(k) for k in vl[var].keys()]
         if len(codes) > 30:
@@ -576,7 +660,7 @@ def build_for(wave):
                            "cats": [{"code": y - 2000, "label": str(y)} for y in codes]})
 
     # additional question-based filter dimensions, in canonical FILTER_SLOTS order
-    DIM_CAP = 21   # country + up to 20 filterable slots → 5×4 grid + the country one
+    DIM_CAP = 20   # country + region + country-income + 6 demog + 11 content = 5×4 grid
     for slug, src_col, dlabel in FILTER_SLOTS:
         if slug == "__demog__":
             continue
@@ -642,6 +726,56 @@ def build_for(wave):
           f"bin {os.path.getsize(out_base+'.bin')/1e6:.2f} MB | "
           f"gz {os.path.getsize(out_base+'.bin.gz')/1e6:.2f} MB")
 
+    # Audit CSV — every candidate question this wave offers, with the user's
+    # previous "drop" marks preserved. To drop a question from the page, mark
+    # the `drop` column (any of: drop / yes / y / 1 / x / true) and re-run.
+    emit_audit_csv(wave, candidates, drops, df)
+    n_dropped = len(drops)
+    print(f"  audit CSV: questions_{wave}.csv  ({len(candidates)} candidates, "
+          f"{n_dropped} dropped -> {len(questions)} questions in manifest)")
+
+
+def build_country_waves_index():
+    """Country-by-wave roll-up (sample n and PROJWT-weighted total per cell)
+    used by the explorer's Dataset details tab. The trended file carries
+    2019/2021/2023; we append wrp_25.sav to cover 2025 too. Written to
+    data/country_waves.json once."""
+    print("\n=== building data/country_waves.json (country × wave roll-up) ===")
+    df, _ = pyreadstat.read_sav(os.path.join(DATA, "trended_wrp.sav"),
+                                 usecols=["Country", "COUNTRY_ISO3", "Year", "PROJWT"])
+    df25_full, _ = pyreadstat.read_sav(os.path.join(DATA, "wrp_25.sav"),
+                                        usecols=["COUNTRYNEW", "COUNTRY_ISO3", "PROJWT"])
+    df25 = df25_full.rename(columns={"COUNTRYNEW": "Country"})
+    df25["Year"] = 2025
+    df = pd.concat([df, df25[["Country", "COUNTRY_ISO3", "Year", "PROJWT"]]], ignore_index=True)
+    df = df.dropna(subset=["Country", "Year"])
+    df["Year"] = df["Year"].astype(int)
+
+    summary = []
+    countries = sorted(df["Country"].dropna().unique())
+    for cname in countries:
+        sub = df[df["Country"] == cname]
+        iso3 = ""
+        iso_vals = sub["COUNTRY_ISO3"].dropna().unique()
+        if len(iso_vals): iso3 = str(iso_vals[0])
+        by_wave = {}
+        for yr in sorted(sub["Year"].unique()):
+            ysub = sub[sub["Year"] == yr]
+            by_wave[str(int(yr))] = {
+                "n":   int(ysub["PROJWT"].notna().sum()),
+                "pop": int(round(ysub["PROJWT"].fillna(0).sum())),
+            }
+        # also a grand "all" row for the rightmost column
+        by_wave["all"] = {"n": int(sub["PROJWT"].notna().sum()),
+                          "pop": int(round(sub["PROJWT"].fillna(0).sum()))}
+        summary.append({"name": cname, "iso3": iso3, "by_wave": by_wave})
+
+    out_path = os.path.join(DATA, "country_waves.json")
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump({"waves": ["2019", "2021", "2023", "2025"], "countries": summary},
+                  f, separators=(",", ":"), ensure_ascii=False)
+    print(f"  wrote {out_path}  ({len(summary)} countries)")
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -651,6 +785,8 @@ def main():
     waves = list(WAVE_CONFIG.keys()) if args.wave == "all" else [args.wave]
     for w in waves:
         build_for(w)
+    if args.wave == "all":
+        build_country_waves_index()
 
 
 if __name__ == "__main__":

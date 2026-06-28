@@ -33,6 +33,41 @@ body.wave-trended #view-tabs .seg-btn.single-wave-only { display: none; }
 .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--lrf-muted); margin-bottom: 0.35rem; }
 .field select { font-size: 14px; padding: 0.55rem 2rem 0.55rem 0.7rem; background-position: right 0.6rem center; }
 
+/* Searchable combobox used by the question and metric dropdowns. */
+.combo { position: relative; }
+.combo-input {
+  width: 100%; box-sizing: border-box;
+  font: inherit; font-size: 14px; color: var(--lrf-ink);
+  background: var(--lrf-white) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path fill='%236c6c78' d='M1 3l4 4 4-4z'/></svg>") no-repeat right 0.7rem center;
+  border: 1.5px solid var(--lrf-line); border-radius: var(--r);
+  padding: 0.55rem 2rem 0.55rem 0.7rem;
+}
+.combo-input:focus { outline: none; border-color: var(--lrf-pink); }
+.combo-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 60;
+  max-height: 320px; overflow-y: auto;
+  background: var(--lrf-white); border: 1.5px solid var(--lrf-ink); border-radius: var(--r);
+  box-shadow: var(--shadow-lg); padding: 0.25rem 0;
+}
+.combo-list.hidden { display: none; }
+.combo-opt { padding: 0.45rem 0.7rem; font-size: 13px; color: var(--lrf-ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.combo-opt:hover, .combo-opt.active { background: var(--lrf-cream); color: var(--lrf-pink); }
+.combo-opt.hide { display: none; }
+
+/* Dataset details view */
+.dataset-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.7rem; }
+#ds-search { font: inherit; font-size: 13px; padding: 0.45rem 0.7rem; border: 1.5px solid var(--lrf-line); border-radius: var(--r); min-width: 260px; }
+#ds-search:focus { outline: none; border-color: var(--lrf-pink); }
+.dataset-scroll { max-height: 70vh; overflow: auto; border: 1px solid var(--lrf-line); border-radius: var(--r); }
+.dataset-table { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: auto; }
+.dataset-table th { position: sticky; top: 0; background: var(--lrf-white); z-index: 1; box-shadow: 0 1px 0 var(--lrf-line); padding: 0.6rem; text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--lrf-muted); font-weight: 700; white-space: nowrap; }
+.dataset-table th.num, .dataset-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.dataset-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--lrf-line); }
+.dataset-table tr:last-child td { border-bottom: none; }
+.dataset-table td.name { font-weight: 600; white-space: nowrap; }
+.dataset-table td.absent { color: var(--lrf-muted); text-align: right; }
+.dataset-table tfoot td { background: var(--lrf-cream); font-weight: 700; }
+
 /* control bar: question / breakdowns / metrics / sort */
 .controlbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem 1rem; margin-bottom: 1.25rem; }
 .controlbar:empty { display: none; }

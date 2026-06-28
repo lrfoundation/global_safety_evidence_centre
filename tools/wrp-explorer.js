@@ -268,28 +268,68 @@ function opt(val,label,sel){ return `<option value="${val}"${val===sel?' selecte
 function selectField(id,label,options,val){
   return `<div class="field"><label for="${id}">${label}</label><select id="${id}">${options.map(o=>opt(o[0],o[1],val)).join('')}</select></div>`;
 }
+/* Searchable combobox — for long dropdowns (questions, metrics) where the
+   user wants to type a keyword instead of scrolling 80+ items. */
+function comboField(id, label, options, val){
+  const cur = options.find(o => o[0] === val);
+  const optsHTML = options.map(o => `<div class="combo-opt" data-val="${esc(o[0])}">${esc(o[1])}</div>`).join('');
+  return `<div class="field">
+    <label for="${id}">${label}</label>
+    <div class="combo" data-id="${id}">
+      <input type="text" class="combo-input" id="${id}" value="${esc(cur ? cur[1] : '')}" data-current="${esc(val)}" placeholder="Type to search…" autocomplete="off" spellcheck="false">
+      <div class="combo-list hidden">${optsHTML}</div>
+    </div>
+  </div>`;
+}
+function bindCombo(id, onChange){
+  const wrap = document.querySelector(`.combo[data-id="${id}"]`); if(!wrap) return;
+  const input = wrap.querySelector('.combo-input');
+  const list  = wrap.querySelector('.combo-list');
+  const opts  = [...list.querySelectorAll('.combo-opt')];
+  let activeIdx = -1;
+  const open = ()=>{ list.classList.remove('hidden'); applyFilter(input.value); };
+  const close= ()=>{ list.classList.add('hidden'); activeIdx=-1; };
+  const applyFilter = (q)=>{ const needle = (q||'').trim().toLowerCase();
+    opts.forEach(o=>{ const m = !needle || o.textContent.toLowerCase().includes(needle); o.classList.toggle('hide', !m); });
+    activeIdx = opts.findIndex(o => !o.classList.contains('hide')); highlight(); };
+  const highlight = ()=>{ opts.forEach((o,i)=>o.classList.toggle('active', i===activeIdx));
+    const a = opts[activeIdx]; if(a){ const r = a.offsetTop; if(r < list.scrollTop || r+a.offsetHeight > list.scrollTop+list.clientHeight) list.scrollTop = r - 20; } };
+  const pick = (o)=>{ const v = o.dataset.val; input.value = o.textContent; input.dataset.current = v; close(); onChange(v); };
+  input.addEventListener('focus', ()=>{ input.select(); open(); });
+  input.addEventListener('input', ()=>{ applyFilter(input.value); open(); });
+  input.addEventListener('keydown', e=>{
+    if(e.key === 'ArrowDown'){ e.preventDefault(); open();
+      for(let i=activeIdx+1; i<opts.length; i++){ if(!opts[i].classList.contains('hide')){ activeIdx=i; break; } } highlight(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault();
+      for(let i=activeIdx-1; i>=0; i--){ if(!opts[i].classList.contains('hide')){ activeIdx=i; break; } } highlight(); }
+    else if(e.key === 'Enter'){ e.preventDefault(); if(activeIdx>=0) pick(opts[activeIdx]); }
+    else if(e.key === 'Escape'){ close(); input.value = (options=>{ const cur = opts.find(o => o.dataset.val === input.dataset.current); return cur ? cur.textContent : ''; })(); }
+  });
+  opts.forEach(o => o.addEventListener('mousedown', e => { e.preventDefault(); pick(o); }));
+  document.addEventListener('mousedown', e=>{ if(!wrap.contains(e.target)) close(); });
+}
 const qOpts = ()=>MAN.questions.map(q=>[q.key,q.label]);
 const mOpts = ()=>MAN.metrics.map(m=>[m.key,m.label]);
 const dOpts = ()=>MAN.dimensions.filter(d=>d.type==='country'||d.cats).map(d=>[d.key,d.label]);
 function buildControls(){
   const cb=$('#controlbar'); let h='';
   if(activeView==='dist'){
-    h+=selectField('c-question','Question',qOpts(),ctrl.question);
+    h+=comboField('c-question','Question',qOpts(),ctrl.question);
     h+=selectField('c-bd1','Breakdown',dOpts(),ctrl.breakdown1);
-    h+=selectField('c-m1','Metric 1 (rank / heat)',mOpts(),ctrl.metric1);
-    h+=selectField('c-m2','Metric 2',mOpts(),ctrl.metric2);
+    h+=comboField('c-m1','Metric 1 (rank / heat)',mOpts(),ctrl.metric1);
+    h+=comboField('c-m2','Metric 2',mOpts(),ctrl.metric2);
   } else if(activeView==='map'){
-    h+=selectField('c-m1','Metric 1 (map colour)',mOpts(),ctrl.metric1);
-    h+=selectField('c-m2','Metric 2',mOpts(),ctrl.metric2);
+    h+=comboField('c-m1','Metric 1 (map colour)',mOpts(),ctrl.metric1);
+    h+=comboField('c-m2','Metric 2',mOpts(),ctrl.metric2);
   } else if(activeView==='rel'){
-    h+=selectField('c-m1','Metric 1 (x)',mOpts(),ctrl.metric1);
-    h+=selectField('c-m2','Metric 2 (y)',mOpts(),ctrl.metric2);
+    h+=comboField('c-m1','Metric 1 (x)',mOpts(),ctrl.metric1);
+    h+=comboField('c-m2','Metric 2 (y)',mOpts(),ctrl.metric2);
     h+=selectField('c-bd2','Breakdown',dOpts(),ctrl.breakdown2);
   } else if(activeView==='sankey'){
-    h+=selectField('c-question','Question (left)',qOpts(),ctrl.question);
-    h+=selectField('c-right','Question (right)',qOpts(),ctrl.right);
+    h+=comboField('c-question','Question (left)',qOpts(),ctrl.question);
+    h+=comboField('c-right','Question (right)',qOpts(),ctrl.right);
   } else if(activeView==='profile'){
-    h+=selectField('c-m1','Metric',mOpts(),ctrl.metric1);
+    h+=comboField('c-m1','Metric',mOpts(),ctrl.metric1);
     const sp=ctrl.profileScope||'all', o=(v,t)=>`<option value="${v}"${v===sp?' selected':''}>${esc(t)}</option>`,
       og=(label,opts)=>`<optgroup label="${label}">${opts}</optgroup>`;
     const scopeSel = og('Global', o('all','All countries'))
@@ -302,9 +342,9 @@ function buildControls(){
     h+=selectField('c-k','Clusters (k)',[['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],String(ctrl.k));
     h+=selectField('c-colour','Colour by',[['cluster','Cluster'],['region','Global region'],['income','Income group']].concat(MAN.metrics.map(m=>['m:'+m.key, m.label])),ctrl.colourBy);
   } else if(activeView==='trend-course'){
-    h+=selectField('c-question','Question',qOpts(),ctrl.question);
+    h+=comboField('c-question','Question',qOpts(),ctrl.question);
   } else if(activeView==='trend-map'){
-    h+=selectField('c-m1','Metric',mOpts(),ctrl.metric1);
+    h+=comboField('c-m1','Metric',mOpts(),ctrl.metric1);
     const years = (DIM['year']||{cats:[]}).cats.map(c=>[String(c.code), c.label]);
     if(!ctrl.tmFromYear || !years.find(y=>y[0]===String(ctrl.tmFromYear))) ctrl.tmFromYear = years[0] ? +years[0][0] : null;
     if(!ctrl.tmToYear   || !years.find(y=>y[0]===String(ctrl.tmToYear)))   ctrl.tmToYear   = years[years.length-1] ? +years[years.length-1][0] : null;
@@ -312,7 +352,14 @@ function buildControls(){
     h+=selectField('c-tm-to',  'To wave',  years,String(ctrl.tmToYear));
   }
   cb.innerHTML=h;
-  const bind=(id,key)=>{ const el=$('#'+id); if(el) el.onchange=()=>{ ctrl[key]=el.value; render(); }; };
+  // Two binders: native <select> uses onchange; the searchable combobox
+  // calls a supplied onChange via bindCombo and stores the slug as data-current.
+  const bind=(id,key)=>{
+    const el=$('#'+id); if(!el) return;
+    const combo = el.closest('.combo');
+    if(combo){ bindCombo(id, v=>{ ctrl[key]=v; render(); }); }
+    else     { el.onchange=()=>{ ctrl[key]=el.value; render(); }; }
+  };
   bind('c-question','question'); bind('c-bd1','breakdown1'); bind('c-bd2','breakdown2');
   bind('c-m1','metric1'); bind('c-m2','metric2'); bind('c-right','right');
   const pscope=$('#c-pscope'); if(pscope) pscope.onchange=()=>{ ctrl.profileScope=pscope.value; render(); };
@@ -364,6 +411,7 @@ function render(){ buildControls(); updateFilterToggle();
   else if(activeView==='clusters') renderClusters();
   else if(activeView==='trend-course') renderTrendCourse();
   else if(activeView==='trend-map')    renderTrendMap();
+  else if(activeView==='dataset')      renderDataset();
 }
 
 /* ---------- View 1: ranked distribution ---------- */
@@ -374,8 +422,9 @@ function renderDist(){
   let keys=[...groups.keys()];
   keys.sort((a,b)=> (g1.get(b)??-1)-(g1.get(a)??-1));
   $('#dist-title').textContent = q.label + ' — by ' + DIM[bd].label;
-  // legend
-  $('#dist-legend').innerHTML = q.answers.map(a=>`<span class="k"><span class="sw" style="background:${a.color}"></span>${a.label}</span>`).join('');
+  const stack = stackOrder(q);
+  // legend follows the actual stacking order (top → bottom of bar)
+  $('#dist-legend').innerHTML = stack.map(a=>`<span class="k"><span class="sw" style="background:${a.color}"></span>${a.label}</span>`).join('');
   // chart
   const svg=$('#dist-chart'); const H=460, pad={t:8,r:8,b:96,l:34};
   const cw=Math.max(360, (svg.parentElement && svg.parentElement.clientWidth) || 760);
@@ -385,7 +434,7 @@ function renderDist(){
   for(let p=0;p<=100;p+=25){ const y=pad.t+plotH*(1-p/100); s+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="#e4e4ea"/><text x="${pad.l-6}" y="${y+3}" font-size="10" fill="#6c6c78" text-anchor="end">${p}%</text>`; }
   const labelEvery=Math.ceil(keys.length/45);
   keys.forEach((g,i)=>{ const e=groups.get(g), x=pad.l+i*barW; let cy=pad.t;
-    q.answers.forEach(a=>{ const w=e.counts.get(a.code)||0; const frac=e.total?w/e.total:0; const hh=frac*plotH;
+    stack.forEach(a=>{ const w=e.counts.get(a.code)||0; const frac=e.total?w/e.total:0; const hh=frac*plotH;
       if(hh>0) s+=`<rect x="${x+0.5}" y="${cy.toFixed(1)}" width="${barW-1}" height="${hh.toFixed(1)}" fill="${a.color}" data-tip="${esc(groupLabel(bd,g))}" data-sub="${esc(a.label)}: ${(frac*100).toFixed(1)}%"/>`; cy+=hh; });
     if(i%labelEvery===0){ const lx=x+barW/2, ly=H-pad.b+10; s+=`<text x="${lx}" y="${ly}" font-size="9" fill="#2a2a35" text-anchor="end" transform="rotate(-55 ${lx} ${ly})">${esc(groupLabel(bd,g).slice(0,18))}</text>`; }
   });
@@ -402,6 +451,21 @@ function renderDist(){
     rows: keys.map(g=>{ const e=groups.get(g); return [groupLabel(bd,g), ...q.answers.map(a=>(e.total?(e.counts.get(a.code)||0)/e.total*100:0).toFixed(1)), csvNum(m1,g1.get(g)), csvNum(m2,g2.get(g))]; }) };
 }
 const shortMetric = m => m.key;
+
+/* Reorder a question's answers for stacked bars so that:
+   - "concern / yes / experienced" answers go at the top  (substantive codes minus the last one)
+   - DK / Refused / N/A sit in the MIDDLE                  (codes ≥ 90)
+   - "no concern / no / not experienced" goes at the bottom (the last substantive code)
+   Stacking is top → bottom, so this puts the worry block above the neutral block
+   above the no-worry block, which is what readers actually want to compare. */
+function stackOrder(q){
+  const subs = (q.answers || []).filter(a => a.code < 90);
+  const specials = (q.answers || []).filter(a => a.code >= 90);
+  if(subs.length < 2) return q.answers || [];
+  const noConcern = subs[subs.length - 1];
+  const concern   = subs.slice(0, -1);
+  return [...concern, ...specials, noConcern];
+}
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* ---------- View 2: map ---------- */
@@ -712,7 +776,8 @@ function renderTrendCourse(){
   const yearLabel = code => { const c = (yearDim.cats||[]).find(c=>c.code===code); return c ? c.label : String(code); };
 
   $('#tc-title').textContent = q.label + ' — by wave';
-  $('#tc-legend').innerHTML = q.answers.map(a=>`<span class="k"><span class="sw" style="background:${a.color}"></span>${esc(a.label)}</span>`).join('');
+  const stack = stackOrder(q);
+  $('#tc-legend').innerHTML = stack.map(a=>`<span class="k"><span class="sw" style="background:${a.color}"></span>${esc(a.label)}</span>`).join('');
 
   const host = document.getElementById('tc-chart').parentElement;
   const W = Math.max(640, (host && host.clientWidth) || 900);
@@ -731,7 +796,7 @@ function renderTrendCourse(){
   const bars = years.map((yr, i)=>{
     const e = groups.get(yr); const cx = xCentre(i), x = cx - barW/2;
     let acc = pad.t;
-    const segs = q.answers.map(a=>{
+    const segs = stack.map(a=>{
       const w = e.counts.get(a.code)||0;
       const frac = e.total ? w / e.total : 0;
       const h = frac * ph;
@@ -849,6 +914,83 @@ async function renderTrendMap(){
   lastExport = { name:`wrp_change_${ctrl.metric1}_${fromC}_to_${toC}`,
     cols:['Country','ISO3', yLab(fromC), yLab(toC), 'delta'],
     rows: keys.map(g=>[COUNTRIES[g].name, COUNTRIES[g].iso3||'', csvNum(m, a.get(g)), csvNum(m, b.get(g)), (deltas.get(g)).toFixed(3)]) };
+}
+
+/* ---------- Dataset details: per-country wave coverage ---------- */
+let COUNTRY_WAVES = null;
+async function ensureCountryWaves(){
+  if(COUNTRY_WAVES) return COUNTRY_WAVES;
+  try{
+    COUNTRY_WAVES = await fetch('data/country_waves.json', {cache:'no-store'}).then(r=>r.json());
+  }catch(e){ COUNTRY_WAVES = {waves:[], countries:[]}; }
+  return COUNTRY_WAVES;
+}
+function fmtPop(n){
+  if(n == null || isNaN(n) || n === 0) return '—';
+  if(n >= 1e9) return (n/1e9).toFixed(2)+' bn';
+  if(n >= 1e6) return (n/1e6).toFixed(1)+' m';
+  if(n >= 1e3) return (n/1e3).toFixed(0)+' k';
+  return String(n);
+}
+function fmtN(n){ return (n==null||isNaN(n)||n===0) ? '—' : Math.round(n).toLocaleString(); }
+async function renderDataset(){
+  const data = await ensureCountryWaves();
+  const waves = data.waves || [];
+  $('#ds-title').textContent = 'Country coverage across all World Risk Poll waves';
+  const ths  = waves.map(w => `<th class="num" colspan="2">${esc(w)}</th>`).join('');
+  const ths2 = waves.map(() => `<th class="num">Sample n</th><th class="num">Pop. (PROJWT)</th>`).join('');
+  const head = `<thead>
+    <tr><th rowspan="2">Country</th>${ths}<th class="num" rowspan="2">Waves<br>(of ${waves.length})</th><th class="num" rowspan="2">Total<br>respondents</th></tr>
+    <tr>${ths2}</tr>
+  </thead>`;
+
+  const list = data.countries || [];
+  const rowFor = (c)=>{
+    let wavesIn = 0, totalN = 0;
+    const cells = waves.map(w => {
+      const cell = (c.by_wave||{})[w];
+      if(cell && cell.n > 0){ wavesIn++; totalN += cell.n;
+        return `<td class="num">${fmtN(cell.n)}</td><td class="num">${fmtPop(cell.pop)}</td>`; }
+      return `<td class="absent">—</td><td class="absent">—</td>`;
+    });
+    return {wavesIn, totalN, html: `<tr data-name="${esc((c.name||'').toLowerCase())}">
+      <td class="name">${esc(c.name)}</td>${cells.join('')}
+      <td class="num">${wavesIn}</td>
+      <td class="num">${fmtN(totalN)}</td>
+    </tr>`};
+  };
+  const rows = list.map(rowFor);
+  const tbody = `<tbody>${rows.map(r=>r.html).join('')}</tbody>`;
+
+  const totalsByWave = waves.map(w=>{
+    const wsum = list.reduce((acc,c)=>{ const x=(c.by_wave||{})[w]; if(x){ acc.n+=x.n||0; acc.pop+=x.pop||0; } return acc; }, {n:0, pop:0});
+    return `<td class="num">${fmtN(wsum.n)}</td><td class="num">${fmtPop(wsum.pop)}</td>`;
+  }).join('');
+  const grandN = rows.reduce((a,r)=>a+r.totalN, 0);
+  const foot = `<tfoot><tr><td class="name">All countries</td>${totalsByWave}<td class="num">—</td><td class="num">${fmtN(grandN)}</td></tr></tfoot>`;
+
+  $('#ds-table').innerHTML = head + tbody + foot;
+  const presentByWave = waves.map(w => ({w, c: list.filter(c => (c.by_wave||{})[w] && c.by_wave[w].n>0).length}));
+  $('#ds-summary').textContent = `${list.length} countries across ${waves.length} waves — ${presentByWave.map(p=>`${p.c} in ${p.w}`).join(' · ')}`;
+  $('#ds-note').textContent = "Sample n = unweighted respondent count. Pop. (PROJWT) = sum of population-projection weights, which approximates the country's adult population for that wave. A '—' means the country was not surveyed in that wave.";
+
+  const search = $('#ds-search');
+  const apply = ()=>{ const q = (search.value || '').trim().toLowerCase();
+    document.querySelectorAll('#ds-table tbody tr').forEach(tr=>{
+      tr.style.display = (!q || tr.dataset.name.includes(q)) ? '' : 'none';
+    }); };
+  search.oninput = apply;
+  apply();
+
+  lastExport = { name: 'wrp_country_coverage',
+    cols: ['Country', ...waves.flatMap(w=>[`n_${w}`, `pop_${w}`]), 'waves_present', 'total_respondents'],
+    rows: list.map(c=>{
+      let wavesIn=0, totalN=0;
+      const cells = waves.flatMap(w=>{ const x=(c.by_wave||{})[w];
+        if(x && x.n>0){ wavesIn++; totalN+=x.n; return [x.n, x.pop]; }
+        return ['', '']; });
+      return [c.name, ...cells, wavesIn, totalN];
+    }) };
 }
 
 load();

@@ -252,19 +252,32 @@ def main():
     dimensions.append({"key": "CountryIncome", "col": "wbi", "label": "Country income group", "cats": dim_cats("wbi")})
     for key, var, label in DEMOG:
         dimensions.append({"key": key, "col": var, "label": label, "cats": dim_cats(var)})
-    # question-based filter dimensions
-    for var, slug, label, *_ in ([("WP24213", "impacted_by_disaster", "Impacted by a disaster", None),
-                                  ("WP24215", "able_to_take_action", "Able to act on warning", None),
-                                  ("WP24198", "government_prepared", "Government well prepared", None),
-                                  ("WP22228", "fin_res", "Financial resilience", None),
-                                  ("WP22331", "greatest_source", "Greatest source of risk", None),
-                                  ("WP24225", "most_other_people_climate", "Most others: climate threat", None),
-                                  ("WP20719", "climate_change_threat", "Climate change a threat", None)]):
+    # Question-based filter dimensions — matched to the canonical 5×4 grid
+    # ordering used by the legacy waves' build_explorer_wave.py.
+    for var, slug, label in [
+        # — climate / threat —
+        ("WP20719", "climate_change_threat",     "Climate change a threat"),
+        ("WP24225", "most_other_people_climate", "Most others: climate threat"),
+        # — greatest source of risk —
+        ("WP22331", "greatest_source",           "Greatest source of risk"),
+        # — worry items as quick-look filters —
+        ("WP20720", "worry_food",                "Worried about food"),
+        ("WP20721", "worry_water",               "Worried about water"),
+        ("WP20722", "worry_crime",               "Worried about violent crime"),
+        ("WP20723", "worry_weather",             "Worried about severe weather"),
+        ("WP20726", "worry_mental",              "Worried about mental health"),
+        # — disaster experience / preparedness —
+        ("WP24213", "impacted_disaster",         "Impacted by a disaster"),
+        ("WP24198", "government_prepared",       "Government well prepared"),
+        ("WP24215", "able_to_take_action",       "Able to act on warning"),
+        ("WP22252", "could_protect",             "Could protect self/family"),
+        ("WP22228", "fin_res",                   "Financial resilience"),
+        ("WP23345", "plan_known",                "Household disaster plan"),
+        # — trust / care —
+        ("WP22231", "govt_cares",                "Government / authorities care"),
+        ("WP22232", "neighbours_care",           "Neighbours care"),
+    ][:11]:   # cap at 11 content slots so total = country + 8 demog + 11 = 20
         dimensions.append({"key": slug, "col": var, "label": label, "cats": dim_cats(var)})
-    dimensions.append({"key": "any_warning", "col": "any_warning", "label": "Received any warning",
-                       "cats": [{"code": 1, "label": "Yes"}, {"code": 2, "label": "No"}]})
-    dimensions.append({"key": "any_form_discrimination", "col": "any_form_discrimination", "label": "Any discrimination",
-                       "cats": [{"code": 1, "label": "Yes"}, {"code": 2, "label": "No"}]})
 
     # ---- weight ----
     weight = df["PROJWT"].fillna(0).to_numpy(np.float32)
