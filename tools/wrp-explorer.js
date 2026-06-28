@@ -4,7 +4,7 @@
 
 const $ = s => document.querySelector(s);
 const WRP = { very:'#e3076e', somewhat:'#00a7b3', not:'#00785c', dk:'#bdbdbd', refused:'#0d2240' };
-const HEAT1 = ['#ffffff', '#e3076e'];          // metric_1 magenta scale
+const HEAT1 = ['#ffffff', '#e3076e'];          // metric_1 fuchsia scale
 const HEAT2 = ['#eef1f4', '#0d2240'];          // metric_2 navy scale
 const MAP_RAMP = ['#fbe0ec', '#e3076e', '#5c0b3a', '#0d2240']; // fuchsia → ink
 
@@ -331,7 +331,7 @@ function buildControls(){
   const cb=$('#controlbar'); let h='';
   if(activeView==='dist'){
     h+=comboField('c-question','Question',qOpts(),ctrl.question);
-    h+=selectField('c-bd1','Breakdown',dOpts(),ctrl.breakdown1);
+    h+=comboField('c-bd1','Breakdown',dOpts(),ctrl.breakdown1);
     h+=comboField('c-m1','Metric 1 (rank / heat)',mOpts(),ctrl.metric1);
     h+=comboField('c-m2','Metric 2',mOpts(),ctrl.metric2);
   } else if(activeView==='map'){
@@ -340,7 +340,7 @@ function buildControls(){
   } else if(activeView==='rel'){
     h+=comboField('c-m1','Metric 1 (x)',mOpts(),ctrl.metric1);
     h+=comboField('c-m2','Metric 2 (y)',mOpts(),ctrl.metric2);
-    h+=selectField('c-bd2','Breakdown',dOpts(),ctrl.breakdown2);
+    h+=comboField('c-bd2','Breakdown',dOpts(),ctrl.breakdown2);
   } else if(activeView==='sankey'){
     h+=comboField('c-question','Question (left)',qOpts(),ctrl.question);
     h+=comboField('c-right','Question (right)',qOpts(),ctrl.right);
@@ -489,7 +489,13 @@ let WORLD=null;
 const NUM2A3={"004":"AFG","008":"ALB","012":"DZA","016":"ASM","020":"AND","024":"AGO","028":"ATG","031":"AZE","032":"ARG","036":"AUS","040":"AUT","044":"BHS","048":"BHR","050":"BGD","051":"ARM","052":"BRB","056":"BEL","060":"BMU","064":"BTN","068":"BOL","070":"BIH","072":"BWA","076":"BRA","084":"BLZ","090":"SLB","096":"BRN","100":"BGR","104":"MMR","108":"BDI","112":"BLR","116":"KHM","120":"CMR","124":"CAN","132":"CPV","140":"CAF","144":"LKA","148":"TCD","152":"CHL","156":"CHN","158":"TWN","170":"COL","174":"COM","178":"COG","180":"COD","188":"CRI","191":"HRV","192":"CUB","196":"CYP","203":"CZE","204":"BEN","208":"DNK","214":"DOM","218":"ECU","222":"SLV","226":"GNQ","231":"ETH","232":"ERI","233":"EST","242":"FJI","246":"FIN","250":"FRA","262":"DJI","266":"GAB","268":"GEO","270":"GMB","275":"PSE","276":"DEU","288":"GHA","300":"GRC","304":"GRL","320":"GTM","324":"GIN","328":"GUY","332":"HTI","340":"HND","344":"HKG","348":"HUN","352":"ISL","356":"IND","360":"IDN","364":"IRN","368":"IRQ","372":"IRL","376":"ISR","380":"ITA","384":"CIV","388":"JAM","392":"JPN","398":"KAZ","400":"JOR","404":"KEN","408":"PRK","410":"KOR","414":"KWT","417":"KGZ","418":"LAO","422":"LBN","426":"LSO","428":"LVA","430":"LBR","434":"LBY","440":"LTU","442":"LUX","446":"MAC","450":"MDG","454":"MWI","458":"MYS","462":"MDV","466":"MLI","470":"MLT","478":"MRT","480":"MUS","484":"MEX","496":"MNG","498":"MDA","499":"MNE","504":"MAR","508":"MOZ","512":"OMN","516":"NAM","524":"NPL","528":"NLD","554":"NZL","558":"NIC","562":"NER","566":"NGA","578":"NOR","586":"PAK","591":"PAN","598":"PNG","600":"PRY","604":"PER","608":"PHL","616":"POL","620":"PRT","624":"GNB","626":"TLS","630":"PRI","634":"QAT","642":"ROU","643":"RUS","646":"RWA","682":"SAU","686":"SEN","688":"SRB","694":"SLE","702":"SGP","703":"SVK","704":"VNM","705":"SVN","706":"SOM","710":"ZAF","716":"ZWE","724":"ESP","728":"SSD","729":"SDN","748":"SWZ","752":"SWE","756":"CHE","760":"SYR","762":"TJK","764":"THA","768":"TGO","780":"TTO","784":"ARE","788":"TUN","792":"TUR","795":"TKM","800":"UGA","804":"UKR","807":"MKD","818":"EGY","826":"GBR","834":"TZA","840":"USA","854":"BFA","858":"URY","860":"UZB","862":"VEN","887":"YEM","894":"ZMB"};
 const pad3=s=>('00'+String(s)).slice(-3);
 async function ensureWorld(){ if(WORLD) return WORLD;
-  for(const u of ['https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json','https://unpkg.com/world-atlas@2/countries-110m.json']){
+  // Use the 50m (1 : 50 million) topology rather than 110m — coastlines are
+  // markedly crisper at small countries / island chains and Europe/Caribbean
+  // detail. ~360 KB gzipped versus ~100 KB; loaded once and cached, so the
+  // detail upgrade is worth it. Falls back to 110m if 50m is unreachable.
+  for(const u of ['https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json',
+                  'https://unpkg.com/world-atlas@2/countries-50m.json',
+                  'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json']){
     try{ const t=await fetch(u).then(r=>{if(!r.ok)throw 0;return r.json();}); WORLD=topojson.feature(t,t.objects.countries); return WORLD; }catch(e){} }
   return null;
 }
@@ -545,7 +551,7 @@ function renderRel(){
   // R^2 (respondent-level)
   const R=r2(m1,m2); $('#rel-r2').textContent = isNaN(R)?'–':R.toFixed(2);
   $('#rel-explain').innerHTML = `<h4>What is R²</h4><p>R² measures how strongly the two selected metrics move together across <b>individual respondents</b> (0–1). 0.7–1.0 strong · 0.4–0.7 moderate · 0.1–0.4 weak · below 0.1 negligible.</p><h4>Keep in mind</h4><p>It is computed across respondents, not the country averages plotted left. A high R² means the two move together — not that one causes the other.</p>`;
-  // odds ratio per group — diverging, log scale around OR = 1 (magenta above, teal below)
+  // odds ratio per group — diverging, log scale around OR = 1 (fuchsia above, teal below)
   const UP='#e3076e', DOWN='#00a7b3';
   const keys=[...g1.keys()].filter(g=>g2.has(g));
   const odds=keys.map(g=>{ const p1=(g1.get(g)||0)/(isMean(m1)?1:100), p2=(g2.get(g)||0)/(isMean(m2)?1:100);
@@ -572,7 +578,7 @@ function renderRel(){
   $('#odds-explain').innerHTML=`<div class="explain" style="margin-top:0.7rem">
     <h4>How to read the odds ratio</h4>
     <p>For each <b>${esc(DIM[bd].label).toLowerCase()}</b> we compare two things side by side: the share who say <b>${esc(m1.label)}</b> and the share who say <b>${esc(m2.label)}</b>. The bar shows how many <b>times more likely</b> one answer is than the other — for example a bar of <b>2</b> means the first answer is twice as common as the second.</p>
-    <p><span style="color:${UP};font-weight:700">Magenta (above 1)</span> = <b>${esc(m1.label)}</b> is the more common answer · <span style="color:${DOWN};font-weight:700">teal (below 1)</span> = <b>${esc(m2.label)}</b> is more common · <b>1.0</b> = the two answers are equally likely. Bars sit on a <b>log scale</b>, so being "twice as likely" (2×) and "half as likely" (½×) sit the same distance from the baseline — i.e. equal-looking bars mean equal-sized gaps in either direction.</p>
+    <p><span style="color:${UP};font-weight:700">Fuchsia (above 1)</span> = <b>${esc(m1.label)}</b> is the more common answer · <span style="color:${DOWN};font-weight:700">teal (below 1)</span> = <b>${esc(m2.label)}</b> is more common · <b>1.0</b> = the two answers are equally likely. Bars sit on a <b>log scale</b>, so being "twice as likely" (2×) and "half as likely" (½×) sit the same distance from the baseline — i.e. equal-looking bars mean equal-sized gaps in either direction.</p>
     <p class="muted-note" style="margin-top:0.4rem">It's a way of measuring <b>how out-of-step</b> two responses are within the same group. The bigger the bar, the wider the gap between the two answers for that group.</p>
   </div>`;
   lastExport = { name:`wrp_rel_${ctrl.metric1}_vs_${ctrl.metric2}`,
@@ -953,10 +959,14 @@ async function renderDataset(){
   const data = await ensureCountryWaves();
   const waves = data.waves || [];
   $('#ds-title').textContent = 'Country coverage across all World Risk Poll waves';
-  const ths  = waves.map(w => `<th class="num" colspan="2">${esc(w)}</th>`).join('');
-  const ths2 = waves.map(() => `<th class="num">Sample n</th><th class="num">Pop. (PROJWT)</th>`).join('');
-  const head = `<thead>
-    <tr><th rowspan="2">Country</th>${ths}<th class="num" rowspan="2">Waves<br>(of ${waves.length})</th><th class="num" rowspan="2">Total<br>respondents</th></tr>
+  const ths  = waves.map(w => `<th class="num wave-grp" colspan="2">${esc(w)}</th>`).join('');
+  const ths2 = waves.map(() => `<th class="num">n</th><th class="num">Pop.</th>`).join('');
+  // <col> elements drive column widths via CSS — fixed for country/waves/total,
+  // even share for the 2 × N data columns so numbers always fit.
+  const colNumCells = waves.map(()=>`<col class="col-num"><col class="col-num">`).join('');
+  const colGroup = `<colgroup><col class="col-country">${colNumCells}<col class="col-waves"><col class="col-total"></colgroup>`;
+  const head = `${colGroup}<thead>
+    <tr><th class="col-country" rowspan="2">Country</th>${ths}<th class="num col-waves" rowspan="2">Waves</th><th class="num col-total" rowspan="2">Total n</th></tr>
     <tr>${ths2}</tr>
   </thead>`;
 
