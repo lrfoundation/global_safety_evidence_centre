@@ -469,6 +469,23 @@ def build_for(wave):
     if weight_col not in df.columns:
         raise SystemExit(f"wave {wave}: weight col '{weight_col}' not present after blend")
 
+    # ISO3 isn't always shipped in the per-wave file (the updated 19_wrp.sav
+    # and 21_wrp.sav both lack it). The map needs it for colouring countries —
+    # blend it from trended_wrp.sav on WPID_RANDOM.
+    if "COUNTRY_ISO3" not in df.columns and "WPID_RANDOM" in df.columns:
+        try:
+            wave_year = int(wave)
+        except (ValueError, TypeError):
+            wave_year = None
+        if wave_year:
+            iso_src, _ = pyreadstat.read_sav(
+                os.path.join(DATA, "trended_wrp.sav"),
+                usecols=["WPID_RANDOM", "Year", "COUNTRY_ISO3"])
+            iso_sub = iso_src[iso_src["Year"] == wave_year][["WPID_RANDOM", "COUNTRY_ISO3"]]
+            df = df.merge(iso_sub, on="WPID_RANDOM", how="left")
+            n_iso = int(df["COUNTRY_ISO3"].notna().sum()) if "COUNTRY_ISO3" in df.columns else 0
+            print(f"  blended COUNTRY_ISO3 from trended_wrp.sav: {n_iso:,} rows tagged with ISO3")
+
     n = len(df)
     vl = meta.variable_value_labels
     lab = meta.column_names_to_labels
@@ -496,12 +513,25 @@ def build_for(wave):
         raise SystemExit(f"wave {wave}: country col '{cname}' not in source file")
     if ciso and ciso not in df.columns:
         ciso = None
+    # Accept ISO3 brought in via a blend step (so 2019 / 2021 maps work even
+    # though those files don't ship COUNTRY_ISO3 natively).
+    if not ciso and "COUNTRY_ISO3" in df.columns:
+        ciso = "COUNTRY_ISO3"
     if ciso:
         cdf = df[[cname, ciso]].dropna(subset=[cname]).drop_duplicates(cname).sort_values(cname)
         countries = [{"name": r[0], "iso3": (r[1] if isinstance(r[1], str) else "")} for r in cdf.itertuples(index=False)]
     else:
         cdf = df[[cname]].dropna(subset=[cname]).drop_duplicates(cname).sort_values(cname)
         countries = [{"name": r[0], "iso3": ""} for r in cdf.itertuples(index=False)]
+    # Manual fallback for countries that aren't in trended_wrp.sav (so the
+    # ISO3 blend leaves them blank): these are stable across waves.
+    ISO3_FALLBACK = {
+        "Belarus": "BLR", "Jamaica": "JAM", "Lesotho": "LSO",
+        "Rwanda": "RWA", "Turkmenistan": "TKM",
+    }
+    for c_obj in countries:
+        if not c_obj["iso3"] and c_obj["name"] in ISO3_FALLBACK:
+            c_obj["iso3"] = ISO3_FALLBACK[c_obj["name"]]
     cindex = {x["name"]: i for i, x in enumerate(countries)}
     country_col_arr = df[cname].map(cindex).fillna(-1).to_numpy(np.int16)
     print(f"  {len(countries)} countries")
