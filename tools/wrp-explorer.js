@@ -488,7 +488,7 @@ const TITLE_LEGEND = {
   map:           { title:'#map-title',     legend:'#map-legend',  kind:'gradient' },
   rel:           { title:'#rel-title',     legend:null },
   sankey:        { title:'#sankey-title',  legend:null },
-  profile:       { title:'#profile-title', legend:null },   // profile SVG already contains its own header
+  profile:       { title:null, legend:null },   // profile SVG already draws its own title + subtitle
   clusters:      { title:'#cluster-title', legend:'#cluster-legend' },
   'trend-course':{ title:'#tc-title',      legend:'#tc-legend' },
   'trend-map':   { title:'#tm-title',      legend:'#tm-legend',   kind:'gradient' },
