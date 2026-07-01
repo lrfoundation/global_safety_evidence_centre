@@ -477,17 +477,117 @@ function toCSV(cols, rows){ const q=v=>{ v=(v==null?'':String(v)); return /[",\n
 function dlBlob(name, blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); }
 function activeSvgEl(){ return document.querySelector({dist:'#dist-chart',map:'#map-svg',rel:'#rel-scatter',sankey:'#sankey-svg',profile:'#profile-svg',clusters:'#cluster-svg','trend-course':'#tc-chart','trend-map':'#tm-svg'}[activeView]); }
-function svgSerialized(svg){ const c=svg.cloneNode(true); c.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  const w=svg.getAttribute('width'), h=svg.getAttribute('height'); if(!c.getAttribute('viewBox') && w) c.setAttribute('viewBox',`0 0 ${w} ${h}`);
-  return '<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(c); }
 function svgWH(svg){ const vb=(svg.getAttribute('viewBox')||'').split(/[ ,]+/).map(Number); if(vb.length===4 && vb[2]) return [vb[2],vb[3]];
   const r=svg.getBoundingClientRect(); return [Math.max(1,r.width),Math.max(1,r.height)]; }
+
+/* Map of the on-page elements each view uses for title + legend (both live
+   OUTSIDE the plotted SVG in the DOM). buildExportSVG() wraps them in a new
+   SVG so downloads include them. */
+const TITLE_LEGEND = {
+  dist:          { title:'#dist-title',    legend:'#dist-legend' },
+  map:           { title:'#map-title',     legend:'#map-legend',  kind:'gradient' },
+  rel:           { title:'#rel-title',     legend:null },
+  sankey:        { title:'#sankey-title',  legend:null },
+  profile:       { title:'#profile-title', legend:null },   // profile SVG already contains its own header
+  clusters:      { title:'#cluster-title', legend:'#cluster-legend' },
+  'trend-course':{ title:'#tc-title',      legend:'#tc-legend' },
+  'trend-map':   { title:'#tm-title',      legend:'#tm-legend',   kind:'gradient' },
+  dataset:       { title:'#ds-title',      legend:null },
+};
+
+function readLegendItems(el){
+  if(!el) return [];
+  const items = [];
+  el.querySelectorAll('.k').forEach(k=>{
+    const sw = k.querySelector('.sw');
+    const color = sw ? getComputedStyle(sw).backgroundColor : '';
+    // strip the swatch's own text (empty) — .textContent already handles that
+    const label = k.textContent.trim();
+    if(label) items.push({color, label});
+  });
+  return items;
+}
+
+function buildExportSVG(){
+  const chart = activeSvgEl();
+  if(!chart) return null;
+  const [chartW, chartH] = svgWH(chart);
+  const meta = TITLE_LEGEND[activeView] || {};
+  const titleEl = meta.title ? document.querySelector(meta.title) : null;
+  const legendEl = meta.legend ? document.querySelector(meta.legend) : null;
+  const titleText = titleEl ? titleEl.textContent.trim() : '';
+  const items = meta.kind === 'gradient' ? [] : readLegendItems(legendEl);
+  const gradientText = (meta.kind === 'gradient' && legendEl) ? legendEl.textContent.trim() : '';
+
+  // Layout: white bg, title row, legend row (only if legend content exists), chart, source footer.
+  const pad = 18, titleH = titleText ? 34 : 0;
+  const legendH = (items.length ? 30 : (gradientText ? 26 : 0));
+  const footerH = 18;
+  const W = Math.max(chartW, 800);
+  const H = pad + titleH + legendH + chartH + footerH + pad;
+
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="DM Sans, system-ui, sans-serif">`;
+  s += `<rect width="${W}" height="${H}" fill="#ffffff"/>`;
+  let y = pad;
+  if(titleText){
+    s += `<text x="${pad}" y="${y + 18}" font-size="15" font-weight="700" fill="#e3076e" letter-spacing="0.05em">${esc(titleText.toUpperCase())}</text>`;
+    y += titleH;
+  }
+  if(items.length){
+    // Simple wrap-safe layout: swatch + label pairs left-to-right.
+    let lx = pad;
+    items.forEach(it=>{
+      const w = 11, gap = 6, textPad = 18;
+      const approxTextW = it.label.length * 6.8;
+      if(lx + w + gap + approxTextW > W - pad){ lx = pad; y += 18; }
+      s += `<rect x="${lx}" y="${y + 5}" width="${w}" height="${w}" rx="2" fill="${it.color}"/>`;
+      s += `<text x="${lx + w + gap}" y="${y + 14}" font-size="12" fill="#2a2a35">${esc(it.label)}</text>`;
+      lx += w + gap + approxTextW + textPad;
+    });
+    y += legendH;
+  } else if(gradientText){
+    s += `<text x="${pad}" y="${y + 14}" font-size="12" fill="#6c6c78">${esc(gradientText)}</text>`;
+    y += legendH;
+  }
+
+  // Embed the chart SVG's viewBox by nesting <svg> — preserves the chart's
+  // internal coordinate system and centring.
+  const vb = chart.getAttribute('viewBox') || `0 0 ${chartW} ${chartH}`;
+  const chartX = Math.round((W - chartW) / 2);
+  s += `<svg x="${chartX}" y="${y}" width="${chartW}" height="${chartH}" viewBox="${vb}">${chart.innerHTML}</svg>`;
+  y += chartH;
+
+  // Small source-line footer
+  const nowLabel = WAVES[WAVE] ? WAVES[WAVE].label : WAVE;
+  const source = `Source: World Risk Poll ${nowLabel} · Lloyd's Register Foundation · population-weighted`;
+  s += `<text x="${pad}" y="${y + 12}" font-size="10" fill="#6c6c78">${esc(source)}</text>`;
+
+  s += '</svg>';
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' + s;
+}
+function exportedWH(){
+  const svg = activeSvgEl(); if(!svg) return [800, 600];
+  const [w, h] = svgWH(svg);
+  const meta = TITLE_LEGEND[activeView] || {};
+  const titleText = meta.title ? (document.querySelector(meta.title)?.textContent || '').trim() : '';
+  const legendEl = meta.legend ? document.querySelector(meta.legend) : null;
+  const items = meta.kind === 'gradient' ? [] : readLegendItems(legendEl);
+  const gradientText = (meta.kind === 'gradient' && legendEl) ? legendEl.textContent.trim() : '';
+  const pad = 18, titleH = titleText ? 34 : 0;
+  const legendH = items.length ? 30 : (gradientText ? 26 : 0);
+  const footerH = 18;
+  return [Math.max(w, 800), pad + titleH + legendH + h + footerH + pad];
+}
 function baseName(){ return (lastExport && lastExport.name) || ('wrp_'+activeView); }
-function dlChartSVG(){ const svg=activeSvgEl(); if(svg) dlBlob(baseName()+'.svg', new Blob([svgSerialized(svg)],{type:'image/svg+xml'})); }
-function dlChartPNG(){ const svg=activeSvgEl(); if(!svg) return; const wh=svgWH(svg), scale=2, img=new Image();
-  img.onload=()=>{ const cv=document.createElement('canvas'); cv.width=wh[0]*scale; cv.height=wh[1]*scale; const ctx=cv.getContext('2d');
-    ctx.setTransform(scale,0,0,scale,0,0); ctx.fillStyle='#fff'; ctx.fillRect(0,0,wh[0],wh[1]); ctx.drawImage(img,0,0); cv.toBlob(b=>dlBlob(baseName()+'.png', b)); };
-  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgSerialized(svg)); }
+function dlChartSVG(){ const src = buildExportSVG(); if(src) dlBlob(baseName()+'.svg', new Blob([src], {type:'image/svg+xml'})); }
+function dlChartPNG(){ const src = buildExportSVG(); if(!src) return;
+  const [w, h] = exportedWH(), scale = 2, img = new Image();
+  img.onload = ()=>{ const cv = document.createElement('canvas'); cv.width = w*scale; cv.height = h*scale;
+    const ctx = cv.getContext('2d'); ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0); cv.toBlob(b => dlBlob(baseName()+'.png', b)); };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
+}
 function dlCSV(){ if(!lastExport) return; dlBlob(baseName()+'.csv', new Blob(['﻿'+toCSV(lastExport.cols, lastExport.rows)],{type:'text/csv;charset=utf-8'})); }
 
 /* ---------- render dispatch ---------- */
