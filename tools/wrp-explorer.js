@@ -31,6 +31,61 @@ const WAVES = {
 };
 function currentWave(){ const p=new URLSearchParams(location.search).get('wave'); return WAVES[p] ? p : '2025'; }
 let WAVE = currentWave();
+
+/* ---------- Share view: encode / decode UI state to URL params ---------- */
+function stateToParams(){
+  const sp = new URLSearchParams();
+  if(WAVE !== '2025') sp.set('wave', WAVE);
+  if(activeView && activeView !== 'dist') sp.set('v', activeView);
+  const map = { question:'q', right:'r', metric1:'m1', metric2:'m2', breakdown1:'bd1', breakdown2:'bd2',
+                profileScope:'ps', k:'k', colourBy:'col', clusterBy:'cl',
+                tmFromYear:'tf', tmToYear:'tt' };
+  for(const [key, param] of Object.entries(map)){
+    const val = ctrl[key];
+    if(val==null || val==='') continue;
+    sp.set(param, String(val));
+  }
+  // filters: one param per active dim, values joined with commas
+  Object.keys(filters).forEach(dk=>{
+    const s = filters[dk]; if(!s || !s.size) return;
+    sp.set('f.'+dk, [...s].join(','));
+  });
+  return sp;
+}
+function paramsToState(){
+  const sp = new URLSearchParams(location.search);
+  if(sp.has('v')) activeView = sp.get('v');
+  const map = { q:'question', r:'right', m1:'metric1', m2:'metric2', bd1:'breakdown1', bd2:'breakdown2',
+                ps:'profileScope', col:'colourBy', cl:'clusterBy' };
+  for(const [param, key] of Object.entries(map)){
+    if(sp.has(param)) ctrl[key] = sp.get(param);
+  }
+  const numeric = { k:'k', tf:'tmFromYear', tt:'tmToYear' };
+  for(const [param, key] of Object.entries(numeric)){
+    if(sp.has(param)){ const n = +sp.get(param); if(!isNaN(n)) ctrl[key] = n; }
+  }
+  // filters
+  Object.keys(filters).forEach(k=>delete filters[k]);
+  sp.forEach((val, param)=>{
+    if(!param.startsWith('f.')) return;
+    const dim = param.slice(2);
+    const codes = val.split(',').map(v=>+v).filter(n=>!isNaN(n));
+    if(codes.length) filters[dim] = new Set(codes);
+  });
+}
+function updateShareURL(){
+  const sp = stateToParams();
+  const q = sp.toString();
+  const url = location.pathname + (q ? '?' + q : '');
+  history.replaceState(null, '', url);
+}
+function copyShareLink(btn){
+  updateShareURL();
+  const url = location.href;
+  const ok = ()=>{ const t = btn.textContent; btn.textContent = 'Link copied ✓'; setTimeout(()=>{ btn.textContent = t; }, 1600); };
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(ok, ok); }
+  else { const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(e){} ta.remove(); ok(); }
+}
 function buildWaveTabs(){
   document.querySelectorAll('#wave-tabs .seg-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.wave === WAVE);
@@ -89,6 +144,8 @@ async function load(){
       document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id === 'view-dataset'));
       buildWaveTabs();
       renderDataset();
+      const sh = $('#dl-share'); if(sh) sh.onclick = ()=>copyShareLink(sh);
+      updateShareURL();
       return;
     }
     document.getElementById('status').classList.remove('hidden');
@@ -137,15 +194,22 @@ async function load(){
     const note = document.getElementById('wave-note');        if(note) note.textContent = `${(MAN.countries||[]).length} countries · ${N.toLocaleString()} respondents · ${(MAN.questions||[]).length} questions`;
     // make sure ctrl points at something valid for this wave's catalogue
     pickInitialCtrl();
+    // Apply any URL params on top of pick defaults (share links land here).
+    paramsToState();
+    // Re-validate ctrl slugs against this wave's catalogue in case URL params
+    // reference items that don't exist here (silently drop, fall back).
+    pickInitialCtrl();
     // and the active view is appropriate for the wave (trended has its own two)
     if(WAVE === 'trended' && !isTrendView(activeView)) activeView = 'trend-course';
     if(WAVE !== 'trended' && (isTrendView(activeView) || activeView === 'dataset')) activeView = 'dist';
+    computeRows();
     document.querySelectorAll('#view-tabs .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===activeView));
     document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id === 'view-'+activeView));
     $('#status').classList.add('hidden');
     $('#app').classList.remove('hidden');
     buildFilters(); buildTabs(); buildWaveTabs(); render(); observeResize();
     $('#dl-svg').onclick = dlChartSVG; $('#dl-png').onclick = dlChartPNG; $('#dl-csv').onclick = dlCSV;
+    const sh = $('#dl-share'); if(sh) sh.onclick = ()=>copyShareLink(sh);
   }catch(e){
     const s=$('#status'); s.classList.add('err'); s.classList.remove('hidden');
     s.textContent='Could not load the '+WAVES[WAVE].label+' dataset ('+e.message+'). Run scripts/build_explorer_wave.py and serve the tools folder.';
@@ -168,11 +232,18 @@ function pickInitialCtrl(){
   const dkeys = MAN.dimensions.filter(d=>d.type==='country'||d.cats).map(d=>d.key);
   const pick = (cur, list, fallback) => list.includes(cur) ? cur : (list[0] || fallback);
   ctrl.question   = pick(ctrl.question,   qkeys, 'climate');
-  ctrl.right      = pick(ctrl.right,      qkeys, ctrl.question);
-  // prefer the climate-very metric when it exists; otherwise the first metric
+  // ctrl.right (sankey right-hand question) MUST differ from ctrl.question,
+  // otherwise the sankey degenerates to identity flows (each answer to itself).
+  const rightValid = qkeys.includes(ctrl.right) && ctrl.right !== ctrl.question;
+  ctrl.right      = rightValid ? ctrl.right : (qkeys.find(k => k !== ctrl.question) || ctrl.question);
+  // Preserve current metrics if the new wave carries them; otherwise fall back
+  // to a sensible default (climate-very, then climate-concerned, then first).
   const wantedM1 = ['climate_very','climate_concerned','food_very', mkeys[0]];
-  ctrl.metric1   = wantedM1.find(k => k && mkeys.includes(k)) || mkeys[0];
-  ctrl.metric2   = mkeys.find(k => k !== ctrl.metric1) || ctrl.metric1;
+  ctrl.metric1   = mkeys.includes(ctrl.metric1) ? ctrl.metric1
+                    : (wantedM1.find(k => k && mkeys.includes(k)) || mkeys[0]);
+  ctrl.metric2   = (mkeys.includes(ctrl.metric2) && ctrl.metric2 !== ctrl.metric1)
+                    ? ctrl.metric2
+                    : (mkeys.find(k => k !== ctrl.metric1) || ctrl.metric1);
   ctrl.breakdown1 = pick(ctrl.breakdown1, dkeys, 'countrynew');
   ctrl.breakdown2 = pick(ctrl.breakdown2, dkeys, 'countrynew');
   ctrl.profileScope = 'all';
@@ -430,6 +501,9 @@ function render(){ buildControls(); updateFilterToggle();
   else if(activeView==='trend-course') renderTrendCourse();
   else if(activeView==='trend-map')    renderTrendMap();
   else if(activeView==='dataset')      renderDataset();
+  // Keep the URL bar in sync so refresh + back-button preserve the current
+  // view, and the Share button always copies a link that reproduces it.
+  updateShareURL();
 }
 
 /* ---------- View 1: ranked distribution ---------- */
