@@ -3,9 +3,16 @@
    Loads on top of lrf-theme.css (shared brand chrome).
    ============================================================ */
 
+.tool-section {
+  margin-top: 4.5rem;
+}
+.tool-section:first-child {
+  margin-top: 0;
+}
+
 .tool-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
 }
 
@@ -68,3 +75,14 @@
 }
 .tool-card .go .arrow { transition: transform 0.15s; }
 .tool-card:hover .go .arrow { transform: translateX(3px); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1080px) {
+  .tool-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 900px) {
+  .tool-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .tool-grid { grid-template-columns: 1fr; }
+}

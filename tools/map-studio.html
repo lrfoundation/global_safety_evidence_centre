@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="lrf-theme.css">
 <link rel="stylesheet" href="map-studio.css">
+<script src="gsec-render.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4"></script>
@@ -85,7 +86,7 @@
         <div class="sec-label">Data</div>
         <textarea class="data-input" id="data-input" placeholder="Paste two columns: name and value.
 One row per line, tab- or comma-separated.
-A header row is ignored automatically."></textarea>
+A header row is ignored automatically. A third column, if present, is used as hover tooltip text."></textarea>
         <div class="grid-actions" style="display:flex; gap:0.6rem; margin-top:0.7rem;">
           <button class="btn btn-small" id="load-sample">Load sample</button>
           <button class="btn btn-small" id="clear-data">Clear</button>
@@ -168,6 +169,7 @@ A header row is ignored automatically."></textarea>
         <button class="btn btn-primary" id="copy-svg">Copy SVG</button>
         <button class="btn" id="download-svg">Download SVG</button>
         <button class="btn" id="download-png">Download PNG</button>
+        <button class="btn" id="export-json">Export JSON</button>
         <span class="spacer"></span>
       </div>
     </div>
@@ -431,22 +433,28 @@ function parseRows(text){
     if(parts.length < 2) parts = line.split(/\s{2,}/);
     if(parts.length < 2) return;
     var key = parts[0].trim().replace(/^"|"$/g, '');
-    var valStr = parts[parts.length - 1].trim().replace(/^"|"$/g, '').replace(/[%,]/g, '');
+    var valStr, note = '';
+    if(parts.length >= 3){
+      valStr = parts[1].trim().replace(/^"|"$/g, '').replace(/[%,]/g, '');
+      note = parts.slice(2).join(',').trim().replace(/^"|"$/g, '');
+    } else {
+      valStr = parts[parts.length - 1].trim().replace(/^"|"$/g, '').replace(/[%,]/g, '');
+    }
     var v = parseFloat(valStr);
     if(isNaN(v)) return; // skips header rows and blanks
-    out.push({ key: key, value: v });
+    out.push({ key: key, value: v, note: note });
   });
   return out;
 }
 
-// Returns { values: {lookupKey -> value}, unmatched: [names] }
+// Returns { values: {lookupKey -> value}, notes: {lookupKey -> note}, unmatched: [names] }
 function matchData(){
   var rows = parseRows($('data-input').value);
-  var values = {}, unmatched = [];
+  var values = {}, notes = {}, unmatched = [];
   if(state.level === 'global'){
     rows.forEach(function(r){
       var id = ALIAS_INDEX[norm(r.key)];
-      if(id) values[id] = r.value; else unmatched.push(r.key);
+      if(id){ values[id] = r.value; notes[id] = r.note || ''; } else unmatched.push(r.key);
     });
   } else {
     var fc = state.country ? REGION_CACHE[state.country] : null;
@@ -454,10 +462,10 @@ function matchData(){
     if(fc) fc.features.forEach(function(f){ idx[norm(regionName(f))] = true; });
     rows.forEach(function(r){
       var nk = norm(r.key);
-      if(idx[nk]) values[nk] = r.value; else unmatched.push(r.key);
+      if(idx[nk]){ values[nk] = r.value; notes[nk] = r.note || ''; } else unmatched.push(r.key);
     });
   }
-  return { values: values, unmatched: unmatched };
+  return { values: values, notes: notes, unmatched: unmatched };
 }
 
 function regionName(f){
@@ -636,11 +644,15 @@ function render(){
         var self = this, name = f.properties.name, id = f.id;
         self.style.cursor = 'pointer';
         self.addEventListener('click', function(){ drillTo(id, name); });
+        var v = m.values[String(f.id)], note = m.notes[String(f.id)];
         var t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-        t.textContent = name; self.appendChild(t);
+        t.textContent = name + (v != null ? ' — ' + fmt(v) : '') + (note ? ' — ' + note : '');
+        self.appendChild(t);
       } else {
+        var key = norm(regionName(f)), v2 = m.values[key], note2 = m.notes[key];
         var t2 = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-        t2.textContent = regionName(f); this.appendChild(t2);
+        t2.textContent = regionName(f) + (v2 != null ? ' — ' + fmt(v2) : '') + (note2 ? ' — ' + note2 : '');
+        this.appendChild(t2);
       }
     });
 
@@ -736,6 +748,39 @@ $('download-png').addEventListener('click', function(){
   };
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
 });
+
+function labelFor(key){
+  if(state.level === 'global'){
+    if(WORLD){
+      var f = WORLD.features.filter(function(x){ return String(x.id) === key; })[0];
+      if(f) return f.properties.name;
+    }
+    return key;
+  }
+  var fc = state.country ? REGION_CACHE[state.country] : null;
+  if(fc){
+    var r = fc.features.filter(function(x){ return norm(regionName(x)) === key; })[0];
+    if(r) return regionName(r);
+  }
+  return key;
+}
+function buildExportOpts(){
+  var m = matchData();
+  var keys = Object.keys(m.values);
+  return {
+    sourceTool: 'map-studio',
+    chartType: state.level === 'global' ? 'world-map' : 'country-map',
+    title: state.title, unit: state.suffix, scale: 'linear',
+    paletteVersion: state.scheme,
+    notes: state.source || undefined,
+    series: keys.map(function(k){
+      return { id: k, label: labelFor(k), value: m.values[k], tooltip: m.notes[k] || undefined,
+        meta: state.level === 'country' ? { parentRegion: state.countryName } : undefined };
+    })
+  };
+}
+function copyJSON(){ GSEC.copyExportJSON(buildExportOpts(), state.title); }
+$('export-json').addEventListener('click', copyJSON);
 
 /* ---------- Controls ---------- */
 [].forEach.call(document.querySelectorAll('#level-seg .seg-btn'), function(b){

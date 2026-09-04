@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400;1,9..40,500&family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="lrf-theme.css">
 <link rel="stylesheet" href="chart-studio.css">
+<script src="gsec-render.js"></script>
 </head>
 <body>
 
@@ -73,6 +74,7 @@
           <button class="btn btn-small" id="add-row">+ Row</button>
           <button class="btn btn-small" id="add-series">+ Series</button>
           <button class="btn btn-small" id="toggle-paste">Paste data</button>
+          <label class="chk"><input type="checkbox" id="c-notes"> Tooltip text per row</label>
         </div>
         <div class="paste-area" id="paste-area">
           <textarea id="paste-text" placeholder="Paste from a spreadsheet. First row is the header (label cell, then one column per series). Tab or comma separated."></textarea>
@@ -115,6 +117,17 @@
         <div class="field hidden" id="wrap-diverge" style="margin-top:0.9rem;">
           <label for="f-diverge">Left-side series (diverging)</label>
           <select id="f-diverge"></select>
+        </div>
+        <div class="field hidden" id="wrap-log" style="margin-top:0.9rem;">
+          <label class="chk"><input type="checkbox" id="c-log"> Log scale (y-axis)</label>
+          <div class="field hidden" id="wrap-log-labels" style="margin-top:0.7rem;">
+            <label>Bar labels show</label>
+            <div class="segmented cols-2" id="log-label-seg">
+              <button class="seg-btn active" data-loglabel="actual">Actual value</button>
+              <button class="seg-btn" data-loglabel="log">Log value</button>
+            </div>
+          </div>
+          <div class="hint">Log scale only applies to grouped bars, since stacked segments can't be summed on a log axis. Bars start at the chart's lowest value, not zero — read them as order of magnitude, not proportion. Zero and negative values can't be shown and are omitted.</div>
         </div>
         <div class="hidden" id="wrap-donut" style="margin-top:0.9rem;">
           <label class="chk"><input type="checkbox" id="c-centre" checked> Show centre total</label>
@@ -160,6 +173,7 @@
         <button class="btn btn-primary" id="copy-svg">Copy SVG</button>
         <button class="btn" id="download-svg">Download SVG</button>
         <button class="btn" id="download-png">Download PNG</button>
+        <button class="btn" id="export-json">Export JSON</button>
         <span class="spacer"></span>
       </div>
     </div>
@@ -247,6 +261,8 @@ var state = {
   type: 'donut',
   catLabel: 'Country',
   categories: ['South Korea','Mexico','Kenya','Brazil','Japan'],
+  notes: ['','','','',''],
+  showNotes: false,
   series: [
     { name: '2023', values: [82.7,75.4,68.1,71.9,59.3] },
     { name: '2025', values: [80.2,78.6,70.4,69.5,61.0] }
@@ -257,6 +273,7 @@ var state = {
   suffix: '%', decimals: 1, thousands: false,
   legend: true, dataLabels: true, gridlines: true,
   orientation: 'vertical',
+  logScale: false, logLabelMode: 'actual',
   donutCentre: true, donutCentreLabel: 'Total',
   palette: 'sequence', spotlightIndex: 0,
   divergeSplit: 1,
@@ -378,14 +395,21 @@ function renderDonut(){
   var s = [svgOpen(), titleSvg()];
   if(!data.length || total<=0){
     s.push('<text x="'+cx+'" y="'+cy+'" font-size="14" fill="'+MUTED+'" text-anchor="middle">Add positive values to draw a donut</text>');
-    s.push(captionSvg(),'</svg>'); return s.join('');
+    s.push(captionSvg(), GSEC.tipStyleBlock(), '</svg>'); return s.join('');
   }
   var ang=0;
   for(var k=0;k<data.length;k++){
     var frac = data[k].value/total, sweep = frac*360;
     var col = colorsAll[data[k].idx];
     var a0=ang, a1=ang+sweep;
-    s.push('<path d="'+arcPath(cx,cy,ro,ri,a0, a1-0.4)+'" fill="'+col+'"/>');
+    var sliceShape = '<path d="'+arcPath(cx,cy,ro,ri,a0, a1-0.4)+'" fill="'+col+'"/>';
+    var sliceNote = state.notes[data[k].idx] || '';
+    if(sliceNote){
+      var tipMid=(a0+a1)/2, tipPt=polar(cx,cy,(ro+ri)/2,tipMid);
+      s.push(GSEC.hoverGroup(sliceShape, tipPt[0], tipPt[1], data[k].label, sliceNote, state.width));
+    } else {
+      s.push(sliceShape);
+    }
     if(state.dataLabels && frac>=0.05){
       var mid=(a0+a1)/2, lp=polar(cx,cy,(ro+ri)/2,mid);
       s.push('<text x="'+lp[0].toFixed(1)+'" y="'+lp[1].toFixed(1)+'" font-size="11" font-weight="600" fill="'+textOn(col)+'" text-anchor="middle" dominant-baseline="middle">'+ (Math.round(frac*1000)/10) +'%</text>');
@@ -397,7 +421,7 @@ function renderDonut(){
     if(state.donutCentreLabel) s.push('<text x="'+cx+'" y="'+(cy+18)+'" font-size="11" font-weight="600" fill="'+MUTED+'" text-anchor="middle" letter-spacing="0.06em">'+esc(state.donutCentreLabel.toUpperCase())+'</text>');
   }
   s.push(drawLegend(legMeta, cx, legendTop, items));
-  s.push(captionSvg(),'</svg>');
+  s.push(captionSvg(), GSEC.tipStyleBlock(), '</svg>');
   return s.join('');
 }
 
@@ -420,11 +444,46 @@ function dataDomain(stacked){
 /* sum of positive values in a category (for 100% stacked) */
 function catTotalPos(i){ var t=0; for(var j=0;j<state.series.length;j++){ var v=num(state.series[j].values[i]); if(v!==null && v>0) t+=v; } return t; }
 
+/* ---------- Log-scale domain (grouped bar charts only) ---------- */
+function niceLogTicks(min, max){
+  var lo = Math.floor(Math.log10(min)), hi = Math.ceil(Math.log10(max));
+  if(hi<=lo) hi = lo+1;
+  var ticks = [];
+  for(var e=lo; e<=hi; e++){
+    [1,2,5].forEach(function(m){
+      var v = m*Math.pow(10,e);
+      if(v >= Math.pow(10,lo)-1e-9 && v <= Math.pow(10,hi)+1e-9) ticks.push(Math.round(v*1e6)/1e6);
+    });
+  }
+  return { ticks: ticks, min: Math.pow(10,lo), max: Math.pow(10,hi) };
+}
+/* domain over strictly-positive values only; zero/negative values can't be log-scaled */
+function logDataDomain(){
+  var dmin=Infinity, dmax=-Infinity, ncat=state.categories.length, skipped=0;
+  for(var i=0;i<ncat;i++){
+    for(var j=0;j<state.series.length;j++){
+      var v=num(state.series[j].values[i]);
+      if(v===null) continue;
+      if(v<=0){ skipped++; continue; }
+      if(v>dmax) dmax=v; if(v<dmin) dmin=v;
+    }
+  }
+  if(!isFinite(dmin) || !isFinite(dmax)){ dmin=1; dmax=10; }
+  var d = niceLogTicks(dmin, dmax);
+  d.skipped = skipped;
+  return d;
+}
+function logLabelText(v){
+  if(state.logLabelMode==='log') return 'log₁₀ ' + Math.log10(v).toFixed(2);
+  return fmt(v);
+}
+
 /* ---------- Vertical bars (grouped, stacked, 100% stacked) ---------- */
 function renderBarsVertical(kind){
   var cats=state.categories, nser=state.series.length, ncat=cats.length;
   var pct = (kind==='pct'), stackedLike = (kind==='stacked' || pct);
-  var dom = pct ? { ticks:[0,0.2,0.4,0.6,0.8,1], min:0, max:1 } : dataDomain(stackedLike);
+  var isLog = (kind==='grouped' && state.logScale);
+  var dom = pct ? { ticks:[0,0.2,0.4,0.6,0.8,1], min:0, max:1 } : (isLog ? logDataDomain() : dataDomain(stackedLike));
   var colors=activeColors(nser);
   var items=state.series.map(function(sname,i){ return { label: sname.name, color: colors[i] }; });
   var singleSeries = (nser===1);
@@ -447,8 +506,11 @@ function renderBarsVertical(kind){
   var plotTop = top + 6;
   var plotW = plotRight - plotLeft, plotH = plotBottom - plotTop;
 
-  function yOf(v){ return plotBottom - (v-dom.min)/(dom.max-dom.min)*plotH; }
-  var y0 = yOf(0);
+  function yOf(v){
+    if(isLog) return plotBottom - (Math.log10(v)-Math.log10(dom.min))/(Math.log10(dom.max)-Math.log10(dom.min))*plotH;
+    return plotBottom - (v-dom.min)/(dom.max-dom.min)*plotH;
+  }
+  var y0 = isLog ? plotBottom : yOf(0);
 
   var s=[svgOpen(), titleSvg()];
   for(var t=0;t<dom.ticks.length;t++){
@@ -471,7 +533,10 @@ function renderBarsVertical(kind){
         var yA, yB;
         if(v>=0){ yA=yOf(cumP+v); yB=yOf(cumP); cumP+=v; } else { yA=yOf(cumN); yB=yOf(cumN+v); cumN+=v; }
         var h=Math.abs(yB-yA);
-        s.push('<rect x="'+bx.toFixed(1)+'" y="'+Math.min(yA,yB).toFixed(1)+'" width="'+inner.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+col+'"/>');
+        var barShape = '<rect x="'+bx.toFixed(1)+'" y="'+Math.min(yA,yB).toFixed(1)+'" width="'+inner.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+col+'"/>';
+        var rowNote = state.notes[i] || '';
+        if(rowNote) s.push(GSEC.hoverGroup(barShape, bx+inner/2, Math.min(yA,yB), cats[i], rowNote, state.width));
+        else s.push(barShape);
         if(state.dataLabels && h>15){
           var cyl=(yA+yB)/2, lbl = pct ? (v*100).toFixed(state.decimals)+'%' : fmt(v);
           s.push('<text x="'+(bx+inner/2).toFixed(1)+'" y="'+(cyl+3.5).toFixed(1)+'" font-size="10.5" font-weight="600" fill="'+textOn(col)+'" text-anchor="middle">'+esc(lbl)+'</text>');
@@ -481,13 +546,17 @@ function renderBarsVertical(kind){
       var innerG = bw*0.72, x0g = bandX + (bw-innerG)/2, barW = innerG/nser;
       for(var j2=0;j2<nser;j2++){
         var v2=num(state.series[j2].values[i]); if(v2===null) continue;
+        if(isLog && v2<=0) continue;
         var col2 = singleSeries ? (catColors? catColors[i] : colors[0]) : colors[j2];
         var bx2 = x0g + j2*barW;
         var yv=yOf(v2), ry=Math.min(y0,yv), rh=Math.abs(yv-y0);
-        s.push('<rect x="'+bx2.toFixed(1)+'" y="'+ry.toFixed(1)+'" width="'+(barW*0.86).toFixed(1)+'" height="'+rh.toFixed(1)+'" fill="'+col2+'"/>');
+        var barShape2 = '<rect x="'+bx2.toFixed(1)+'" y="'+ry.toFixed(1)+'" width="'+(barW*0.86).toFixed(1)+'" height="'+rh.toFixed(1)+'" fill="'+col2+'"/>';
+        var rowNote2 = state.notes[i] || '';
+        if(rowNote2) s.push(GSEC.hoverGroup(barShape2, bx2+(barW*0.86)/2, ry, cats[i], rowNote2, state.width));
+        else s.push(barShape2);
         if(state.dataLabels){
           var ly = v2>=0 ? ry-4 : ry+rh+12;
-          s.push('<text x="'+(bx2+barW*0.43).toFixed(1)+'" y="'+ly.toFixed(1)+'" font-size="10.5" font-weight="600" fill="'+INK_SOFT+'" text-anchor="middle">'+esc(fmt(v2))+'</text>');
+          s.push('<text x="'+(bx2+barW*0.43).toFixed(1)+'" y="'+ly.toFixed(1)+'" font-size="10.5" font-weight="600" fill="'+INK_SOFT+'" text-anchor="middle">'+esc(isLog?logLabelText(v2):fmt(v2))+'</text>');
         }
       }
     }
@@ -499,7 +568,7 @@ function renderBarsVertical(kind){
     }
   }
   if(nser>1) s.push(drawLegend(legMeta, state.width/2, legendTop, items));
-  s.push(captionSvg(),'</svg>');
+  s.push(captionSvg(), GSEC.tipStyleBlock(), '</svg>');
   return s.join('');
 }
 
@@ -507,7 +576,8 @@ function renderBarsVertical(kind){
 function renderBarsHorizontal(kind){
   var cats=state.categories, nser=state.series.length, ncat=cats.length;
   var pct = (kind==='pct'), stackedLike = (kind==='stacked' || pct);
-  var dom = pct ? { ticks:[0,0.2,0.4,0.6,0.8,1], min:0, max:1 } : dataDomain(stackedLike);
+  var isLog = (kind==='grouped' && state.logScale);
+  var dom = pct ? { ticks:[0,0.2,0.4,0.6,0.8,1], min:0, max:1 } : (isLog ? logDataDomain() : dataDomain(stackedLike));
   var colors=activeColors(nser);
   var items=state.series.map(function(sname,i){ return { label: sname.name, color: colors[i] }; });
   var singleSeries=(nser===1);
@@ -529,8 +599,11 @@ function renderBarsHorizontal(kind){
   var plotBottom = legendTop - 8 - axisH;
   var plotW = plotRight-plotLeft, plotH = plotBottom-plotTop;
 
-  function xOf(v){ return plotLeft + (v-dom.min)/(dom.max-dom.min)*plotW; }
-  var x0=xOf(0);
+  function xOf(v){
+    if(isLog) return plotLeft + (Math.log10(v)-Math.log10(dom.min))/(Math.log10(dom.max)-Math.log10(dom.min))*plotW;
+    return plotLeft + (v-dom.min)/(dom.max-dom.min)*plotW;
+  }
+  var x0=isLog ? plotLeft : xOf(0);
   var s=[svgOpen(), titleSvg()];
   for(var t=0;t<dom.ticks.length;t++){
     var tv=dom.ticks[t], gx=xOf(tv);
@@ -549,26 +622,33 @@ function renderBarsHorizontal(kind){
         var col=colors[j], xA,xB;
         if(v>=0){ xA=xOf(cumP); xB=xOf(cumP+v); cumP+=v; } else { xA=xOf(cumN+v); xB=xOf(cumN); cumN+=v; }
         var w=Math.abs(xB-xA);
-        s.push('<rect x="'+Math.min(xA,xB).toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+inner.toFixed(1)+'" fill="'+col+'"/>');
+        var hbarShape = '<rect x="'+Math.min(xA,xB).toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+inner.toFixed(1)+'" fill="'+col+'"/>';
+        var hrowNote = state.notes[i] || '';
+        if(hrowNote) s.push(GSEC.hoverGroup(hbarShape, (xA+xB)/2, by, cats[i], hrowNote, state.width));
+        else s.push(hbarShape);
         if(state.dataLabels && w>26){ var lbl = pct ? (v*100).toFixed(state.decimals)+'%' : fmt(v); s.push('<text x="'+((xA+xB)/2).toFixed(1)+'" y="'+(by+inner/2+3.5).toFixed(1)+'" font-size="10.5" font-weight="600" fill="'+textOn(col)+'" text-anchor="middle">'+esc(lbl)+'</text>'); }
       }
     } else {
       var innerG=bh*0.72, y0g=bandY+(bh-innerG)/2, barH=innerG/nser;
       for(var j2=0;j2<nser;j2++){
         var v2=num(state.series[j2].values[i]); if(v2===null) continue;
+        if(isLog && v2<=0) continue;
         var col2= singleSeries ? (catColors? catColors[i] : colors[0]) : colors[j2];
         var by2=y0g+j2*barH, xv=xOf(v2), rx=Math.min(x0,xv), rw=Math.abs(xv-x0);
-        s.push('<rect x="'+rx.toFixed(1)+'" y="'+by2.toFixed(1)+'" width="'+rw.toFixed(1)+'" height="'+(barH*0.86).toFixed(1)+'" fill="'+col2+'"/>');
+        var hbarShape2 = '<rect x="'+rx.toFixed(1)+'" y="'+by2.toFixed(1)+'" width="'+rw.toFixed(1)+'" height="'+(barH*0.86).toFixed(1)+'" fill="'+col2+'"/>';
+        var hrowNote2 = state.notes[i] || '';
+        if(hrowNote2) s.push(GSEC.hoverGroup(hbarShape2, rx+rw/2, by2, cats[i], hrowNote2, state.width));
+        else s.push(hbarShape2);
         if(state.dataLabels){
           var lx2 = v2>=0 ? rx+rw+3 : rx-3, anch = v2>=0?'start':'end';
-          s.push('<text x="'+lx2.toFixed(1)+'" y="'+(by2+barH*0.43+3.5).toFixed(1)+'" font-size="10.5" font-weight="600" fill="'+INK_SOFT+'" text-anchor="'+anch+'">'+esc(fmt(v2))+'</text>');
+          s.push('<text x="'+lx2.toFixed(1)+'" y="'+(by2+barH*0.43+3.5).toFixed(1)+'" font-size="10.5" font-weight="600" fill="'+INK_SOFT+'" text-anchor="'+anch+'">'+esc(isLog?logLabelText(v2):fmt(v2))+'</text>');
         }
       }
     }
     s.push('<text x="'+(plotLeft-6)+'" y="'+(bandY+bh/2+3.5).toFixed(1)+'" font-size="11.5" fill="'+INK_SOFT+'" text-anchor="end">'+esc(truncate(cats[i],18))+'</text>');
   }
   if(nser>1) s.push(drawLegend(legMeta, state.width/2, legendTop, items));
-  s.push(captionSvg(),'</svg>');
+  s.push(captionSvg(), GSEC.tipStyleBlock(), '</svg>');
   return s.join('');
 }
 
@@ -625,7 +705,7 @@ function renderDiverging(){
   // centre line
   s.push('<line x1="'+xc.toFixed(1)+'" y1="'+plotTop+'" x2="'+xc.toFixed(1)+'" y2="'+plotBottom+'" stroke="#9a9aa3" stroke-width="1"/>');
   s.push(drawLegend(legMeta, state.width/2, legendTop, items));
-  s.push(captionSvg(),'</svg>');
+  s.push(captionSvg(), GSEC.tipStyleBlock(), '</svg>');
   return s.join('');
 }
 
@@ -677,7 +757,7 @@ function renderDumbbell(){
     s.push('<text x="'+(plotLeft-6)+'" y="'+(cy+3.5).toFixed(1)+'" font-size="11.5" fill="'+INK_SOFT+'" text-anchor="end">'+esc(truncate(cats[i3],18))+'</text>');
   }
   if(nser>1) s.push(drawLegend(legMeta, state.width/2, legendTop, items));
-  s.push(captionSvg(),'</svg>');
+  s.push(captionSvg(), GSEC.tipStyleBlock(), '</svg>');
   return s.join('');
 }
 
@@ -744,7 +824,7 @@ function renderLine(area){
     }
   }
   if(nser>1) s.push(drawLegend(legMeta, state.width/2, legendTop, items));
-  s.push(captionSvg(),'</svg>');
+  s.push(captionSvg(), GSEC.tipStyleBlock(), '</svg>');
   return s.join('');
 }
 
@@ -772,6 +852,7 @@ function rebuildGrid(){
   var html='<thead><tr>';
   html += '<th class="grip-head"></th>';
   html += '<th class="cat-cell"><input type="text" data-k="catLabel" value="'+esc(state.catLabel)+'"></th>';
+  if(state.showNotes) html += '<th>Note</th>';
   for(var j=0;j<state.series.length;j++){
     html += '<th><input type="text" data-series-name="'+j+'" value="'+esc(state.series[j].name)+'">';
     if(state.series.length>1) html += '<button class="grid-x" data-del-series="'+j+'" title="Remove series">\u00d7</button>';
@@ -784,6 +865,7 @@ function rebuildGrid(){
     html += '<td class="cat-cell"><input type="text" data-cat="'+i+'" value="'+esc(state.categories[i])+'">';
     if(state.categories.length>1) html += '<button class="grid-x" data-del-row="'+i+'" title="Remove row">\u00d7</button>';
     html += '</td>';
+    if(state.showNotes) html += '<td><input type="text" data-note="'+i+'" placeholder="Optional hover text" value="'+esc(state.notes[i]||'')+'"></td>';
     for(var j2=0;j2<state.series.length;j2++){
       var v=state.series[j2].values[i]; v=(v===null||v===undefined)?'':v;
       html += '<td><input type="text" inputmode="decimal" data-val="'+i+'_'+j2+'" value="'+esc(v)+'"></td>';
@@ -796,9 +878,10 @@ function rebuildGrid(){
   grid.querySelectorAll('input[data-cat]').forEach(function(el){ el.addEventListener('input', function(){ state.categories[+el.dataset.cat]=el.value; refreshSpotlight(); update(); }); });
   grid.querySelectorAll('input[data-series-name]').forEach(function(el){ el.addEventListener('input', function(){ state.series[+el.dataset.seriesName].name=el.value; refreshSpotlight(); update(); }); });
   grid.querySelectorAll('input[data-val]').forEach(function(el){ el.addEventListener('input', function(){ var p=el.dataset.val.split('_'); state.series[+p[1]].values[+p[0]] = el.value===''? null : el.value; update(); }); });
+  grid.querySelectorAll('input[data-note]').forEach(function(el){ el.addEventListener('input', function(){ state.notes[+el.dataset.note]=el.value; update(); }); });
   grid.querySelector('input[data-k="catLabel"]').addEventListener('input', function(e){ state.catLabel=e.target.value; });
   grid.querySelectorAll('[data-del-series]').forEach(function(el){ el.addEventListener('click', function(){ state.series.splice(+el.dataset.delSeries,1); clampSpotlight(); rebuildGrid(); refreshSpotlight(); update(); }); });
-  grid.querySelectorAll('[data-del-row]').forEach(function(el){ el.addEventListener('click', function(){ var idx=+el.dataset.delRow; state.categories.splice(idx,1); state.series.forEach(function(s){ s.values.splice(idx,1); }); clampSpotlight(); rebuildGrid(); refreshSpotlight(); update(); }); });
+  grid.querySelectorAll('[data-del-row]').forEach(function(el){ el.addEventListener('click', function(){ var idx=+el.dataset.delRow; state.categories.splice(idx,1); state.notes.splice(idx,1); state.series.forEach(function(s){ s.values.splice(idx,1); }); clampSpotlight(); rebuildGrid(); refreshSpotlight(); update(); }); });
   wireDragDrop(grid);
 }
 
@@ -839,6 +922,7 @@ function moveRow(from, insertBefore){
   var hiVal = isCategorySpotlight() ? state.categories[state.spotlightIndex] : null;
   function reorder(arr){ var it=arr.splice(from,1)[0]; arr.splice(idx,0,it); }
   reorder(state.categories);
+  reorder(state.notes);
   state.series.forEach(function(s){ reorder(s.values); });
   if(hiVal!==null){ var ni=state.categories.indexOf(hiVal); if(ni>=0) state.spotlightIndex=ni; }
   rebuildGrid(); refreshSpotlight(); update();
@@ -883,6 +967,10 @@ function syncTypeUI(){
   $('donut-hint').classList.toggle('hidden', state.type!=='donut');
   $('wrap-grid').classList.toggle('hidden', state.type==='donut');
   $('wrap-diverge').classList.toggle('hidden', state.type!=='diverging');
+  $('wrap-log').classList.toggle('hidden', state.type!=='grouped');
+  if(state.type!=='grouped') state.logScale = false;
+  $('c-log').checked = state.logScale;
+  $('wrap-log-labels').classList.toggle('hidden', !state.logScale);
 }
 
 /* segmented controls */
@@ -926,6 +1014,20 @@ function downloadPNG(){
 }
 function fileName(ext){ var base=(state.title||'lrf-chart').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); return (base||'lrf-chart')+'.'+ext; }
 
+function buildExportOpts(){
+  var vals = state.series[0] ? state.series[0].values : [];
+  return {
+    sourceTool: 'chart-studio', chartType: state.type, title: state.title,
+    unit: state.suffix, scale: 'linear', paletteVersion: state.palette,
+    notes: state.source || undefined,
+    series: state.categories.map(function(cat,i){
+      return { id: 'cat-' + i, label: cat, value: vals[i], tooltip: state.notes[i] || undefined,
+        meta: state.series.length > 1 ? { allSeries: state.series.map(function(s){ return { name: s.name, value: s.values[i] }; }) } : undefined };
+    })
+  };
+}
+function copyJSON(){ GSEC.copyExportJSON(buildExportOpts(), state.title); }
+
 /* paste parsing */
 function applyPaste(){
   var raw=$('paste-text').value.trim();
@@ -938,9 +1040,11 @@ function applyPaste(){
   state.series=[];
   for(var j=0;j<nser;j++) state.series.push({ name: head[j+1]||('Series '+(j+1)), values: [] });
   state.categories=[];
+  state.notes=[];
   for(var i=1;i<lines.length;i++){
     var cells=lines[i].split(delim).map(function(s){return s.trim();});
     state.categories.push(cells[0]||('Row '+i));
+    state.notes.push('');
     for(var j2=0;j2<nser;j2++){ var raw2=cells[j2+1]; var nv = raw2===undefined||raw2===''? null : (parseFloat(raw2.replace(/,/g,''))); state.series[j2].values.push(isNaN(nv)?null:nv); }
   }
   if(!state.series.length) state.series=[{name:'Series 1', values: state.categories.map(function(){return null;})}];
@@ -954,15 +1058,17 @@ function init(){
   $('f-suffix').value=state.suffix; $('f-decimals').value=state.decimals;
   $('f-centre').value=state.donutCentreLabel; $('f-width').value=state.width; $('f-height').value=state.height;
   $('c-legend').checked=state.legend; $('c-labels').checked=state.dataLabels; $('c-grid').checked=state.gridlines; $('c-thousands').checked=state.thousands; $('c-centre').checked=state.donutCentre;
+  $('c-notes').checked=state.showNotes;
   $('f-bg').value=state.bg;
 
   rebuildGrid(); refreshSpotlight(); syncTypeUI(); update();
 
   segWire('type-seg','type','type', function(){ clampSpotlight(); syncTypeUI(); refreshSpotlight(); update(); });
   segWire('orient-seg','orient','orientation', update);
+  segWire('log-label-seg','loglabel','logLabelMode', update);
   segWire('palette-seg','palette','palette', function(){ $('wrap-spotlight').classList.toggle('hidden', state.palette!=='spotlight'); refreshSpotlight(); update(); });
 
-  $('add-row').addEventListener('click', function(){ state.categories.push('New'); state.series.forEach(function(s){ s.values.push(null); }); rebuildGrid(); refreshSpotlight(); update(); });
+  $('add-row').addEventListener('click', function(){ state.categories.push('New'); state.notes.push(''); state.series.forEach(function(s){ s.values.push(null); }); rebuildGrid(); refreshSpotlight(); update(); });
   $('add-series').addEventListener('click', function(){ state.series.push({ name:'Series '+(state.series.length+1), values: state.categories.map(function(){return null;}) }); rebuildGrid(); refreshSpotlight(); update(); });
   $('toggle-paste').addEventListener('click', function(){ $('paste-area').classList.toggle('open'); });
   $('apply-paste').addEventListener('click', applyPaste);
@@ -982,6 +1088,8 @@ function init(){
   $('c-grid').addEventListener('change', function(e){ state.gridlines=e.target.checked; update(); });
   $('c-thousands').addEventListener('change', function(e){ state.thousands=e.target.checked; update(); });
   $('c-centre').addEventListener('change', function(e){ state.donutCentre=e.target.checked; update(); });
+  $('c-log').addEventListener('change', function(e){ state.logScale=e.target.checked; $('wrap-log-labels').classList.toggle('hidden', !state.logScale); update(); });
+  $('c-notes').addEventListener('change', function(e){ state.showNotes=e.target.checked; rebuildGrid(); refreshSpotlight(); update(); });
 
   $('f-width').addEventListener('input', function(e){ var v=parseInt(e.target.value,10); if(v>=280&&v<=1600){ state.width=v; update(); } });
   $('f-height').addEventListener('input', function(e){ var v=parseInt(e.target.value,10); if(v>=200&&v<=1200){ state.height=v; update(); } });
@@ -990,6 +1098,7 @@ function init(){
   $('copy-svg').addEventListener('click', copySVG);
   $('download-svg').addEventListener('click', downloadSVG);
   $('download-png').addEventListener('click', downloadPNG);
+  $('export-json').addEventListener('click', copyJSON);
 }
 
 document.addEventListener('DOMContentLoaded', init);

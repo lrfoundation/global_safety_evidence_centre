@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="lrf-theme.css">
 <link rel="stylesheet" href="flow-studio.css">
+<script src="gsec-render.js"></script>
 </head>
 <body>
 
@@ -125,7 +126,7 @@
           <div class="sec-label">Stages</div>
           <textarea class="area funnel" id="fn-data" placeholder="One stage per line: label, count
 e.g. Applications received, 412"></textarea>
-          <div class="hint">Each line is a stage: a label and a count, comma- or tab-separated. Drop-off between stages is worked out for you.</div>
+          <div class="hint">Each line is a stage: a label and a count, comma- or tab-separated. Drop-off between stages is worked out for you. Add a third field for optional hover text (e.g. <code>Applications received, 412, From the online portal</code>).</div>
         </div>
         <div class="panel-section">
           <div class="sec-label">Appearance</div>
@@ -160,6 +161,7 @@ e.g. Applications received, 412"></textarea>
         <button class="btn btn-primary" id="copy-svg">Copy SVG</button>
         <button class="btn" id="download-svg">Download SVG</button>
         <button class="btn" id="download-png">Download PNG</button>
+        <button class="btn" id="export-json">Export JSON</button>
         <span class="spacer"></span>
       </div>
     </div>
@@ -438,10 +440,19 @@ function parseFunnel(text){
     if(!ln.trim()) return;
     var parts = ln.split(/\t|,/);
     if(parts.length < 2) return;
-    var label = parts[0].trim();
-    var n = parseFloat(parts[parts.length - 1].replace(/[^0-9.\-]/g, ''));
+    var label, countStr, note;
+    if(parts.length >= 3){
+      label = parts[0].trim();
+      countStr = parts[1];
+      note = parts.slice(2).join(',').trim();
+    } else {
+      label = parts[0].trim();
+      countStr = parts[parts.length - 1];
+      note = '';
+    }
+    var n = parseFloat(countStr.replace(/[^0-9.\-]/g, ''));
     if(isNaN(n)) return;
-    out.push({ label: label, n: n });
+    out.push({ label: label, n: n, note: note });
   });
   return out;
 }
@@ -481,7 +492,12 @@ function renderFunnel(){
   // Stage bars, labels and drop-off annotations.
   for(var j = 0; j < rows.length; j++){
     var w2 = bw(rows[j].n), x2 = cx - w2 / 2, y = yOf(j);
-    parts.push('<rect x="' + x2 + '" y="' + y + '" width="' + w2 + '" height="' + stageH + '" rx="3" fill="' + col + '"/>');
+    var rectMarkup = '<rect x="' + x2 + '" y="' + y + '" width="' + w2 + '" height="' + stageH + '" rx="3" fill="' + col + '"/>';
+    if(rows[j].note){
+      parts.push(GSEC.hoverGroup(rectMarkup, cx, y + stageH / 2, rows[j].label, rows[j].note, W));
+    } else {
+      parts.push(rectMarkup);
+    }
     var pct = Math.round(rows[j].n / first * 100);
     var valTxt = gi(rows[j].n) + (f.pctOfFirst ? '  ·  ' + pct + '%' : '');
     parts.push('<text x="' + cx + '" y="' + (y + stageH / 2 - 3) + '" font-size="13.5" font-weight="700" fill="' + tcol + '" text-anchor="middle">' + esc(rows[j].label) + '</text>');
@@ -501,7 +517,7 @@ function renderFunnel(){
   if(state.subtitle) head += '<text x="' + pad + '" y="' + (pad + (state.title ? 36 : 16)) + '" font-size="13" font-style="italic" fill="' + INK_SOFT + '">' + esc(state.subtitle) + '</text>';
   var cap = state.source ? '<text x="' + pad + '" y="' + (totalH - 8) + '" font-size="11" fill="' + MUTED + '">' + esc(state.source) + '</text>' : '';
 
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + totalH + '" viewBox="0 0 ' + W + ' ' + totalH + '" font-family="DM Sans, system-ui, -apple-system, Segoe UI, sans-serif"><rect width="' + W + '" height="' + totalH + '" fill="#ffffff"/>' + head + parts.join('') + cap + '</svg>';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + totalH + '" viewBox="0 0 ' + W + ' ' + totalH + '" font-family="DM Sans, system-ui, -apple-system, Segoe UI, sans-serif"><rect width="' + W + '" height="' + totalH + '" fill="#ffffff"/>' + head + parts.join('') + cap + GSEC.tipStyleBlock() + '</svg>';
   return { svg: svg, w: W, h: totalH };
 }
 
@@ -523,6 +539,40 @@ $('download-png').addEventListener('click', function(){
   img.onload = function(){ var cv = document.createElement('canvas'); cv.width = W * scale; cv.height = H * scale; var ctx = cv.getContext('2d'); ctx.setTransform(scale, 0, 0, scale, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.drawImage(img, 0, 0); var a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = 'lrf-' + state.mode + '.png'; a.click(); };
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(lastSvg);
 });
+function buildExportOpts(){
+  if(state.mode === 'funnel'){
+    var rows = parseFunnel(state.funnel.data);
+    return {
+      sourceTool: 'flow-studio', chartType: 'funnel', title: state.title,
+      unit: '', scale: 'linear', paletteVersion: 'lrf-foundation-1',
+      notes: state.source || undefined,
+      series: rows.map(function(r, i){
+        return { id: 'stage-' + i, label: r.label, value: r.n, tooltip: r.note || undefined,
+          meta: { stageOrder: i, dropoff: (i < rows.length - 1) ? (r.n - rows[i + 1].n) : undefined } };
+      })
+    };
+  }
+  // PRISMA: looser fit — export whichever named counts are populated as a flat series
+  var p = state.prisma;
+  var stages = [
+    { id: 'screened', label: 'Records screened', value: p.screened },
+    { id: 'scrExcl', label: 'Records excluded', value: p.scrExcl },
+    { id: 'soughtA', label: 'Reports sought (databases)', value: p.soughtA },
+    { id: 'assessedA', label: 'Reports assessed (databases)', value: p.assessedA },
+    { id: 'soughtB', label: 'Reports sought (other methods)', value: p.soughtB },
+    { id: 'assessedB', label: 'Reports assessed (other methods)', value: p.assessedB },
+    { id: 'included', label: 'Studies included', value: p.included }
+  ];
+  return {
+    sourceTool: 'flow-studio', chartType: 'prisma-flow', title: state.title,
+    unit: '', scale: 'linear', paletteVersion: 'lrf-foundation-1',
+    notes: state.source || undefined,
+    series: stages.filter(function(s){ return s.value !== '' && s.value != null; })
+      .map(function(s){ return { id: s.id, label: s.label, value: parseFloat(String(s.value).replace(/,/g, '')) }; })
+  };
+}
+function copyJSON(){ GSEC.copyExportJSON(buildExportOpts(), state.title); }
+$('export-json').addEventListener('click', copyJSON);
 
 /* ---------- Boot ---------- */
 (function boot(){
