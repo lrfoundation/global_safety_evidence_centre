@@ -128,7 +128,7 @@ A header row is ignored automatically. A third column, if present, is used as ho
           </div>
         </div>
         <div class="field-row">
-          <div class="field"><label for="f-classes">Colour steps</label>
+          <div class="field" id="wrap-classes"><label for="f-classes">Colour steps</label>
             <select id="f-classes">
               <option>3</option><option>4</option><option selected>5</option><option>6</option>
               <option>7</option><option>8</option><option>9</option><option>10</option>
@@ -136,11 +136,14 @@ A header row is ignored automatically. A third column, if present, is used as ho
           </div>
           <div class="field hidden" id="wrap-mid"><label for="f-mid">Midpoint</label><input type="number" id="f-mid" placeholder="auto" step="any"></div>
         </div>
+        <div class="check-row" style="margin-top:0.3rem;">
+          <label class="chk"><input type="checkbox" id="c-gradient"> Smooth gradient (no discrete colour steps)</label>
+        </div>
         <div class="field"><label for="f-legend-title">Legend title</label><input type="text" id="f-legend-title" placeholder="optional"></div>
         <div class="check-row" style="margin-top:0.3rem;">
           <label class="chk"><input type="checkbox" id="c-legend" checked> Show legend</label>
         </div>
-        <div class="hint" id="color-hint">Sequential ramps from light to the chosen colour. Diverging runs low colour → neutral → high colour around the midpoint (defaults to the data's middle). No-data areas are light grey.</div>
+        <div class="hint" id="color-hint">Sequential ramps from light to the chosen colour. Diverging runs low colour → neutral → high colour around the midpoint (defaults to the data's middle). No-data areas are light grey. Smooth gradient replaces the discrete colour steps with a continuous ramp.</div>
       </div>
 
       <div class="panel-section">
@@ -314,7 +317,7 @@ var state = {
   subtitle: 'Share who are very or somewhat worried, by country',
   source: 'Source: World Risk Poll, Lloyd’s Register Foundation (illustrative data)',
   suffix: '%', decimals: 0, classes: 5, legendTitle: '', showLegend: true,
-  scheme: 'sequential', colorLow: '#e5006e', colorHigh: '#00a7b2', mid: null,
+  scheme: 'sequential', colorLow: '#e5006e', colorHigh: '#00a7b2', mid: null, gradient: false,
   projection: 'equalEarth', extent: 'world', showNeighbours: true,
   width: 820, height: 520
 };
@@ -391,6 +394,8 @@ function updateSchemeUI(){
   $('wrap-color-high').classList.toggle('hidden', !div);
   $('wrap-mid').classList.toggle('hidden', !div);
   $('lbl-color').textContent = div ? 'Low colour' : 'Colour';
+  $('f-classes').disabled = state.gradient;
+  $('wrap-classes').classList.toggle('disabled', state.gradient);
 }
 
 function setStatus(msg, isErr){
@@ -588,17 +593,34 @@ function render(){
   var scale = null, colors = [];
   if(vals.length){
     var lo = d3.min(vals), hi = d3.max(vals);
-    colors = rampColors(state.classes);
-    if(state.scheme === 'diverging'){
-      var mid = (state.mid != null && isFinite(state.mid)) ? state.mid : (lo + hi) / 2;
-      var dev = Math.max(mid - lo, hi - mid) || 1; // symmetric domain so neutral sits at the midpoint
-      scale = d3.scaleQuantize().domain([mid - dev, mid + dev]).range(colors);
+    if(state.gradient){
+      // Continuous ramp: same stop colours as the discrete legend, but interpolated
+      // smoothly instead of binned into classes.
+      if(state.scheme === 'diverging'){
+        var gmid = (state.mid != null && isFinite(state.mid)) ? state.mid : (lo + hi) / 2;
+        var gdev = Math.max(gmid - lo, hi - gmid) || 1;
+        scale = d3.scaleDiverging(d3.interpolateRgbBasis(divStops(state.colorLow, state.colorHigh)))
+          .domain([gmid - gdev, gmid, gmid + gdev]);
+      } else if(lo === hi){
+        scale = function(){ return mix(state.colorLow, '#000000', 0.45); };
+        scale.domain = function(){ return [lo, hi]; };
+      } else {
+        scale = d3.scaleSequential(d3.interpolateRgbBasis(seqStops(state.colorLow))).domain([lo, hi]);
+      }
       colorOf = function(v){ return v == null ? NODATA : scale(v); };
-    } else if(lo === hi){
-      colorOf = function(v){ return v == null ? NODATA : colors[colors.length - 1]; };
     } else {
-      scale = d3.scaleQuantize().domain([lo, hi]).range(colors);
-      colorOf = function(v){ return v == null ? NODATA : scale(v); };
+      colors = rampColors(state.classes);
+      if(state.scheme === 'diverging'){
+        var mid = (state.mid != null && isFinite(state.mid)) ? state.mid : (lo + hi) / 2;
+        var dev = Math.max(mid - lo, hi - mid) || 1; // symmetric domain so neutral sits at the midpoint
+        scale = d3.scaleQuantize().domain([mid - dev, mid + dev]).range(colors);
+        colorOf = function(v){ return v == null ? NODATA : scale(v); };
+      } else if(lo === hi){
+        colorOf = function(v){ return v == null ? NODATA : colors[colors.length - 1]; };
+      } else {
+        scale = d3.scaleQuantize().domain([lo, hi]).range(colors);
+        colorOf = function(v){ return v == null ? NODATA : scale(v); };
+      }
     }
   }
 
@@ -674,7 +696,7 @@ function render(){
 
   // Legend
   if(state.showLegend && vals.length){
-    drawLegend(svg, colors, scale, vals, 16, H - capH - legendH + 6, Math.min(360, W - 32));
+    drawLegend(svg, colors, scale, vals, 16, H - capH - legendH + 6, Math.min(360, W - 32), state.gradient);
   }
 
   var box = $('canvas-box');
@@ -689,24 +711,39 @@ function fmt(v){
   return s + (state.suffix || '');
 }
 
-function drawLegend(svg, colors, scale, vals, x, y, w){
-  var n = colors.length, sw = w / n, h = 12;
+function drawLegend(svg, colors, scale, vals, x, y, w, gradient){
+  var h = 12;
   var g = svg.append('g');
   if(state.legendTitle){
     g.append('text').attr('x', x).attr('y', y - 4).attr('font-size', 11).attr('font-weight', 600).attr('fill', INK_SOFT).text(state.legendTitle);
     y += 8;
   }
-  for(var i = 0; i < n; i++){
-    g.append('rect').attr('x', x + i * sw).attr('y', y).attr('width', sw).attr('height', h).attr('fill', colors[i]);
+  var dom = (scale && scale.domain) ? scale.domain() : [d3.min(vals), d3.max(vals)];
+  var domLo = dom[0], domHi = dom[dom.length - 1];
+  if(gradient){
+    // Continuous ramp: sample the scale into an SVG linearGradient rather than discrete blocks.
+    var gid = 'legend-grad-' + Math.random().toString(36).slice(2, 9);
+    var steps = 24, defs = svg.append('defs').append('linearGradient').attr('id', gid).attr('x1', '0%').attr('x2', '100%').attr('y1', '0%').attr('y2', '0%');
+    for(var s = 0; s <= steps; s++){
+      var t = s / steps, v = domLo + t * (domHi - domLo);
+      defs.append('stop').attr('offset', (t * 100) + '%').attr('stop-color', scale(v));
+    }
+    g.append('rect').attr('x', x).attr('y', y).attr('width', w).attr('height', h).attr('fill', 'url(#' + gid + ')');
+  } else {
+    var n = colors.length, sw = w / n;
+    for(var i = 0; i < n; i++){
+      g.append('rect').attr('x', x + i * sw).attr('y', y).attr('width', sw).attr('height', h).attr('fill', colors[i]);
+    }
   }
   g.append('rect').attr('x', x).attr('y', y).attr('width', w).attr('height', h).attr('fill', 'none').attr('stroke', LINE).attr('stroke-width', 0.5);
-  // Boundary tick labels — use the scale's domain so diverging shows its symmetric range
-  var dom = (scale && scale.domain) ? scale.domain() : [d3.min(vals), d3.max(vals)];
-  var ticks = [dom[0]];
-  if(scale && scale.thresholds) ticks = ticks.concat(scale.thresholds());
-  ticks.push(dom[1]);
+  // Boundary (and, for diverging, midpoint) tick labels
+  var ticks = [domLo];
+  if(!gradient && scale && scale.thresholds) ticks = ticks.concat(scale.thresholds());
+  else if(gradient && dom.length === 3) ticks.push(dom[1]);
+  ticks.push(domHi);
   ticks.forEach(function(t, i){
-    var tx = x + (i) * sw;
+    var frac = (domHi === domLo) ? 0 : (t - domLo) / (domHi - domLo);
+    var tx = x + frac * w;
     g.append('text').attr('x', tx).attr('y', y + h + 13).attr('font-size', 10).attr('fill', MUTED)
       .attr('text-anchor', i === 0 ? 'start' : (i === ticks.length - 1 ? 'end' : 'middle')).text(fmt(t));
   });
@@ -822,6 +859,7 @@ $('f-color').addEventListener('change', function(e){ state.colorLow = e.target.v
 $('f-color2').addEventListener('change', function(e){ state.colorHigh = e.target.value; render(); });
 $('f-mid').addEventListener('input', function(e){ var v = parseFloat(e.target.value); state.mid = (e.target.value === '' || isNaN(v)) ? null : v; render(); });
 $('f-classes').addEventListener('change', function(e){ state.classes = +e.target.value; render(); });
+$('c-gradient').addEventListener('change', function(e){ state.gradient = e.target.checked; updateSchemeUI(); render(); });
 $('f-projection').addEventListener('change', function(e){ state.projection = e.target.value; render(); });
 function updateExtentUI(){ $('neighbours-row').style.display = (state.extent !== 'world') ? 'flex' : 'none'; }
 $('f-extent').addEventListener('change', function(e){ state.extent = e.target.value; updateExtentUI(); render(); });

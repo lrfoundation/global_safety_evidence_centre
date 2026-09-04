@@ -43,6 +43,7 @@
 .field select { padding-right: 2rem; background-position: right 0.7rem center; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .field-row .field { margin-bottom: 0; }
+.field.disabled { opacity: 0.45; pointer-events: none; }
 
 .check-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1.1rem; }
 .chk { display: flex; align-items: center; gap: 0.45rem; font-size: 13px; font-weight: 500; color: var(--lrf-ink-soft); cursor: pointer; }
