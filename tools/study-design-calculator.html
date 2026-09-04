@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Design Calculator · Lloyd's Register Foundation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lrf-theme.css">
+<link rel="stylesheet" href="study-design-calculator.css">
+</head>
+<body>
+
+<header class="site">
+  <a class="brand" href="https://www.lrfoundation.org.uk/" target="_blank" rel="noopener">
+    <svg class="brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 376.09 532.11" aria-label="Lloyd's Register Foundation">
+      <path fill="#e5006e" d="M209.54,493.54c0,5.04,2.31,7.78,6.9,7.78s7.13-3.33,7.13-8.05v-6.2c-1.76-1.34-3.89-1.94-6.66-1.94-5.09,0-7.36,3.1-7.36,8.42Z"/>
+      <path fill="#e5006e" d="M281.69,485.3c-5.65,0-7.77,3.15-7.77,8.01s2.13,8.01,7.77,8.01,7.78-3.15,7.78-8.01-2.13-8.01-7.78-8.01Z"/>
+      <path fill="#e5006e" d="M178.49,493.86c0,4.95,2.31,7.91,6.71,7.91,4.72,0,7.31-3.79,7.31-8.51v-7.41c-1.48-.79-3.19-1.16-6.02-1.16-5.6,0-8.01,3.79-8.01,9.16Z"/>
+      <path fill="#e5006e" d="M95.75,485.3c-5.65,0-7.77,3.15-7.77,8.01s2.13,8.01,7.77,8.01,7.77-3.15,7.77-8.01-2.13-8.01-7.77-8.01Z"/>
+      <path fill="#e5006e" d="M0,444.32v87.78h376.09v-87.78H0ZM79.63,477.62h-18.05v8.28h16.48v5.65h-16.48v14.67h-5.83v-34.25h23.88v5.65ZM96.01,506.77c-9.26,0-13.7-5.46-13.7-13.47s4.44-13.47,13.7-13.47,13.7,5.46,13.7,13.47-4.44,13.47-13.7,13.47ZM138.21,494.6c0,7.73-4.44,12.17-11.85,12.17s-11.8-4.44-11.8-12.17v-14.21h5.65v14.21c0,4.67,2.31,6.71,6.16,6.71s6.2-2.04,6.2-6.71v-14.21h5.65v14.21ZM167.97,506.22h-5.65v-14.86c0-4.07-2.13-6.06-5.88-6.06-4.54,0-6.9,2.64-6.9,7.87v13.05h-5.65v-25.82h4.91l.46,4.49c1.9-3.56,4.72-5.09,8.84-5.09,5.92,0,9.86,3.84,9.86,11.57v14.86ZM194.11,506.77c-.46-1.43-.88-2.92-1.06-4.77-1.99,3.52-5.6,4.77-8.7,4.77-6.66,0-11.52-4.54-11.52-12.91s5.65-14.07,14.12-14.07c1.9,0,3.93.37,5.83.97v-7.87l5.65-1.48v25.73c0,3.75.05,6.16.79,9.63h-5.09ZM234.42,505.15c-.65.79-2.36,1.62-4.44,1.62s-5.04-.97-5.92-4.54c-1.48,2.36-4.12,4.54-8.28,4.54-7.08,0-11.89-4.54-11.89-13.24s5.42-13.7,12.82-13.7c3.1,0,5.69.88,7.78,2.41l.65-1.85h4.35v18.23c0,2.08.74,2.68,2.36,2.68.74,0,1.53-.28,2.59-1.2v5.04ZM252.98,485.67h-8.42v11.57c0,3.15,1.25,4.17,4.12,4.17,1.43,0,2.59-.23,3.84-.79v5.04c-1.11.69-3.52,1.11-5.18,1.11-4.58,0-8.42-2.36-8.42-9.44v-11.66h-3.75v-3.93l3.75-1.34,1.39-5.46h4.26v5.46h8.42v5.28ZM263.25,506.22h-5.65v-25.82h5.65v25.82ZM263.57,477.2h-6.34v-5.79h6.34v5.79ZM281.94,506.77c-9.26,0-13.7-5.46-13.7-13.47s4.44-13.47,13.7-13.47,13.7,5.46,13.7,13.47-4.44,13.47-13.7,13.47ZM324.7,506.22h-5.65v-14.86c0-4.07-2.13-6.06-5.88-6.06-4.54,0-6.9,2.64-6.9,7.87v13.05h-5.65v-25.82h4.91l.46,4.49c1.9-3.56,4.72-5.09,8.84-5.09,5.92,0,9.86,3.84,9.86,11.57v14.86Z"/>
+      <path fill="#e5006e" d="M234.24,243.22l106.51,131.23h-47.24l-130.78-160.51h44.18c49.73,0,78.95-22.92,78.95-63.01s-27.73-62.56-77.46-62.56h-45.54v-32.28h49.22c70.54,0,112.26,35.46,112.26,94.85,0,50.73-33.96,87.56-90.09,92.28M94.22,341.98h139.57v32.39H55.49V56.12h38.73v285.86ZM376.09,0H0v430.73h376.09V0Z"/>
+    </svg>
+    <div class="brand-text">
+      <span class="name">Lloyd's Register Foundation</span>
+      <span class="unit">Global Safety Evidence Centre · Tools</span>
+    </div>
+  </a>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="eyebrow">Internal Foundation tool</div>
+      <h1>Study Design <span class="accent">Calculator</span><span class="period">.</span></h1>
+      <p class="lede">Work out how many people you need to survey or interview, and how confident you can be in what you find — for a poll, an evaluation, or a qualitative study. Plain-language by default; the statistics are there if you want them.</p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">3</div><div class="stat-lbl">Calculators: survey, comparison, qualitative</div></div>
+      <div class="stat"><div class="stat-num">0</div><div class="stat-lbl">Stats degree required</div></div>
+    </div>
+  </div>
+</section>
+
+<main>
+  <div class="workspace">
+
+    <!-- CONTROLS -->
+    <div class="panel" id="controls">
+      <div class="panel-section">
+        <div class="sec-label">What are you planning?</div>
+        <div class="segmented cols-3" id="mode-seg">
+          <button class="seg-btn active" data-mode="survey">Survey</button>
+          <button class="seg-btn" data-mode="compare">Compare two groups</button>
+          <button class="seg-btn" data-mode="qual">Qualitative study</button>
+        </div>
+        <div class="hint" id="mode-hint">Estimate a single figure — like "what share of people agree with X" — from a sample, within a margin of error you choose.</div>
+      </div>
+
+      <!-- SURVEY MODE -->
+      <div id="survey-controls">
+        <div class="panel-section">
+          <div class="sec-label">Your best guess at the answer</div>
+          <div class="field">
+            <div class="field-label-row"><label for="s-p">Expected result</label>
+              <span class="info-dot" tabindex="0">i<span class="info-pop">This is "p" in the formula. If you have no idea, leave it at 50% — that's the most conservative assumption and gives the largest (safest) sample size. If a previous wave found 30% agreement, use that.</span></span>
+            </div>
+            <div class="field-suffix"><input type="number" id="s-p" min="1" max="99" step="1" value="50"><span class="unit">%</span></div>
+            <div class="plain">Roughly what proportion do you expect to find? Unsure — leave at 50%.</div>
+          </div>
+        </div>
+        <div class="panel-section">
+          <div class="sec-label">How precise do you need to be?</div>
+          <div class="field">
+            <div class="field-label-row"><label for="s-e">Margin of error</label>
+              <span class="info-dot" tabindex="0">i<span class="info-pop">The "±" you'd report alongside your headline figure, e.g. "62% ± 3pp". Smaller margins need bigger samples — halving the margin roughly quadruples the sample size needed.</span></span>
+            </div>
+            <div class="field-suffix"><input type="number" id="s-e" min="0.5" max="20" step="0.5" value="5"><span class="unit">pp</span></div>
+            <div class="plain">How many percentage points of wobble can you live with either side of your result?</div>
+          </div>
+          <div class="field">
+            <div class="field-label-row"><label>Confidence level</label>
+              <span class="info-dot" tabindex="0">i<span class="info-pop">How often you'd expect this margin of error to hold up, if you repeated the survey many times. 95% is the standard choice across social research and polling.</span></span>
+            </div>
+            <div class="segmented cols-3" id="s-conf-seg">
+              <button class="seg-btn" data-conf="90">90%</button>
+              <button class="seg-btn active" data-conf="95">95%</button>
+              <button class="seg-btn" data-conf="99">99%</button>
+            </div>
+            <div class="plain">95% is the usual default for surveys and polling.</div>
+          </div>
+        </div>
+        <div class="panel-section">
+          <div class="sec-label">Adjustments <span style="text-transform:none; font-weight:400; color:var(--lrf-muted);">(optional)</span></div>
+          <div class="field">
+            <div class="field-label-row"><label for="s-N">Total population size</label>
+              <span class="info-dot" tabindex="0">i<span class="info-pop">Leave blank for a large or effectively unlimited population (a country, a general public). Only fill this in when you're sampling from a small, known, finite list — e.g. all 400 grantees the Foundation has ever funded.</span></span>
+            </div>
+            <input type="number" id="s-N" min="1" step="1" placeholder="Leave blank if unsure / large population">
+            <div class="plain">Only matters if you're drawing from a small, fixed list — not a general population.</div>
+          </div>
+          <div class="field">
+            <div class="field-label-row"><label for="s-deff">Design effect</label>
+              <span class="info-dot" tabindex="0">i<span class="info-pop">Inflates the sample size to account for clustering or complex sampling (e.g. sampling companies, then ships within a company, then crew on board — rather than drawing seafarers independently at random). A design effect of 1.0 = a pure random sample. Multi-stage or clustered surveys like the World Risk Poll typically run 1.3–2.0; ask your sampling statistician if unsure.</span></span>
+            </div>
+            <input type="number" id="s-deff" min="1" max="5" step="0.1" value="1.0">
+            <div class="plain">Above 1.0 if your sample is clustered (e.g. by company, ship, or region) rather than a pure random draw. Leave at 1.0 for a simple random sample.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMPARE MODE -->
+      <div id="compare-controls" class="hidden">
+        <div class="panel-section">
+          <div class="sec-label">What are you comparing?</div>
+          <div class="segmented cols-2" id="c-type-seg">
+            <button class="seg-btn active" data-ctype="prop">Two percentages</button>
+            <button class="seg-btn" data-ctype="mean">Two averages</button>
+          </div>
+          <div class="hint" id="c-type-hint">E.g. "did 45% of the treatment group improve, vs 35% of control" — comparing a share/rate between two groups.</div>
+        </div>
+
+        <div class="panel-section">
+          <div class="sec-label">What do you want to work out?</div>
+          <div class="segmented cols-2" id="c-goal-seg">
+            <button class="seg-btn active" data-cgoal="size">Sample size needed</button>
+            <button class="seg-btn" data-cgoal="power">Power I already have</button>
+          </div>
+        </div>
+
+        <div class="panel-section" id="c-prop-fields">
+          <div class="sec-label">The two groups</div>
+          <div class="field-row">
+            <div class="field"><div class="field-label-row"><label for="c-p1">Group A (control/baseline)</label></div><div class="field-suffix"><input type="number" id="c-p1" min="1" max="99" step="1" value="35"><span class="unit">%</span></div></div>
+            <div class="field"><div class="field-label-row"><label for="c-p2">Group B (treatment/new)</label></div><div class="field-suffix"><input type="number" id="c-p2" min="1" max="99" step="1" value="45"><span class="unit">%</span></div></div>
+          </div>
+          <div class="plain">The smallest difference between groups you want to be able to detect. Smaller gaps need bigger samples.</div>
+        </div>
+
+        <div class="panel-section hidden" id="c-mean-fields">
+          <div class="sec-label">The two groups</div>
+          <div class="field-row">
+            <div class="field"><div class="field-label-row"><label for="c-m1">Group A average</label></div><input type="number" id="c-m1" step="0.1" value="10"></div>
+            <div class="field"><div class="field-label-row"><label for="c-m2">Group B average</label></div><input type="number" id="c-m2" step="0.1" value="12"></div>
+          </div>
+          <div class="field">
+            <div class="field-label-row"><label for="c-sd">Expected standard deviation</label>
+              <span class="info-dot" tabindex="0">i<span class="info-pop">A measure of how spread out individual scores are within each group, on the same scale as the averages above. If you have pilot or past-wave data, use its standard deviation; otherwise estimate from the likely range of scores ÷ 4.</span></span>
+            </div>
+            <input type="number" id="c-sd" min="0.01" step="0.1" value="8">
+            <div class="plain">How spread out are individual scores, roughly? Use pilot data if you have it.</div>
+          </div>
+        </div>
+
+        <div class="panel-section" id="c-size-fields">
+          <div class="sec-label">How sure do you want to be?</div>
+          <div class="field">
+            <div class="field-label-row"><label>Significance level</label>
+              <span class="info-dot" tabindex="0">i<span class="info-pop">The chance you'd wrongly conclude there's a real difference when there isn't one (a false positive). 5% (two-sided) is the standard threshold in social science and health research.</span></span>
+            </div>
+            <div class="segmented cols-3" id="c-alpha-seg">
+              <button class="seg-btn" data-alpha="10">10%</button>
+              <button class="seg-btn active" data-alpha="5">5%</button>
+              <button class="seg-btn" data-alpha="1">1%</button>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label-row"><label>Power</label>
+              <span class="info-dot" tabindex="0">i<span class="info-pop">The chance you'll correctly detect the difference, if it really exists at the size you specified. 80% is the conventional minimum; 90% is more rigorous but needs a bigger sample.</span></span>
+            </div>
+            <div class="segmented cols-3" id="c-power-seg">
+              <button class="seg-btn" data-power="80">80%</button>
+              <button class="seg-btn active" data-power="90">90%</button>
+              <button class="seg-btn" data-power="95">95%</button>
+            </div>
+            <div class="plain">The chance of actually detecting the difference, if it's really there. 80% is the usual minimum.</div>
+          </div>
+        </div>
+
+        <div class="panel-section hidden" id="c-power-fields">
+          <div class="sec-label">Your planned sample</div>
+          <div class="field">
+            <div class="field-label-row"><label for="c-n">Participants per group</label></div>
+            <input type="number" id="c-n" min="2" step="1" value="100">
+            <div class="plain">How many people are (or will be) in each group?</div>
+          </div>
+          <div class="field">
+            <div class="field-label-row"><label>Significance level</label></div>
+            <div class="segmented cols-3" id="c-alpha-seg-2">
+              <button class="seg-btn" data-alpha="10">10%</button>
+              <button class="seg-btn active" data-alpha="5">5%</button>
+              <button class="seg-btn" data-alpha="1">1%</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUAL MODE -->
+      <div id="qual-controls" class="hidden">
+        <div class="panel-section">
+          <div class="sec-label">Data collection method</div>
+          <div class="segmented cols-3" id="q-method-seg">
+            <button class="seg-btn active" data-method="interviews">Interviews</button>
+            <button class="seg-btn" data-method="groups">Focus groups</button>
+            <button class="seg-btn" data-method="cases">Case studies</button>
+          </div>
+        </div>
+        <div class="panel-section">
+          <div class="sec-label">What are you trying to reach?</div>
+          <div class="field">
+            <div class="field-label-row"><label>Saturation goal</label>
+              <span class="info-dot" tabindex="0">i<span class="info-pop">In qualitative research "saturation" replaces statistical power — it means you've stopped hearing genuinely new themes. Code/theme saturation is a lighter bar than full meaning saturation, which requires a deeper, more nuanced understanding of each theme.</span></span>
+            </div>
+            <div class="segmented cols-2" id="q-goal-seg">
+              <button class="seg-btn active" data-goal="theme">Code / theme saturation</button>
+              <button class="seg-btn" data-goal="meaning">Deeper meaning saturation</button>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label-row"><label>Population &amp; scope</label></div>
+            <div class="segmented cols-2" id="q-scope-seg">
+              <button class="seg-btn active" data-scope="homogeneous">One site, similar people</button>
+              <button class="seg-btn" data-scope="crosssite">Multiple sites / groups to compare</button>
+            </div>
+            <div class="plain">Comparing across countries, regions or very different groups needs more interviews to find the patterns that hold across all of them.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="panel results-panel">
+      <div class="results-head">
+        <span class="sec-label">Result</span>
+      </div>
+      <div class="results-body" id="results-body"><!-- rendered by script --></div>
+    </div>
+
+  </div>
+</main>
+
+<section class="methodology">
+  <div class="methodology-inner">
+    <details>
+      <summary>
+        <span class="eyebrow">How it works</span>
+        <h2>Notes, formulas and caveats<span class="m-toggle"></span></h2>
+        <div class="sub">Click to expand for the maths behind each calculator, and where the numbers come from.</div>
+      </summary>
+      <div class="methodology-body">
+        <h3>Survey sample size</h3>
+        <p>Uses the standard formula for estimating a proportion within a margin of error: <code>n = z&sup2;&times;p&times;(1&minus;p) / e&sup2;</code>, where <code>z</code> comes from your confidence level, <code>p</code> is your expected result and <code>e</code> is the margin of error. If you give a population size, a finite population correction is applied afterwards; if you give a design effect above 1.0, the result is inflated to account for clustering or complex weighting. Numbers are always rounded up to the next whole person.</p>
+
+        <h3>Comparing two groups</h3>
+        <p>For two percentages, this uses the normal-approximation formula for comparing two independent proportions: <code>n = (z&alpha; + z&beta;)&sup2; &times; (p&#8321;(1&minus;p&#8321;) + p&#8322;(1&minus;p&#8322;)) / (p&#8321;&minus;p&#8322;)&sup2;</code>. For two averages, it uses <code>n = 2 &times; (z&alpha; + z&beta;)&sup2; &times; &sigma;&sup2; / &delta;&sup2;</code>, assuming both groups share roughly the same spread (standard deviation) and are the same size. "Power I already have" runs the same formula backwards to tell you the power of a sample size you've already fixed on. All values use exact normal-distribution quantiles (Acklam's inverse-CDF approximation), not rounded textbook z-values, so results will be close to but may not exactly match older printed tables.</p>
+        <p>This is the normal-approximation method, standard for planning purposes; it can be optimistic when a group's expected proportion is very close to 0% or 100%, or with very small planned samples (under ~20 per group) — get a statistician to check the exact method (e.g. Fisher's) in those cases.</p>
+
+        <h3>Qualitative sample size</h3>
+        <p>Unlike the two quantitative calculators, this isn't a formula — qualitative adequacy is judged by <strong>saturation</strong> (you stop hearing new themes), not statistical power. The ranges shown come from Hennink &amp; Kaiser's 2022 systematic review of empirical saturation studies (<em>Social Science &amp; Medicine</em>, 292): most studies with a fairly uniform population and a narrowly defined question reached <strong>code/theme saturation at 9&ndash;17 interviews or 4&ndash;8 focus groups</strong>, while deeper <strong>meaning saturation</strong> needed closer to <strong>24 interviews or 8 focus groups</strong>. Studies looking for patterns that hold across several sites or very different sub-groups should plan for <strong>20&ndash;40 interviews</strong>. Case-study guidance follows Yin's case study design logic rather than saturation: a single case suits a revelatory or critical case, while comparative claims need multiple cases (commonly 4&ndash;10) for replication.</p>
+        <p>Treat every range here as a starting point, not a target to hit exactly — plan to check for saturation as you go, and stop once two or three additional interviews add nothing new to your themes.</p>
+
+        <h3>Caveats</h3>
+        <p>These calculators plan a study; they don't replace a statistician for anything unusual — stratified designs, rare-event outcomes, non-inferiority tests, or multiple comparisons all need extra care beyond what's modelled here. Treat every result as a planning estimate, and build in a buffer for non-response and dropout on top of the number shown.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="footer-inner">
+    <div class="colophon">
+      <strong>Study Design Calculator</strong><br>
+      Plain-language sample size, power and qualitative saturation guidance for Foundation-funded research, built entirely in your browser.
+    </div>
+    <div>
+      <h4>Explore</h4>
+      <ul>
+        <li><a href="chart-studio.html">Chart Studio</a></li>
+        <li><a href="flow-studio.html">Flow Studio</a></li>
+        <li><a href="index.html">All GSEC tools</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>About</h4>
+      <ul>
+        <li><a href="https://www.lrfoundation.org.uk/about-us" target="_blank" rel="noopener">Our mission</a></li>
+        <li><a href="https://www.lrfoundation.org.uk/wrp" target="_blank" rel="noopener">World Risk Poll</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"><span class="tick">&#10003;</span><span id="toast-text">Copied</span></div>
+
+<script>
+"use strict";
+
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------- Normal-distribution helpers ---------- */
+function erf(x){
+  var sign = x < 0 ? -1 : 1; x = Math.abs(x);
+  var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+  var t = 1/(1+p*x);
+  var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return sign*y;
+}
+function normCDF(z){ return 0.5*(1+erf(z/Math.sqrt(2))); }
+function probit(p){
+  if(p <= 0) return -Infinity; if(p >= 1) return Infinity;
+  var a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+  var b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
+  var c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+  var d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+  var plow = 0.02425, phigh = 1-plow, q, r;
+  if(p < plow){ q = Math.sqrt(-2*Math.log(p)); return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  if(p <= phigh){ q = p-0.5; r = q*q; return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1); }
+  q = Math.sqrt(-2*Math.log(1-p)); return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+function fmtN(n){ return Math.ceil(n).toLocaleString('en-GB'); }
+function fmtPct(x, dp){ return (x*100).toFixed(dp==null?0:dp) + '%'; }
+
+/* ---------- State ---------- */
+var state = {
+  mode: 'survey',
+  survey: { p: 50, e: 5, conf: 95, N: null, deff: 1.0 },
+  compare: { ctype: 'prop', cgoal: 'size', p1: 35, p2: 45, m1: 10, m2: 12, sd: 8, alpha: 5, power: 90, n: 100, alpha2: 5 },
+  qual: { method: 'interviews', goal: 'theme', scope: 'homogeneous' }
+};
+
+function toast(msg){ var t=$('toast'); $('toast-text').textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){ t.classList.remove('show'); }, 1800); }
+
+/* ---------- Survey sample size ---------- */
+function computeSurvey(){
+  var s = state.survey;
+  var p = clamp01(s.p/100); if(p===0) p=0.5; if(p===1) p=0.999;
+  var e = Math.max(0.001, s.e/100);
+  var z = probit(1 - (1-s.conf/100)/2);
+  var n0 = (z*z*p*(1-p)) / (e*e);
+  var nDeff = n0 * Math.max(1, s.deff||1);
+  var nFinal = nDeff;
+  var fpcApplied = false;
+  if(s.N && s.N > 0){
+    nFinal = nDeff / (1 + (nDeff-1)/s.N);
+    fpcApplied = true;
+  }
+  return { n0: n0, nDeff: nDeff, nFinal: nFinal, z: z, p: p, e: e, fpcApplied: fpcApplied };
+}
+function refTableSurvey(s, z){
+  var margins = [10, 5, 3, 2, 1];
+  var rows = margins.map(function(m){
+    var n = (z*z*s.p*(1-s.p))/((m/100)*(m/100));
+    return { m: m, n: n };
+  });
+  return rows;
+}
+function renderSurvey(){
+  var s = state.survey;
+  var r = computeSurvey();
+  var html = '';
+  html += '<div class="result-hero">';
+  html += '<div class="result-num-wrap"><div class="result-num">' + fmtN(r.nFinal) + '</div><div class="result-lbl">People to survey</div></div>';
+  html += '</div>';
+  html += '<p class="plain-sentence">To estimate a result of roughly <strong>' + s.p + '%</strong> to within <strong>&plusmn;' + s.e + ' percentage points</strong>, ' + s.conf + '% of the time, you need about <strong>' + fmtN(r.nFinal) + ' completed responses</strong>.</p>';
+  html += '<div class="assumptions"><div class="sec-label">What went into this</div><ul>';
+  html += '<li><span>Expected result</span><span>' + s.p + '%</span></li>';
+  html += '<li><span>Margin of error</span><span>&plusmn;' + s.e + 'pp</span></li>';
+  html += '<li><span>Confidence level</span><span>' + s.conf + '%</span></li>';
+  if(s.deff && s.deff > 1) html += '<li><span>Design effect</span><span>&times;' + s.deff + '</span></li>';
+  if(r.fpcApplied) html += '<li><span>Population size</span><span>' + Number(s.N).toLocaleString('en-GB') + '</span></li>';
+  html += '</ul></div>';
+  html += '<div class="ref-table-wrap"><table class="ref-table"><caption>Sample size at other margins of error, same expected result &amp; confidence level</caption><thead><tr><th>Margin</th>' + refTableSurvey(r,r.z).map(function(x){return '<th>&plusmn;'+x.m+'pp</th>';}).join('') + '</tr></thead><tbody><tr><td>Sample needed</td>' + refTableSurvey(r,r.z).map(function(x){ return '<td' + (x.m===s.e?' class="hl"':'') + '>' + fmtN(x.n) + '</td>'; }).join('') + '</tr></tbody></table></div>';
+  html += '<div class="warn-box"><strong>Remember:</strong> this is the number of <em>completed</em> responses you need. If you expect a response rate of 40%, you\'ll need to invite roughly 2.5&times; as many people, and build in extra for anyone who drops out partway through.</div>';
+  $('results-body').innerHTML = html;
+}
+
+/* ---------- Compare two groups ---------- */
+function computeCompareSize(){
+  var c = state.compare;
+  var zA = probit(1 - (c.alpha/100)/2);
+  var zB = probit(c.power/100);
+  if(c.ctype === 'prop'){
+    var p1 = clamp01(c.p1/100), p2 = clamp01(c.p2/100);
+    var diff = Math.abs(p1-p2) || 0.0001;
+    var n = Math.pow(zA+zB, 2) * (p1*(1-p1)+p2*(1-p2)) / (diff*diff);
+    return { n: n, zA: zA, zB: zB, diff: diff };
+  }
+  var delta = Math.abs(c.m1-c.m2) || 0.0001, sd = Math.max(0.0001, c.sd);
+  var nM = 2*Math.pow(zA+zB, 2)*sd*sd/(delta*delta);
+  return { n: nM, zA: zA, zB: zB, diff: delta };
+}
+function computeComparePower(){
+  var c = state.compare;
+  var zA = probit(1 - (c.alpha2/100)/2);
+  var zBeta;
+  if(c.ctype === 'prop'){
+    var p1 = clamp01(c.p1/100), p2 = clamp01(c.p2/100);
+    var diff = Math.abs(p1-p2);
+    var denom = Math.sqrt(p1*(1-p1)+p2*(1-p2));
+    zBeta = (diff*Math.sqrt(c.n))/denom - zA;
+  } else {
+    var delta = Math.abs(c.m1-c.m2), sd = Math.max(0.0001, c.sd);
+    zBeta = (delta*Math.sqrt(c.n/2))/sd - zA;
+  }
+  var power = clamp01(normCDF(zBeta));
+  return { power: power, zA: zA };
+}
+function renderCompare(){
+  var c = state.compare;
+  var html = '';
+  if(c.cgoal === 'size'){
+    var r = computeCompareSize();
+    var perGroup = Math.ceil(r.n);
+    html += '<div class="result-hero">';
+    html += '<div class="result-num-wrap"><div class="result-num">' + fmtN(perGroup) + '</div><div class="result-lbl">Per group</div></div>';
+    html += '<div class="result-num-wrap"><div class="result-num">' + fmtN(perGroup*2) + '</div><div class="result-lbl">Total (both groups)</div></div>';
+    html += '</div>';
+    if(c.ctype === 'prop'){
+      html += '<p class="plain-sentence">To reliably tell apart <strong>' + c.p1 + '%</strong> and <strong>' + c.p2 + '%</strong>, you need about <strong>' + fmtN(perGroup) + ' people in each group</strong> (' + fmtN(perGroup*2) + ' in total).</p>';
+    } else {
+      html += '<p class="plain-sentence">To reliably tell apart averages of <strong>' + c.m1 + '</strong> and <strong>' + c.m2 + '</strong> (standard deviation &asymp; ' + c.sd + '), you need about <strong>' + fmtN(perGroup) + ' people in each group</strong> (' + fmtN(perGroup*2) + ' in total).</p>';
+    }
+    html += '<div class="assumptions"><div class="sec-label">What went into this</div><ul>';
+    if(c.ctype === 'prop'){
+      html += '<li><span>Group A</span><span>' + c.p1 + '%</span></li><li><span>Group B</span><span>' + c.p2 + '%</span></li>';
+    } else {
+      html += '<li><span>Group A average</span><span>' + c.m1 + '</span></li><li><span>Group B average</span><span>' + c.m2 + '</span></li><li><span>Standard deviation</span><span>' + c.sd + '</span></li>';
+    }
+    html += '<li><span>Significance level</span><span>' + c.alpha + '%, two-sided</span></li><li><span>Power</span><span>' + c.power + '%</span></li></ul></div>';
+    html += '<div class="warn-box"><strong>Remember:</strong> this is per-group sample size assuming equal-sized groups and no dropout. Build in extra for attrition, especially in longitudinal or panel designs.</div>';
+  } else {
+    var rp = computeComparePower();
+    html += '<div class="result-hero">';
+    html += '<div class="result-num-wrap"><div class="result-num">' + fmtPct(rp.power) + '</div><div class="result-lbl">Statistical power</div></div>';
+    html += '</div>';
+    var interp = rp.power >= 0.8 ? 'That\'s a comfortable amount of power — a real difference of this size is likely to show up as statistically significant.' : 'That\'s below the conventional 80% threshold — a real difference of this size might well go undetected with this sample.';
+    if(c.ctype === 'prop'){
+      html += '<p class="plain-sentence">With <strong>' + c.n + ' people per group</strong>, comparing <strong>' + c.p1 + '%</strong> vs <strong>' + c.p2 + '%</strong>, you have about <strong>' + fmtPct(rp.power) + ' power</strong> to detect that difference. ' + interp + '</p>';
+    } else {
+      html += '<p class="plain-sentence">With <strong>' + c.n + ' people per group</strong>, comparing averages of <strong>' + c.m1 + '</strong> vs <strong>' + c.m2 + '</strong> (SD &asymp; ' + c.sd + '), you have about <strong>' + fmtPct(rp.power) + ' power</strong> to detect that difference. ' + interp + '</p>';
+    }
+    html += '<div class="assumptions"><div class="sec-label">What went into this</div><ul>';
+    html += '<li><span>Participants per group</span><span>' + c.n + '</span></li><li><span>Significance level</span><span>' + c.alpha2 + '%, two-sided</span></li></ul></div>';
+  }
+  $('results-body').innerHTML = html;
+}
+
+/* ---------- Qualitative guidance ---------- */
+var QUAL_DATA = {
+  interviews: {
+    theme: { homogeneous: [9,17], crosssite: [20,40] },
+    meaning: { homogeneous: [24,30], crosssite: [30,45] },
+    unit: 'interviews'
+  },
+  groups: {
+    theme: { homogeneous: [4,8], crosssite: [8,12] },
+    meaning: { homogeneous: [8,10], crosssite: [10,14] },
+    unit: 'focus groups'
+  },
+  cases: {
+    theme: { homogeneous: [1,1], crosssite: [4,10] },
+    meaning: { homogeneous: [1,1], crosssite: [4,10] },
+    unit: 'case studies'
+  }
+};
+function renderQual(){
+  var q = state.qual;
+  var d = QUAL_DATA[q.method];
+  var range = d[q.goal][q.scope];
+  var html = '<div class="qual-result">';
+  html += '<div class="qual-card">';
+  if(q.method === 'cases'){
+    if(q.scope === 'homogeneous'){
+      html += '<div class="range">1</div><div class="range-lbl">In-depth single case</div><p>A single, richly detailed case suits a <strong>revelatory or critical case</strong> — something rare, extreme, or newly accessible, where the value is depth rather than comparison.</p>';
+    } else {
+      html += '<div class="range">' + range[0] + '&ndash;' + range[1] + '</div><div class="range-lbl">Case studies</div><p>For claims that need to hold across cases (a <strong>replication logic</strong>), plan for several comparable cases — enough to show a pattern isn\'t a one-off.</p>';
+    }
+    html += '<div class="cite">Guidance follows Yin, R.K. (2018), <em>Case Study Research and Applications</em>.</div>';
+  } else {
+    html += '<div class="range">' + range[0] + (range[1]!==range[0] ? ('&ndash;' + range[1]) : '') + '</div><div class="range-lbl">' + d.unit + ' &mdash; starting point</div>';
+    var goalTxt = q.goal === 'theme' ? 'reach <strong>code/theme saturation</strong> — the point where you stop hearing genuinely new themes' : 'reach a deeper <strong>meaning saturation</strong> — a fuller, more nuanced understanding of each theme, not just its existence';
+    var scopeTxt = q.scope === 'homogeneous' ? 'for a fairly similar group of people at one site' : 'across multiple sites or quite different sub-groups, where you need the pattern to hold everywhere';
+    html += '<p>Plan for around <strong>' + range[0] + (range[1]!==range[0] ? ('&ndash;' + range[1]) : '') + ' ' + d.unit + '</strong> to ' + goalTxt + ', ' + scopeTxt + '.</p>';
+    html += '<div class="cite">Hennink, M. &amp; Kaiser, B.N. (2022), "Sample sizes for saturation in qualitative research: A systematic review of empirical tests", <em>Social Science &amp; Medicine</em>, 292.</div>';
+  }
+  html += '</div>';
+  html += '<div class="stop-rule"><strong>The stop rule:</strong> treat any number here as a starting point, not a target. Keep tracking new codes/themes as you go, and plan to stop once two or three additional ' + (q.method==='cases'?'cases':d.unit) + ' add nothing genuinely new — that\'s saturation in practice, however many that ends up being.</div>';
+  html += '</div>';
+  $('results-body').innerHTML = html;
+}
+
+/* ---------- Render dispatch ---------- */
+function render(){
+  if(state.mode === 'survey') renderSurvey();
+  else if(state.mode === 'compare') renderCompare();
+  else renderQual();
+}
+
+/* ---------- Wiring ---------- */
+function segWire(segId, attr, applyFn){
+  var seg = $(segId);
+  seg.querySelectorAll('.seg-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      seg.querySelectorAll('.seg-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      applyFn(btn.dataset[attr]);
+      render();
+    });
+  });
+}
+
+function syncModeUI(){
+  $('survey-controls').classList.toggle('hidden', state.mode !== 'survey');
+  $('compare-controls').classList.toggle('hidden', state.mode !== 'compare');
+  $('qual-controls').classList.toggle('hidden', state.mode !== 'qual');
+  var hints = {
+    survey: 'Estimate a single figure — like "what share of people agree with X" — from a sample, within a margin of error you choose.',
+    compare: 'Work out how many people you need (or how much power you have) to detect a difference between two groups.',
+    qual: 'Get an evidence-based starting point for how many interviews, focus groups or case studies you need to reach saturation.'
+  };
+  $('mode-hint').textContent = hints[state.mode];
+}
+function syncCompareUI(){
+  var c = state.compare;
+  $('c-prop-fields').classList.toggle('hidden', c.ctype !== 'prop');
+  $('c-mean-fields').classList.toggle('hidden', c.ctype !== 'mean');
+  $('c-size-fields').classList.toggle('hidden', c.cgoal !== 'size');
+  $('c-power-fields').classList.toggle('hidden', c.cgoal !== 'power');
+  $('c-type-hint').textContent = c.ctype === 'prop'
+    ? 'E.g. "did 45% of the treatment group improve, vs 35% of control" — comparing a share/rate between two groups.'
+    : 'E.g. "did the treatment group score 12 on average, vs 10 for control" — comparing a mean score between two groups.';
+}
+
+function init(){
+  segWire('mode-seg', 'mode', function(v){ state.mode = v; syncModeUI(); });
+  segWire('s-conf-seg', 'conf', function(v){ state.survey.conf = +v; });
+  segWire('c-type-seg', 'ctype', function(v){ state.compare.ctype = v; syncCompareUI(); });
+  segWire('c-goal-seg', 'cgoal', function(v){ state.compare.cgoal = v; syncCompareUI(); });
+  segWire('c-alpha-seg', 'alpha', function(v){ state.compare.alpha = +v; });
+  segWire('c-power-seg', 'power', function(v){ state.compare.power = +v; });
+  segWire('c-alpha-seg-2', 'alpha', function(v){ state.compare.alpha2 = +v; });
+  segWire('q-method-seg', 'method', function(v){ state.qual.method = v; });
+  segWire('q-goal-seg', 'goal', function(v){ state.qual.goal = v; });
+  segWire('q-scope-seg', 'scope', function(v){ state.qual.scope = v; });
+
+  $('s-p').addEventListener('input', function(e){ state.survey.p = Math.max(1, Math.min(99, +e.target.value||50)); render(); });
+  $('s-e').addEventListener('input', function(e){ state.survey.e = Math.max(0.1, +e.target.value||5); render(); });
+  $('s-N').addEventListener('input', function(e){ state.survey.N = e.target.value ? +e.target.value : null; render(); });
+  $('s-deff').addEventListener('input', function(e){ state.survey.deff = Math.max(1, +e.target.value||1); render(); });
+
+  $('c-p1').addEventListener('input', function(e){ state.compare.p1 = +e.target.value||0; render(); });
+  $('c-p2').addEventListener('input', function(e){ state.compare.p2 = +e.target.value||0; render(); });
+  $('c-m1').addEventListener('input', function(e){ state.compare.m1 = +e.target.value||0; render(); });
+  $('c-m2').addEventListener('input', function(e){ state.compare.m2 = +e.target.value||0; render(); });
+  $('c-sd').addEventListener('input', function(e){ state.compare.sd = Math.max(0.01, +e.target.value||1); render(); });
+  $('c-n').addEventListener('input', function(e){ state.compare.n = Math.max(2, +e.target.value||2); render(); });
+
+  document.querySelectorAll('.seg-btn').forEach(function(b){});
+
+  syncModeUI();
+  syncCompareUI();
+  render();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
