@@ -1,5 +1,7 @@
 # PDF Review (GitHub Pages + Cloudflare)
 
+> **This instance is deployed differently from the setup below.** This copy of the tool lives inside the GSEC tools suite and is served by the `gsec-tools` Cloud Run service at `https://tools.gsec.org.uk/pdf_review/`, not GitHub Pages. The Cloudflare Worker + D1 backend is unchanged (see `config.js`). The "Quick setup" section still applies to standing this tool up as its own standalone repo; if you're adding a PDF to *this* deployment, skip to [Adding a PDF](#adding-a-pdf) below — the last step differs from the generic instructions.
+
 A self-managed PDF review tool. **You** push PDFs to a GitHub repo. **Anyone** with a link can view and comment on them — no GitHub account required, no login.
 
 - PDFs live in your Git repo (version controlled, auth via your GitHub credentials)
@@ -125,14 +127,14 @@ The script will:
 5. Register the doc with your Worker
 6. Print your **review URL** and **admin URL**
 
-Then commit and push:
+Then, **for this deployment**, redeploy the tools suite so the new PDF actually ships (the frontend is bundled into the `gsec-tools` Cloud Run image, not published via GitHub Pages here):
 ```bash
-git add docs/
-git commit -m "Add Q3 proposal"
-git push
+cd D:\Repos\global_safety_evidence_centre\tools
+./deploy.ps1        # or ./deploy.sh
 ```
+Takes about a minute. Once it finishes, the link is live. Send the review URL to whoever should comment.
 
-Once GitHub Pages re-deploys (~30 seconds), the link is live. Send the review URL to whoever should comment.
+(If you've forked this as a standalone GitHub Pages repo per "Quick setup" above, the original flow still applies instead: `git add docs/ && git commit -m "..." && git push`, then wait ~30s for Pages to redeploy.)
 
 ### Script requirements
 
