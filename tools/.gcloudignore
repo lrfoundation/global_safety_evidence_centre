@@ -1,0 +1,20 @@
+# Cloud Build upload context for `gcloud run deploy --source .`
+# Licensed WRP microdata must NEVER leave this machine — only the aggregated
+# columnar builds (data/wrp_explorer*.json/.bin/.bin.gz) ship in the image.
+data/*.sav
+data/wave_audit.csv
+data/wave_audit_summary.txt
+data/question_crosswalk.csv
+data/question_crosswalk_warnings.txt
+data/questions_*.csv
+
+# Build-time only, not needed at runtime
+scripts/
+__pycache__/
+*.pyc
+
+.git
+.gitignore
+.gcloudignore
+.claude
+.DS_Store
