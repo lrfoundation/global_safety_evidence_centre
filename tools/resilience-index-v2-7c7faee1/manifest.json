@@ -1,0 +1,9 @@
+{
+  "short_name": "Resilience Index",
+  "name": "World Risk Poll | Resilience Index",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
