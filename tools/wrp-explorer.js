@@ -18,6 +18,12 @@ const ctrl = { question:'climate', breakdown1:'countrynew', breakdown2:'countryn
                profileScope:'all', k:4, colourBy:'cluster', clusterBy:'worry' };
 let activeView = 'dist';
 
+/* Cache-buster for the built datasets. nginx serves data/*.json|bin|gz with a
+   seven-day max-age, so a rebuild has to change the URL or returning visitors
+   keep the old columns. Bump this whenever the build scripts are re-run. */
+const DATA_V = '20260908f';
+const dv = u => u + (u.indexOf('?')<0 ? '?v=' : '&v=') + DATA_V;
+
 /* ---------- wave switching (loads a different manifest in-tool) ---------- */
 const WAVES = {
   '2019':   { manifest:'data/wrp_explorer_2019.json',    bin:'data/wrp_explorer_2019.bin',    binGz:'data/wrp_explorer_2019.bin.gz',    label:'2019',  eyebrow:'World Risk Poll 2019',  lede:'Explore the 2019 World Risk Poll — worry, experienced harm and the greatest perceived source of risk. Filter by demographics, break the figures down, rank, map and compare. All figures are population-weighted.' },
@@ -33,6 +39,28 @@ function currentWave(){ const p=new URLSearchParams(location.search).get('wave')
 let WAVE = currentWave();
 
 /* ---------- Share view: encode / decode UI state to URL params ---------- */
+/* Country codes in the data are positions in this wave's country list, so they
+   move whenever a country is added or dropped — a shared link built on one
+   build silently selected a DIFFERENT country on the next, and on a different
+   wave. URLs therefore carry ISO3 instead, which is stable across builds and
+   waves. Numeric tokens are still accepted so older links keep working. */
+const isCountryDim = key => !!(DIM[key] && DIM[key].type === 'country');
+function countryCodeToToken(code){
+  const c = COUNTRIES[code];
+  return (c && c.iso3) ? c.iso3 : String(code);
+}
+function countryTokenToCode(tok){
+  const t = String(tok).trim();
+  if(/^[A-Za-z]{3}$/.test(t)){
+    const up = t.toUpperCase();
+    const i = COUNTRIES.findIndex(c => (c.iso3||'').toUpperCase() === up);
+    if(i < 0) console.warn(`WRP explorer: no country with ISO3 "${up}" in the ${WAVE} wave.`);
+    return i;   // -1 when this wave doesn't carry it
+  }
+  const n = +t;
+  return (Number.isInteger(n) && n >= 0 && n < COUNTRIES.length) ? n : -1;
+}
+
 function stateToParams(){
   const sp = new URLSearchParams();
   if(WAVE !== '2025') sp.set('wave', WAVE);
@@ -41,14 +69,17 @@ function stateToParams(){
                 profileScope:'ps', k:'k', colourBy:'col', clusterBy:'cl',
                 tmFromYear:'tf', tmToYear:'tt' };
   for(const [key, param] of Object.entries(map)){
-    const val = ctrl[key];
+    let val = ctrl[key];
     if(val==null || val==='') continue;
+    // the profile's country scope is a country code too
+    if(key === 'profileScope' && String(val).indexOf('c:') === 0)
+      val = 'c:' + countryCodeToToken(+String(val).slice(2));
     sp.set(param, String(val));
   }
   // filters: one param per active dim, values joined with commas
   Object.keys(filters).forEach(dk=>{
-    const s = filters[dk]; if(!s || !s.size) return;
-    sp.set('f.'+dk, [...s].join(','));
+    const set = filters[dk]; if(!set || !set.size) return;
+    sp.set('f.'+dk, [...set].map(v => isCountryDim(dk) ? countryCodeToToken(v) : v).join(','));
   });
   return sp;
 }
@@ -58,7 +89,13 @@ function paramsToState(){
   const map = { q:'question', r:'right', m1:'metric1', m2:'metric2', bd1:'breakdown1', bd2:'breakdown2',
                 ps:'profileScope', col:'colourBy', cl:'clusterBy' };
   for(const [param, key] of Object.entries(map)){
-    if(sp.has(param)) ctrl[key] = sp.get(param);
+    if(!sp.has(param)) continue;
+    let v = sp.get(param);
+    if(key === 'profileScope' && v.indexOf('c:') === 0){
+      const code = countryTokenToCode(v.slice(2));
+      v = code >= 0 ? 'c:' + code : 'all';
+    }
+    ctrl[key] = v;
   }
   const numeric = { k:'k', tf:'tmFromYear', tt:'tmToYear' };
   for(const [param, key] of Object.entries(numeric)){
@@ -69,7 +106,9 @@ function paramsToState(){
   sp.forEach((val, param)=>{
     if(!param.startsWith('f.')) return;
     const dim = param.slice(2);
-    const codes = val.split(',').map(v=>+v).filter(n=>!isNaN(n));
+    const codes = val.split(',')
+      .map(v => isCountryDim(dim) ? countryTokenToCode(v) : +v)
+      .filter(n => !isNaN(n) && n >= 0);
     if(codes.length) filters[dim] = new Set(codes);
   });
 }
@@ -94,6 +133,7 @@ function buildWaveTabs(){
       if(next === WAVE) return;
       // reset transient UI state that may reference vanished slugs / metrics
       Object.keys(filters).forEach(k=>delete filters[k]);
+      ctrl.profileScope = 'all';   // country codes are per-wave indices
       ROWS = null;
       // update URL and rebuild from the new manifest
       const u = new URL(location.href);
@@ -153,17 +193,17 @@ async function load(){
     document.getElementById('status').textContent = `Loading World Risk Poll ${cfg.label} data…`;
     // wipe stale state — switching wave must not leak metric/dim keys from another wave
     STORE = {}; DIM = {}; Q = {}; M = {}; COUNTRIES = [];
-    MAN = await fetch(cfg.manifest).then(r=>{ if(!r.ok) throw new Error('manifest '+r.status); return r.json(); });
+    MAN = await fetch(dv(cfg.manifest)).then(r=>{ if(!r.ok) throw new Error('manifest '+r.status); return r.json(); });
     let buf;
     try{
-      const res = await fetch(cfg.binGz);
+      const res = await fetch(dv(cfg.binGz));
       if(!res.ok) throw 0;
       if('DecompressionStream' in window){
         const ds = res.body.pipeThrough(new DecompressionStream('gzip'));
         buf = await new Response(ds).arrayBuffer();
       } else { throw 0; }
     }catch(e){
-      buf = await fetch(cfg.bin).then(r=>{ if(!r.ok) throw new Error('bin '+r.status); return r.arrayBuffer(); });
+      buf = await fetch(dv(cfg.bin)).then(r=>{ if(!r.ok) throw new Error('bin '+r.status); return r.arrayBuffer(); });
     }
     N = MAN.n;
     const view = (c)=>{ const o=c.off, l=c.len;
@@ -196,6 +236,11 @@ async function load(){
     pickInitialCtrl();
     // Apply any URL params on top of pick defaults (share links land here).
     paramsToState();
+    // A filter naming a dimension this wave doesn't carry (a link built on a
+    // different wave, an old bookmark) used to throw inside computeRows and
+    // surface as "Could not load the dataset". Drop it and carry on.
+    Object.keys(filters).forEach(k=>{ if(!DIM[k]){ delete filters[k];
+      console.warn(`WRP explorer: ignoring filter "${k}" — not a dimension of the ${WAVE} wave.`); } });
     // Re-validate ctrl slugs against this wave's catalogue in case URL params
     // reference items that don't exist here (silently drop, fall back).
     pickInitialCtrl();
@@ -246,7 +291,18 @@ function pickInitialCtrl(){
                     : (mkeys.find(k => k !== ctrl.metric1) || ctrl.metric1);
   ctrl.breakdown1 = pick(ctrl.breakdown1, dkeys, 'countrynew');
   ctrl.breakdown2 = pick(ctrl.breakdown2, dkeys, 'countrynew');
-  ctrl.profileScope = 'all';
+  // The profile scope is shareable, so validate it against this wave's
+  // catalogue rather than throwing it away. Country codes are per-wave indices,
+  // so a scope carried over from another wave is dropped (see buildWaveTabs).
+  const catHas = (dim, code) => !!(DIM[dim] && (DIM[dim].cats||[]).some(c=>c.code===code));
+  const scopeOK = v => {
+    if(!v || v==='all') return false;
+    if(v.indexOf('c:')===0)   return !!COUNTRIES[+v.slice(2)];
+    if(v.indexOf('inc:')===0) return catHas('CountryIncome', +v.slice(4));
+    if(v.indexOf('reg:')===0) return catHas('GlobalRegion',  +v.slice(4));
+    return false;
+  };
+  ctrl.profileScope = scopeOK(ctrl.profileScope) ? ctrl.profileScope : 'all';
 }
 
 /* ---------- hover tooltip (delegated; works for string-built and d3-built SVG) ---------- */
@@ -283,22 +339,46 @@ function groupLabel(dimKey, code){
   const c=(d.cats||[]).find(c=>c.code===code); return c?c.label:String(code);
 }
 
-/* per-group metric (returns Map code->value in display units: % or 0-1) */
+/* Smallest unweighted base a group needs before we are willing to draw it.
+   Under 30 answers a single respondent moves the bar by several points and the
+   extremes of any ranking fill up with countries that answered a handful of
+   times — usually because a filter has cut the sample thin, sometimes because
+   the question was only asked of part of the sample. Groups below the line are
+   dropped from the ranked, map, scatter, cluster and change views, and each of
+   those views says in its note how many went. Matches the 'small base' mark the
+   profile view has always used. */
+const MIN_BASE = 30;
+const baseOf = (mp, g) => (mp && mp.base) ? (mp.base.get(g) || 0) : 0;
+/* One line for a view's note, when a base-size cut has removed groups. */
+const PLURAL = { country:'countries', group:'groups' };
+function baseNote(hidden, unit){
+  if(!hidden) return '';
+  const noun = hidden===1 ? unit : (PLURAL[unit] || unit+'s');
+  return ` ${hidden} ${noun} with fewer than ${MIN_BASE} answers ${hidden===1?'is':'are'} not shown.`;
+}
+
+/* per-group metric (returns Map code->value in display units: % or 0-1).
+   The returned Map also carries `.base`: Map(code -> unweighted answer count),
+   so callers can apply MIN_BASE without re-scanning the rows. */
 function metricByGroup(m, dimKey){
   const bd=col(DIM[dimKey].col), w=WEIGHT, agg=new Map();
+  const finish=(scale)=>{ const out=new Map(), base=new Map();
+    agg.forEach((e,g)=>{ out.set(g, e[1]? e[0]/e[1]*scale : NaN); base.set(g, e[2]); });
+    out.base=base; return out; };
   if(isMean(m)){ const v=col(m.col);
-    forEachRow(i=>{ const x=v[i]; if(x<0) return; const g=bd[i]; if(g<0) return; let e=agg.get(g); if(!e){e=[0,0];agg.set(g,e);} e[0]+=w[i]*(x/100); e[1]+=w[i]; });
-    const out=new Map(); agg.forEach((e,g)=>out.set(g, e[1]? e[0]/e[1] : NaN)); return out;
+    forEachRow(i=>{ const x=v[i]; if(x<0) return; const g=bd[i]; if(g<0) return; let e=agg.get(g); if(!e){e=[0,0,0];agg.set(g,e);} e[0]+=w[i]*(x/100); e[1]+=w[i]; e[2]++; });
+    return finish(1);
   }
   const q=col(m.col), num=new Set(m.num);
-  forEachRow(i=>{ const a=q[i]; if(a<0) return; const g=bd[i]; if(g<0) return; let e=agg.get(g); if(!e){e=[0,0];agg.set(g,e);} e[1]+=w[i]; if(num.has(a)) e[0]+=w[i]; });
-  const out=new Map(); agg.forEach((e,g)=>out.set(g, e[1]? e[0]/e[1]*100 : NaN)); return out;
+  forEachRow(i=>{ const a=q[i]; if(a<0) return; const g=bd[i]; if(g<0) return; let e=agg.get(g); if(!e){e=[0,0,0];agg.set(g,e);} e[1]+=w[i]; e[2]++; if(num.has(a)) e[0]+=w[i]; });
+  return finish(100);
 }
-/* full answer distribution of a question per group: Map(g -> {total, counts:Map(code->w)}) */
+/* full answer distribution of a question per group:
+   Map(g -> {total (weighted), n (unweighted answers), counts:Map(code->w)}) */
 function distribution(qKey, dimKey){
   const q=col(Q[qKey].col), bd=col(DIM[dimKey].col), w=WEIGHT, groups=new Map();
   forEachRow(i=>{ const a=q[i]; if(a<0) return; const g=bd[i]; if(g<0) return;
-    let e=groups.get(g); if(!e){e={total:0,counts:new Map()};groups.set(g,e);} e.total+=w[i]; e.counts.set(a,(e.counts.get(a)||0)+w[i]); });
+    let e=groups.get(g); if(!e){e={total:0,n:0,counts:new Map()};groups.set(g,e);} e.total+=w[i]; e.n++; e.counts.set(a,(e.counts.get(a)||0)+w[i]); });
   return groups;
 }
 /* weighted respondent-level R^2 between two metrics, within current filter */
@@ -329,13 +409,19 @@ function buildFilters(){
     const btn=document.createElement('button'); btn.className='filt-btn'; btn.innerHTML=`<span class="fl">${d.label}</span><span class="fv">All</span>`;
     const pop=document.createElement('div'); pop.className='filt-pop hidden';
     const cats = d.type==='country' ? COUNTRIES.map((c,i)=>({code:i,label:c.name})) : (d.cats||[]);
+    const sel = filters[d.key];
     cats.forEach(c=>{
       const lab=document.createElement('label'); const cb=document.createElement('input'); cb.type='checkbox'; cb.value=c.code;
+      // A share link arrives with `filters` already populated, so the boxes and
+      // the button caption have to be drawn from it — otherwise the panel reads
+      // "All" while the charts show a filtered slice.
+      cb.checked = !!(sel && sel.has(c.code));
       cb.onchange=()=>{ const set=filters[d.key]||(filters[d.key]=new Set()); if(cb.checked) set.add(c.code); else set.delete(c.code); if(!set.size) delete filters[d.key];
         const n=filters[d.key]?filters[d.key].size:0; btn.querySelector('.fv').textContent = n? n+' selected':'All'; btn.classList.toggle('on', !!n);
         computeRows(); render(); };
       lab.appendChild(cb); lab.appendChild(document.createTextNode(' '+c.label)); pop.appendChild(lab);
     });
+    if(sel && sel.size){ btn.querySelector('.fv').textContent = sel.size+' selected'; btn.classList.add('on'); }
     btn.onclick=(e)=>{ e.stopPropagation(); document.querySelectorAll('.filt-pop').forEach(p=>{ if(p!==pop) p.classList.add('hidden'); }); pop.classList.toggle('hidden'); };
     wrap.appendChild(btn); wrap.appendChild(pop); grid.appendChild(wrap);
   });
@@ -471,7 +557,10 @@ function buildTabs(){
 
 /* ---------- downloads: chart (SVG/PNG) + aggregated data (CSV) ---------- */
 let lastExport = null;   // {name, cols, rows} set by each render
-function csvNum(m, v){ if(v==null || isNaN(v)) return ''; return isMean(m) ? v.toFixed(3) : v.toFixed(1); }
+/* Index metrics are held 0-1 internally and shown 0-100 on screen. The CSV used
+   to write the raw 0-1 value, so a download said 0.428 where the chart said 43.
+   Both are now on the displayed scale. */
+function csvNum(m, v){ if(v==null || isNaN(v)) return ''; return isMean(m) ? (v*100).toFixed(1) : v.toFixed(1); }
 function toCSV(cols, rows){ const q=v=>{ v=(v==null?'':String(v)); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
   return [cols.map(q).join(','), ...rows.map(r=>r.map(q).join(','))].join('\r\n'); }
 function dlBlob(name, blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
@@ -491,7 +580,56 @@ function dlChartPNG(){ const svg=activeSvgEl(); if(!svg) return; const wh=svgWH(
 function dlCSV(){ if(!lastExport) return; dlBlob(baseName()+'.csv', new Blob(['﻿'+toCSV(lastExport.cols, lastExport.rows)],{type:'text/csv;charset=utf-8'})); }
 
 /* ---------- render dispatch ---------- */
-function render(){ buildControls(); updateFilterToggle();
+/* Which metric slots the view on screen is actually reading. Used to decide
+   whether the caveat note belongs under the pickers. */
+function activeMetricKeys(){
+  switch(activeView){
+    case 'dist': case 'map': case 'rel':   return [ctrl.metric1, ctrl.metric2];
+    case 'profile': case 'trend-map':      return [ctrl.metric1];
+    case 'clusters':                       return String(ctrl.colourBy||'').indexOf('m:')===0 ? [ctrl.colourBy.slice(2)] : [];
+    default:                               return [];   // sankey and time course are question-driven
+  }
+}
+
+/* The published Worry and Experience indices are each wave's own headline
+   number and perfectly good within that wave, but the way they are built moves
+   between waves - the items counted, what counts as having experienced harm,
+   and the scaling. The build marks them comparable:false; this puts the caveat
+   under the pickers the moment one is chosen, on whichever view is open. */
+function updateMetricNote(){
+  const el = document.getElementById('metric-note'); if(!el) return;
+  const flagged = [...new Set(activeMetricKeys())]
+    .map(k => M[k]).filter(m => m && m.comparable === false);
+  if(!flagged.length){ el.hidden = true; el.innerHTML = ''; return; }
+  const names = [...new Set(flagged.map(m => m.label.replace(/\s*\(0[–-]100\)\s*$/,'')))];
+  const many = names.length > 1;
+  const subject = many ? names.slice(0,-1).join(', ')+' and '+names.slice(-1) : names[0];
+  const verb   = many ? 'are' : 'is';
+  const noun   = many ? 'the indices' : 'the index';
+  const built  = many ? 'How they are built' : 'How it is built';
+  const figure = many ? 'these figures should not be set' : 'this figure should not be set';
+  // What actually differs, per index, read off the data (see wrp_indices.py).
+  // Two of the seven items change after 2019 in both families, so that clause
+  // is shared; the rest is specific to the index in hand.
+  const WHY = {
+    worry_index: 'Waves 2019 to 2023 rescale a score over seven worry items; 2025 takes a plain average over ten.',
+    experience_index: 'Waves 2019 to 2023 rescale a count over seven items — and 2021 counts harm to someone you know, where 2023 counts only harm to you; 2025 takes a plain average over ten.'
+  };
+  const how = [...new Set(flagged.map(m => WHY[m.key]).filter(Boolean))].join(' ')
+    + ' Two of the seven items change after 2019 as well.';
+  let body;
+  if(activeView === 'trend-map'){
+    body = `<b>${esc(subject)} ${verb} not built the same way in each wave.</b> ${how} A change between two waves therefore mixes a change in the measure with a change in the answers. For a like-for-like trend use the Worry score or Experience score.`;
+  } else if(WAVE === 'trended'){
+    body = `<b>${esc(subject)} ${verb} not built the same way in each wave.</b> ${how} Figures from different waves are not on the same scale, so read each wave on its own. To trend, use the Worry score or Experience score.`;
+  } else {
+    body = `<b>${esc(subject)} ${verb} ${noun} as published for ${esc(WAVES[WAVE].label)}.</b> ${built} changes between waves, so ${figure} against another wave's. To compare waves, use the Worry score or Experience score, which are computed the same way throughout.`;
+  }
+  el.innerHTML = `<div>${body}</div>`;
+  el.hidden = false;
+}
+
+function render(){ buildControls(); updateFilterToggle(); updateMetricNote();
   if(activeView==='dist') renderDist();
   else if(activeView==='map') renderMap();
   else if(activeView==='rel') renderRel();
@@ -507,13 +645,43 @@ function render(){ buildControls(); updateFilterToggle();
 }
 
 /* ---------- View 1: ranked distribution ---------- */
+/* Nothing to draw. A blank chart looks like a rendering fault, so say which of
+   the two reasons applies: nobody in the current selection answered the item
+   (a question can be put to only some of the countries in a wave, so a country
+   can be in the poll and still have no answers to it), or the selection is
+   there but every group is too thin to report. */
+function emptyView(view, qLabel, dimLabel, seenGroups, unit){
+  const leg=$('#'+view+'-legend'); if(leg) leg.innerHTML='';
+  const svg=$('#'+view+'-chart'); if(svg){
+    const W=Math.max(360,(svg.parentElement&&svg.parentElement.clientWidth)||600);
+    svg.outerHTML=`<svg id="${view}-chart" width="${W}" height="180" viewBox="0 0 ${W} 180" font-family="DM Sans, system-ui, sans-serif" xmlns="http://www.w3.org/2000/svg">`+
+      `<text x="${W/2}" y="96" font-size="14" fill="#6c6c78" text-anchor="middle">Nothing to show for this selection</text></svg>`;
+  }
+  const filtered=activeFilterCount()>0;
+  const why = seenGroups
+    ? `Every ${unit} that answered has fewer than ${MIN_BASE} answers, which is too thin to report.`
+    : `No one in the current selection answered “${qLabel}”. A question is sometimes put to only part of a wave, so a country can be in the poll and still carry no answers to this item — China in 2021 is one such case.`;
+  const fix = filtered
+    ? ' Clear or widen the filters above, or pick another question.'
+    : ' Pick another question, or another wave.';
+  const el=$('#'+view+'-note'); if(el) el.textContent = why + fix;
+  const card=$('#'+view+'-table-card');
+  if(card) card.innerHTML = `<div class="sec-label">Ranking</div><div class="muted-note">${esc(why + fix)}</div>`;
+  lastExport = { name:`wrp_${ctrl.question}_by_${ctrl.breakdown1}`, cols:[dimLabel], rows:[] };
+}
+
 function renderDist(){
   const q=Q[ctrl.question], bd=ctrl.breakdown1, m1=M[ctrl.metric1], m2=M[ctrl.metric2];
   const groups=distribution(ctrl.question, bd);
   const g1=metricByGroup(m1,bd), g2=metricByGroup(m2,bd);
-  let keys=[...groups.keys()];
+  const unit = DIM[bd].type==='country' ? 'country' : 'group';
+  const allKeys=[...groups.keys()];
+  let keys=allKeys.filter(g=>groups.get(g).n>=MIN_BASE);
+  const hidden=allKeys.length-keys.length;
   keys.sort((a,b)=> (g1.get(b)??-1)-(g1.get(a)??-1));
   $('#dist-title').textContent = q.label + ' — by ' + DIM[bd].label;
+  if(!keys.length){ emptyView('dist', q.label, DIM[bd].label, allKeys.length, unit); return; }
+  $('#dist-note').textContent = `Bars sum to 100% within each ${unit}. Don't know / Refused are kept in the denominator.` + baseNote(hidden, unit);
   const stack = stackOrder(q);
   // legend follows the actual stacking order (top → bottom of bar)
   $('#dist-legend').innerHTML = stack.map(a=>`<span class="k"><span class="sw" style="background:${a.color}"></span>${a.label}</span>`).join('');
@@ -550,10 +718,17 @@ const shortMetric = m => m.key;
    - "no concern / no / not experienced" goes at the bottom (the last substantive code)
    Stacking is top → bottom, so this puts the worry block above the neutral block
    above the no-worry block, which is what readers actually want to compare. */
+const NEUTRAL_ANSWER = /^\(?\s*(it depends|depends|neither|no opinion|don'?t have an opinion)/i;
 function stackOrder(q){
-  const subs = (q.answers || []).filter(a => a.code < 90);
-  const specials = (q.answers || []).filter(a => a.code >= 90);
-  if(subs.length < 2) return q.answers || [];
+  const answers = q.answers || [];
+  // "It depends" carries a substantive code (3 on could-protect and on the
+  // preparedness items) but it is not the negative pole. Taking the last
+  // substantive code as "no" put it at the foot of the bar and pushed the real
+  // "No" up into the concern block. Treat it as neutral, alongside DK/Refused.
+  const isNeutral = a => a.code >= 90 || NEUTRAL_ANSWER.test(String(a.label));
+  const subs = answers.filter(a => !isNeutral(a));
+  const specials = answers.filter(isNeutral);
+  if(subs.length < 2) return answers;
   const noConcern = subs[subs.length - 1];
   const concern   = subs.slice(0, -1);
   return [...concern, ...specials, noConcern];
@@ -561,6 +736,13 @@ function stackOrder(q){
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* ---------- View 2: map ---------- */
+/* Equal Earth (Savric, Patterson & Jenny 2018): equal-area, so a country's
+   patch of ink is proportional to its actual land area and the choropleth
+   cannot flatter high-latitude countries the way Mercator or the compromise
+   projections do. That matters here because the map is the main way people
+   compare countries. d3-geo has shipped geoEqualEarth since v1.11; the
+   fallback keeps the map drawing on an older bundle rather than throwing. */
+const EQUAL_EARTH = () => (d3.geoEqualEarth ? d3.geoEqualEarth() : d3.geoNaturalEarth1());
 let WORLD=null;
 const NUM2A3={"004":"AFG","008":"ALB","012":"DZA","016":"ASM","020":"AND","024":"AGO","028":"ATG","031":"AZE","032":"ARG","036":"AUS","040":"AUT","044":"BHS","048":"BHR","050":"BGD","051":"ARM","052":"BRB","056":"BEL","060":"BMU","064":"BTN","068":"BOL","070":"BIH","072":"BWA","076":"BRA","084":"BLZ","090":"SLB","096":"BRN","100":"BGR","104":"MMR","108":"BDI","112":"BLR","116":"KHM","120":"CMR","124":"CAN","132":"CPV","140":"CAF","144":"LKA","148":"TCD","152":"CHL","156":"CHN","158":"TWN","170":"COL","174":"COM","178":"COG","180":"COD","188":"CRI","191":"HRV","192":"CUB","196":"CYP","203":"CZE","204":"BEN","208":"DNK","214":"DOM","218":"ECU","222":"SLV","226":"GNQ","231":"ETH","232":"ERI","233":"EST","242":"FJI","246":"FIN","250":"FRA","262":"DJI","266":"GAB","268":"GEO","270":"GMB","275":"PSE","276":"DEU","288":"GHA","300":"GRC","304":"GRL","320":"GTM","324":"GIN","328":"GUY","332":"HTI","340":"HND","344":"HKG","348":"HUN","352":"ISL","356":"IND","360":"IDN","364":"IRN","368":"IRQ","372":"IRL","376":"ISR","380":"ITA","384":"CIV","388":"JAM","392":"JPN","398":"KAZ","400":"JOR","404":"KEN","408":"PRK","410":"KOR","414":"KWT","417":"KGZ","418":"LAO","422":"LBN","426":"LSO","428":"LVA","430":"LBR","434":"LBY","440":"LTU","442":"LUX","446":"MAC","450":"MDG","454":"MWI","458":"MYS","462":"MDV","466":"MLI","470":"MLT","478":"MRT","480":"MUS","484":"MEX","496":"MNG","498":"MDA","499":"MNE","504":"MAR","508":"MOZ","512":"OMN","516":"NAM","524":"NPL","528":"NLD","554":"NZL","558":"NIC","562":"NER","566":"NGA","578":"NOR","586":"PAK","591":"PAN","598":"PNG","600":"PRY","604":"PER","608":"PHL","616":"POL","620":"PRT","624":"GNB","626":"TLS","630":"PRI","634":"QAT","642":"ROU","643":"RUS","646":"RWA","682":"SAU","686":"SEN","688":"SRB","694":"SLE","702":"SGP","703":"SVK","704":"VNM","705":"SVN","706":"SOM","710":"ZAF","716":"ZWE","724":"ESP","728":"SSD","729":"SDN","748":"SWZ","752":"SWE","756":"CHE","760":"SYR","762":"TJK","764":"THA","768":"TGO","780":"TTO","784":"ARE","788":"TUN","792":"TUR","795":"TKM","800":"UGA","804":"UKR","807":"MKD","818":"EGY","826":"GBR","834":"TZA","840":"USA","854":"BFA","858":"URY","860":"UZB","862":"VEN","887":"YEM","894":"ZMB"};
 const pad3=s=>('00'+String(s)).slice(-3);
@@ -577,13 +759,25 @@ async function ensureWorld(){ if(WORLD) return WORLD;
 }
 async function renderMap(){
   const m1=M[ctrl.metric1], m2=M[ctrl.metric2];
+  if(!m1 || !m2) return;
   const byIdx=metricByGroup(m1,'countrynew');           // country index -> value
+  // Countries whose answer count is below MIN_BASE are treated as no data —
+  // shading a whole country from a dozen answers reads far more confident than
+  // it is, and the map has no room to caveat it.
+  let thin=0; byIdx.forEach((v,idx)=>{ if(baseOf(byIdx,idx)<MIN_BASE){ byIdx.delete(idx); thin++; } });
   const iso2val=new Map(); byIdx.forEach((v,idx)=>{ const iso=COUNTRIES[idx]&&COUNTRIES[idx].iso3; if(iso) iso2val.set(iso,v); });
   $('#map-title').textContent = (m1.label)+' — by country';
-  const world=await ensureWorld(); const svg=d3.select('#map-svg'); svg.selectAll('*').remove();
+  $('#map-note').textContent = `${byIdx.size} countries with data for this metric.` + baseNote(thin, 'country');
+  const world=await ensureWorld();
+  // The first map render fetches the world topology. If the user switched wave
+  // while that was in flight, M has been rebuilt and these metric objects are
+  // stale — finish the old render and it throws on a column that no longer
+  // exists. Bail; the new wave's render is already queued behind us.
+  if(M[ctrl.metric1]!==m1 || M[ctrl.metric2]!==m2) return;
+  const svg=d3.select('#map-svg'); svg.selectAll('*').remove();
   if(!world){ svg.append('text').attr('x',360).attr('y',190).attr('text-anchor','middle').attr('fill','#6c6c78').text('Map unavailable (offline)'); }
   else{
-    const W=720,H=380, proj=d3.geoNaturalEarth1().fitExtent([[6,6],[W-6,H-6]],{type:'Sphere'}), path=d3.geoPath(proj);
+    const W=720,H=380, proj=EQUAL_EARTH().fitExtent([[6,6],[W-6,H-6]],{type:'Sphere'}), path=d3.geoPath(proj);
     const vals=[...iso2val.values()].filter(v=>!isNaN(v)); const lo=Math.min(...vals), hi=Math.max(...vals);
     svg.append('path').attr('class','map-sphere').attr('fill','#eef1f4').attr('d',path({type:'Sphere'}));
     svg.selectAll('path.c').data(world.features.filter(f=>pad3(f.id)!=='010')).enter().append('path')
@@ -608,7 +802,11 @@ async function renderMap(){
 function renderRel(){
   const m1=M[ctrl.metric1], m2=M[ctrl.metric2], bd=ctrl.breakdown2;
   const g1=metricByGroup(m1,bd), g2=metricByGroup(m2,bd);
-  const pts=[...g1.keys()].filter(g=>g2.has(g)).map(g=>({g,x:g1.get(g),y:g2.get(g)})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
+  // A point needs a reportable base on BOTH metrics — otherwise a group that
+  // answered one item a dozen times lands as an outlier and drags the trend line.
+  const enough=g=>baseOf(g1,g)>=MIN_BASE && baseOf(g2,g)>=MIN_BASE;
+  const shared=[...g1.keys()].filter(g=>g2.has(g));
+  const pts=shared.filter(enough).map(g=>({g,x:g1.get(g),y:g2.get(g)})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
   $('#rel-title').textContent = `${m1.key} (x) vs ${m2.key} (y) — by ${DIM[bd].label}`;
   const cw=Math.max(420, ($('#rel-scatter').parentElement.clientWidth)||640);
   const W=cw, H=Math.min(460, Math.max(360, Math.round(cw*0.6))), pad={t:14,r:14,b:40,l:46}; const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
@@ -624,12 +822,30 @@ function renderRel(){
   pts.forEach(p=>{ s+=`<circle class="scatter-pt" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="3.6" fill="#e3076e" fill-opacity="0.7" data-tip="${esc(groupLabel(bd,p.g))}" data-sub="${m1.key}: ${fmtMetric(m1,p.x)} · ${m2.key}: ${fmtMetric(m2,p.y)}"></circle>`; });
   s+=`<text x="${W/2}" y="${H-4}" font-size="10" fill="#6c6c78" text-anchor="middle">${m1.key}</text>`;
   s+='</svg>'; $('#rel-scatter').outerHTML=s.replace('<svg','<svg id="rel-scatter"');
-  // R^2 (respondent-level)
-  const R=r2(m1,m2); $('#rel-r2').textContent = isNaN(R)?'–':R.toFixed(2);
-  $('#rel-explain').innerHTML = `<h4>What is R²</h4><p>R² measures how strongly the two selected metrics move together across <b>individual respondents</b> (0–1). 0.7–1.0 strong · 0.4–0.7 moderate · 0.1–0.4 weak · below 0.1 negligible.</p><h4>Keep in mind</h4><p>It is computed across respondents, not the country averages plotted left. A high R² means the two move together — not that one causes the other.</p>`;
+  // Two R² values, because they answer different questions and the card used to
+  // show only the second: across the points actually plotted (what the eye
+  // reads off the scatter), and across individual respondents. For two yes/no
+  // metrics the respondent-level figure is a squared phi coefficient and sits
+  // near zero however tight the country scatter looks, so showing it alone
+  // beside an obviously strong scatter read as a contradiction.
+  const unit = DIM[bd].type==='country' ? 'countries' : 'groups';
+  let Rg = NaN;
+  if(pts.length > 2){
+    const mx=d3.mean(pts,p=>p.x), my=d3.mean(pts,p=>p.y);
+    let sxy=0,sxx=0,syy=0;
+    pts.forEach(p=>{ sxy+=(p.x-mx)*(p.y-my); sxx+=(p.x-mx)**2; syy+=(p.y-my)**2; });
+    if(sxx>0 && syy>0){ const r=sxy/Math.sqrt(sxx*syy); Rg=r*r; }
+  }
+  const R=r2(m1,m2);
+  $('#rel-r2').textContent = isNaN(Rg)?'–':Rg.toFixed(2);
+  const cap=document.querySelector('#view-rel .cap');
+  if(cap) cap.textContent = `R² across the ${pts.length} ${unit} plotted`;
+  $('#rel-explain').innerHTML = `<h4>What is R²</h4><p>R² measures how strongly the two selected metrics move together, on a 0–1 scale. 0.7–1.0 strong · 0.4–0.7 moderate · 0.1–0.4 weak · below 0.1 negligible.</p>
+    <h4>Two different questions</h4><p>The figure above is measured across the <b>${pts.length} ${unit}</b> you can see on the chart — it describes the pattern in the plot. Measured instead across <b>individual respondents</b>, R² is <b>${isNaN(R)?'–':R.toFixed(2)}</b>. The two routinely disagree, and both are right: countries can move together tightly while, inside any one country, knowing one answer tells you little about the other. That is normal for yes/no items, where the respondent-level figure is bounded well below 1.</p>
+    <h4>Keep in mind</h4><p>A high R² means the two move together — not that one causes the other.</p>`;
   // odds ratio per group — diverging, log scale around OR = 1 (fuchsia above, teal below)
   const UP='#e3076e', DOWN='#00a7b3';
-  const keys=[...g1.keys()].filter(g=>g2.has(g));
+  const keys=shared.filter(enough);
   const odds=keys.map(g=>{ const p1=(g1.get(g)||0)/(isMean(m1)?1:100), p2=(g2.get(g)||0)/(isMean(m2)?1:100);
     const o1=p1/((1-p1)||1e-9), o2=p2/((1-p2)||1e-9); return {g, ratio:(o2>0?o1/o2:NaN), p1,p2}; })
     .filter(o=>o.ratio>0 && isFinite(o.ratio));
@@ -669,8 +885,13 @@ function renderSankey(){
   $('#sankey-title').textContent = `${qa.label}  →  ${qb.label}`;
   // namespaced nodes: left = L:<code>, right = R:<code> (no loops)
   const nodes=[], nidx=new Map();
-  qa.answers.forEach(a=>{ nidx.set('L:'+a.code, nodes.length); nodes.push({name:'This person — '+a.label, color:a.color}); });
-  qb.answers.forEach(a=>{ nidx.set('R:'+a.code, nodes.length); nodes.push({name:'Most others — '+a.label, color:a.color}); });
+  // Side names come from the two chosen questions. They used to be hard-coded
+  // to "This person" and "Most others", which only described the one pair the
+  // view shipped with and mislabelled every other combination.
+  const sideName = q => { const t = q.label.split(/[(—]/)[0].trim(); return t.length > 42 ? t.slice(0,40).trim()+'…' : t; };
+  const nameA = sideName(qa), nameB = sideName(qb);
+  qa.answers.forEach(a=>{ nidx.set('L:'+a.code, nodes.length); nodes.push({name:nameA+' — '+a.label, color:a.color}); });
+  qb.answers.forEach(a=>{ nidx.set('R:'+a.code, nodes.length); nodes.push({name:nameB+' — '+a.label, color:a.color}); });
   const links=[]; m.forEach((w,k)=>{ const [x,y]=k.split('|'); const si=nidx.get('L:'+x), ti=nidx.get('R:'+y); if(si==null||ti==null) return; links.push({source:si,target:ti,value:w}); });
   const svg=d3.select('#sankey-svg'); svg.selectAll('*').remove();
   const W=Math.max(420, (document.getElementById('sankey-svg').parentElement.clientWidth)||760), H=460;
@@ -692,8 +913,10 @@ function renderSankey(){
   // table
   const rows=[...m.entries()].map(([k,w])=>{ const [x,y]=k.split('|'); return {x:+x,y:+y,pct:total?w/total*100:0}; }).sort((a,b)=>b.pct-a.pct);
   const lab=(ans,c)=>{ const a=ans.find(z=>z.code===c); return a?a.label:c; };
-  const tb=rows.map(r=>`<tr><td>${esc(lab(qb.answers,r.y))}</td><td>${esc(lab(qa.answers,r.x))}</td><td class="num heat" style="background:${rampColor(HEAT1,r.pct/(rows[0].pct||1))};color:${r.pct/(rows[0].pct||1)>0.6?'#fff':'#1b222c'}">${r.pct.toFixed(1)}%</td></tr>`).join('');
-  $('#sankey-table-card').innerHTML=`<div class="sec-label">Crosstab</div><div class="tbl-scroll"><table class="dt"><thead><tr><th>Most others</th><th>This person</th><th class="num">% resp.</th></tr></thead><tbody>${tb}</tbody></table></div>`;
+  // Left question first, matching the diagram and the CSV (the on-screen table
+  // used to list them in the opposite order to the download).
+  const tb=rows.map(r=>`<tr><td>${esc(lab(qa.answers,r.x))}</td><td>${esc(lab(qb.answers,r.y))}</td><td class="num heat" style="background:${rampColor(HEAT1,r.pct/(rows[0].pct||1))};color:${r.pct/(rows[0].pct||1)>0.6?'#fff':'#1b222c'}">${r.pct.toFixed(1)}%</td></tr>`).join('');
+  $('#sankey-table-card').innerHTML=`<div class="sec-label">Crosstab</div><div class="tbl-scroll"><table class="dt"><thead><tr><th>${esc(nameA)}</th><th>${esc(nameB)}</th><th class="num">% resp.</th></tr></thead><tbody>${tb}</tbody></table></div>`;
   lastExport = { name:`wrp_sankey_${ctrl.question}_to_${ctrl.right}`,
     cols:[qa.label, qb.label, '% respondents'],
     rows: rows.map(r=>[lab(qa.answers,r.x), lab(qb.answers,r.y), r.pct.toFixed(2)]) };
@@ -701,22 +924,43 @@ function renderSankey(){
 
 /* ---------- View 5: demographic profile ---------- */
 function profileAgg(metric, dimCol, scopeCol, scopeCode){
-  const bd=dimCol?col(dimCol):null, sc=(scopeCol && scopeCode!=null)?col(scopeCol):null, w=WEIGHT, mean=isMean(metric), arr=col(metric.col), num=mean?null:new Set(metric.num), agg=new Map();
+  const bd=dimCol?col(dimCol):null, w=WEIGHT, mean=isMean(metric), arr=col(metric.col), num=mean?null:new Set(metric.num), agg=new Map();
+  // A scope was asked for but its column isn't in this dataset: return nothing
+  // rather than silently aggregating every respondent as if unscoped.
+  if(scopeCol && scopeCode!=null && !col(scopeCol)) return agg;
+  const sc=(scopeCol && scopeCode!=null)?col(scopeCol):null;
   forEachRow(i=>{ if(sc && sc[i]!==scopeCode) return; const a=arr[i]; if(a<0) return; const g=bd?bd[i]:0; if(bd && g<0) return;
     let e=agg.get(g); if(!e){e=[0,0,0]; agg.set(g,e);} const wi=w[i]; e[1]+=wi; e[2]++; if(mean) e[0]+=wi*(a/100); else if(num.has(a)) e[0]+=wi; });
   return agg; }
 function aggVal(e, mean){ return (e && e[1]) ? (mean ? e[0]/e[1] : e[0]/e[1]*100) : NaN; }
 function renderProfile(){
   const m=M[ctrl.metric1], mean=isMean(m), sp=ctrl.profileScope||'all';
+  // Resolve the scope's source column through the manifest, never by hard-coded
+  // name: the region / income columns are called RegionLRF and wbi in the 2025
+  // build but GlobalRegion and CountryIncomeLevel in the harmonised waves. When
+  // the name was wrong, profileAgg's `sc` was undefined, the scope filter was
+  // skipped, and the view reported the GLOBAL figure under an income-group or
+  // region heading — a wrong number, not a blank chart.
+  const dimCol = k => (DIM[k] && STORE[DIM[k].col]) ? DIM[k].col : null;
   let scopeCol=null, scopeCode=null, scopeLabel='All countries';
-  if(sp.indexOf('inc:')===0){ scopeCol='wbi'; scopeCode=+sp.slice(4); scopeLabel='Income group: '+(((DIM['CountryIncome'].cats||[]).find(c=>c.code===scopeCode)||{}).label||sp); }
-  else if(sp.indexOf('reg:')===0){ scopeCol='RegionLRF'; scopeCode=+sp.slice(4); scopeLabel=((DIM['GlobalRegion'].cats||[]).find(c=>c.code===scopeCode)||{}).label||sp; }
+  if(sp.indexOf('inc:')===0){ scopeCol=dimCol('CountryIncome'); scopeCode=+sp.slice(4); scopeLabel='Income group: '+((((DIM['CountryIncome']||{}).cats||[]).find(c=>c.code===scopeCode)||{}).label||sp); }
+  else if(sp.indexOf('reg:')===0){ scopeCol=dimCol('GlobalRegion'); scopeCode=+sp.slice(4); scopeLabel=((((DIM['GlobalRegion']||{}).cats||[]).find(c=>c.code===scopeCode)||{}).label||sp); }
   else if(sp.indexOf('c:')===0){ scopeCol='country'; scopeCode=+sp.slice(2); scopeLabel=COUNTRIES[scopeCode]?COUNTRIES[scopeCode].name:sp; }
+  if(sp !== 'all' && !scopeCol){
+    // Asked for a scope this wave can't honour. Say so rather than quietly
+    // showing the global figure under the scope's name.
+    scopeCode=null; scopeLabel='All countries (this wave carries no '+(sp.indexOf('inc:')===0?'income group':'region')+' column)';
+  }
   const dimKeys=['gender','age_5','income_quintiles','education','urban_rural','employment'].filter(k=>DIM[k]);
   const oe=profileAgg(m,null,scopeCol,scopeCode).get(0), overall=aggVal(oe,mean);
-  const data=dimKeys.map(k=>{ const d=DIM[k], agg=profileAgg(m,d.col,scopeCol,scopeCode);
+  const allData=dimKeys.map(k=>{ const d=DIM[k], agg=profileAgg(m,d.col,scopeCol,scopeCode);
     const cats=(d.cats||[]).map(c=>{ const e=agg.get(c.code); return {label:c.label, v:aggVal(e,mean), n:e?e[2]:0}; }).filter(c=>!isNaN(c.v));
     return {label:d.label, cats}; });
+  // A demographic with no categories left has nothing to draw — it was either
+  // not recorded for this scope (China carries no employment data in 2021) or
+  // the filters emptied it. Drop the panel rather than leaving a blank one.
+  const data=allData.filter(d=>d.cats.length);
+  const missingDims=allData.filter(d=>!d.cats.length).map(d=>d.label);
   let maxV=overall||0; data.forEach(d=>d.cats.forEach(c=>{ if(c.v>maxV) maxV=c.v; }));
   if(!isFinite(maxV)||maxV<=0) maxV=mean?1:100; maxV*=1.12;
   // Adapt column count and cell width to the container so text stays at native size
@@ -731,7 +975,7 @@ function renderProfile(){
   const W=cols*cellW+pad, H=headerH+rowsN*cellH+pad+4, xOf=v=>labW+(v/maxV)*barMax;
   let s=`<svg id="profile-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`;
   s+=`<text x="${pad}" y="${pad+13}" font-size="14" font-weight="800" fill="#0d2240">${esc(m.label)}</text>`;
-  s+=`<text x="${pad}" y="${pad+31}" font-size="12" fill="#6c6c78">${esc(scopeLabel)} · overall ${fmtMetric(m,overall)} (dashed line) · by demographic</text>`;
+  s+=`<text x="${pad}" y="${pad+31}" font-size="12" fill="#6c6c78">${esc(scopeLabel)} · overall ${fmtMetric(m,overall)} (dashed line) · by demographic${missingDims.length?' · not recorded here: '+esc(missingDims.join(', ')):''}</text>`;
   data.forEach((d,di)=>{ const cx=pad+(di%cols)*cellW, cy=pad+headerH+Math.floor(di/cols)*cellH;
     s+=`<text x="${cx}" y="${cy+12}" font-size="12" font-weight="800" fill="#0d2240">${esc(d.label)}</text>`;
     const ox=(cx+xOf(overall)).toFixed(1); s+=`<line x1="${ox}" y1="${cy+20}" x2="${ox}" y2="${cy+26+d.cats.length*23}" stroke="#0d2240" stroke-dasharray="3 3" stroke-width="1"/>`;
@@ -767,8 +1011,33 @@ function renderClusters(){
   const WORRY_F=['climate_very','food_very','water_very','crime_very','weather_very','wildfires_very','air_very','mental_health_very','traffic_very','work_very'];
   const EXP_F=['exp_food','exp_water','exp_crime','exp_weather','exp_prolonged_weather','exp_wildfires','exp_air','exp_traffic','exp_mental_health','exp_work'];
   const basis=ctrl.clusterBy||'worry';
-  const FEAT=(basis==='experience'?EXP_F : basis==='both'?WORRY_F.concat(EXP_F) : WORRY_F).filter(k=>M[k]);
+  // 2019's catalogue suffixes its slugs with the wave (climate_2019_very), so
+  // the plain slug list matches nothing there — resolve each wanted metric
+  // against this wave's catalogue before filtering.
+  const resolveMetric=k=>{
+    if(M[k]) return k;
+    const i=k.lastIndexOf('_');
+    if(i>0 && M[k.slice(0,i)+'_'+WAVE+k.slice(i)]) return k.slice(0,i)+'_'+WAVE+k.slice(i);
+    if(M[k+'_'+WAVE]) return k+'_'+WAVE;
+    return null;
+  };
+  const FEAT=(basis==='experience'?EXP_F : basis==='both'?WORRY_F.concat(EXP_F) : WORRY_F)
+    .map(resolveMetric).filter(Boolean);
   const basisLabel=basis==='experience'?'experienced-harm' : basis==='both'?'worry & experience' : 'worry';
+  if(FEAT.length < 2){
+    // Nothing to cluster on — say so rather than throwing on maps[0].
+    const svg=$('#cluster-svg');
+    if(svg){ const W=Math.max(420,(svg.parentElement&&svg.parentElement.clientWidth)||720);
+      svg.outerHTML=`<svg id="cluster-svg" width="${W}" height="180" viewBox="0 0 ${W} 180" font-family="DM Sans,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg">`+
+        `<text x="${W/2}" y="96" font-size="14" fill="#6c6c78" text-anchor="middle">Not enough comparable indicators in this wave</text></svg>`; }
+    $('#cluster-legend').innerHTML='';
+    $('#cluster-title').textContent='Country clusters — unavailable for this wave';
+    $('#cluster-note').textContent=`Clustering needs at least two of the ${basisLabel} indicators to be present, and the ${WAVES[WAVE].label} questionnaire carries ${FEAT.length}. Try another wave, or switch “Cluster by”.`;
+    $('#cluster-list').innerHTML='';
+    const ex=document.getElementById('cluster-explain'); if(ex) ex.innerHTML='';
+    lastExport={ name:`wrp_clusters_${basis}`, cols:['Country'], rows:[] };
+    return;
+  }
   const FEATURE_LABEL={
     climate_very:'climate change as a threat', food_very:'food safety', water_very:'water safety',
     crime_very:'violent crime', weather_very:'severe weather', wildfires_very:'wildfires',
@@ -781,7 +1050,11 @@ function renderClusters(){
   };
   const featLabel=k=>FEATURE_LABEL[k] || k.replace('_very','').replace(/^exp_/,'');
   const maps=FEAT.map(k=>metricByGroup(M[k],'countrynew'));
-  const idxs=[...maps[0].keys()].filter(ix=>maps.every(mp=>mp.has(ix)&&!isNaN(mp.get(ix))));
+  // A country only clusters if every indicator has a reportable base for it —
+  // one thin indicator would otherwise place the whole country by noise.
+  const allIdxs=[...maps[0].keys()];
+  const idxs=allIdxs.filter(ix=>maps.every(mp=>mp.has(ix)&&!isNaN(mp.get(ix))&&baseOf(mp,ix)>=MIN_BASE));
+  const droppedC=COUNTRIES.length-idxs.length;
   const raw=idxs.map(ix=>maps.map(mp=>mp.get(ix)));
   const d=FEAT.length, mu=new Array(d).fill(0), sd=new Array(d).fill(0);
   raw.forEach(r=>r.forEach((v,q)=>mu[q]+=v)); for(let q=0;q<d;q++) mu[q]/=(raw.length||1);
@@ -824,7 +1097,7 @@ function renderClusters(){
   nodes.forEach(n=>{ const reg=CREGION[n.ix]>0?regLabel(CREGION[n.ix]):''; s+=`<circle class="scatter-pt" cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${rB.toFixed(1)}" fill="${colourOf(n)}" fill-opacity="0.88" data-tip="${esc(COUNTRIES[n.ix].name)}" data-sub="Cluster ${n.cl+1}${reg?' · '+esc(reg):''}${tipExtra(n)}"/>`; });
   s+='</svg>'; $('#cluster-svg').outerHTML=s; $('#cluster-legend').innerHTML=legendHTML;
   $('#cluster-title').textContent=`Country clusters by ${basisLabel} profile — coloured by ${cb==='cluster'?'cluster':cb==='region'?'global region':cb==='income'?'income group':M[cb.slice(2)].key}`;
-  $('#cluster-note').innerHTML=`Bubbles that sit together share a similar ${basisLabel} profile across ${FEAT.length} indicators (k-means, k=${k}, standardised). Position reflects similarity — there are no axes. Use “Cluster by” to switch the basis, and “Colour by” to overlay region, income group or any response.`;
+  $('#cluster-note').innerHTML=`${idxs.length} of ${COUNTRIES.length} countries clustered. Bubbles that sit together share a similar ${basisLabel} profile across ${FEAT.length} indicators (k-means, k=${k}, standardised). Position reflects similarity — there are no axes. Use “Cluster by” to switch the basis, and “Colour by” to overlay region, income group or any response.` + (droppedC ? ` ${droppedC} ${droppedC===1?'country is':'countries are'} left out for want of a usable answer on at least one indicator (fewer than ${MIN_BASE} answers, or the item was not asked there).` : '');
   const byCl=Array.from({length:k},()=>[]); idxs.forEach((ix,i)=>byCl[assign[i]].push(i));
   let html='<div class="sec-label">Clusters</div>';
   byCl.forEach((members,ci)=>{ if(!members.length) return;
@@ -868,10 +1141,22 @@ function renderClusters(){
 function renderTrendCourse(){
   const q = Q[ctrl.question]; if(!q){ return; }
   const yearDim = DIM['year']; if(!yearDim){ $('#tc-title').textContent = 'Time course (year dimension missing)'; return; }
-  const groups = distribution(ctrl.question, 'year');   // Map(code → {total, counts:Map(answerCode→w)})
-  const years = [...groups.keys()].sort((a,b)=>a-b);
+  const groups = distribution(ctrl.question, 'year');   // Map(code → {total, n, counts:Map(answerCode→w)})
+  // Every wave the current selection is actually IN, not just the waves that
+  // answered this question. A wave that was surveyed but never asked the item
+  // (China in 2021 carries a whole block of unasked questions) then shows as an
+  // explicit "not asked" slot instead of silently disappearing from the chart.
+  const yrCol = col(yearDim.col), inSel = new Set();
+  forEachRow(i=>{ const y = yrCol[i]; if(y>=0) inSel.add(y); });
+  const years = (yearDim.cats||[]).map(c=>c.code).filter(c=>inSel.has(c)).sort((a,b)=>a-b);
   if(!years.length){ $('#tc-title').textContent = q.label + ' — no data'; return; }
   const yearLabel = code => { const c = (yearDim.cats||[]).find(c=>c.code===code); return c ? c.label : String(code); };
+  // Three states per wave: answered enough to draw, answered too few times to
+  // report, or never asked at all. The last two look identical on a chart, so
+  // the empty slot is labelled with which one it is.
+  const stateOf = yr => { const e = groups.get(yr);
+    if(e && e.n >= MIN_BASE) return 'ok';
+    return (e && e.n) ? 'thin' : 'unasked'; };
 
   $('#tc-title').textContent = q.label + ' — by wave';
   const stack = stackOrder(q);
@@ -893,20 +1178,22 @@ function renderTrendCourse(){
   const xCentre = i => pad.l + slotW * i + slotW/2;
   const bars = years.map((yr, i)=>{
     const e = groups.get(yr); const cx = xCentre(i), x = cx - barW/2;
+    const st = stateOf(yr), ok = st === 'ok';
     let acc = pad.t;
     const segs = stack.map(a=>{
-      const w = e.counts.get(a.code)||0;
-      const frac = e.total ? w / e.total : 0;
+      const w = ok ? (e.counts.get(a.code)||0) : 0;
+      const frac = (ok && e.total) ? w / e.total : 0;
       const h = frac * ph;
       const seg = {a, frac, h, y0: acc, y1: acc + h};
       acc += h;
       return seg;
     });
-    return {yr, e, cx, x, segs};
+    return {yr, e, ok, st, cx, x, segs};
   });
   // Connecting ribbons between adjacent waves so the eye reads the trend
   for(let i=0; i<bars.length-1; i++){
     const A = bars[i], B = bars[i+1];
+    if(!A.ok || !B.ok) continue;      // don't draw a trend across a wave that never asked the question
     const x1 = A.x + barW, x2 = B.x;
     A.segs.forEach((sa, k)=>{ const sb = B.segs[k]; if(!sa || !sb || (sa.frac===0 && sb.frac===0)) return;
       const path = `M ${x1} ${sa.y0.toFixed(1)} L ${x2} ${sb.y0.toFixed(1)} L ${x2} ${sb.y1.toFixed(1)} L ${x1} ${sa.y1.toFixed(1)} Z`;
@@ -914,35 +1201,53 @@ function renderTrendCourse(){
     });
   }
   bars.forEach((b)=>{
-    b.segs.forEach(seg=>{
+    if(!b.ok){
+      // Surveyed that wave, but nothing reportable for this question.
+      const lbl = b.st === 'thin' ? 'too few' : 'not asked';
+      const sub = b.st === 'thin'
+        ? `Only ${b.e.n} answer${b.e.n===1?'':'s'} in this wave for the current selection — too few to report`
+        : 'Question not asked in this wave for the current selection';
+      s += `<rect x="${b.x.toFixed(1)}" y="${pad.t}" width="${barW.toFixed(1)}" height="${ph.toFixed(1)}" fill="#f4f4f7" stroke="#e4e4ea" stroke-dasharray="3 3" data-tip="${esc(yearLabel(b.yr))}" data-sub="${esc(sub)}"/>`;
+      s += `<text x="${b.cx.toFixed(1)}" y="${(pad.t + ph/2).toFixed(1)}" font-size="11" fill="#8a8a96" text-anchor="middle">${lbl}</text>`;
+    } else b.segs.forEach(seg=>{
       if(seg.h <= 0.1) return;
       s += `<rect x="${b.x.toFixed(1)}" y="${seg.y0.toFixed(1)}" width="${barW.toFixed(1)}" height="${seg.h.toFixed(1)}" fill="${seg.a.color}" data-tip="${esc(yearLabel(b.yr))} — ${esc(seg.a.label)}" data-sub="${(seg.frac*100).toFixed(1)}% of respondents"/>`;
     });
     s += `<text x="${b.cx.toFixed(1)}" y="${(H - pad.b + 16).toFixed(1)}" font-size="12" fill="#2a2a35" text-anchor="middle" font-weight="700">${esc(yearLabel(b.yr))}</text>`;
-    s += `<text x="${b.cx.toFixed(1)}" y="${(H - pad.b + 32).toFixed(1)}" font-size="10" fill="#6c6c78" text-anchor="middle">n = ${Math.round(b.e.total).toLocaleString()}</text>`;
+    s += `<text x="${b.cx.toFixed(1)}" y="${(H - pad.b + 32).toFixed(1)}" font-size="10" fill="#6c6c78" text-anchor="middle">${b.ok ? 'n = ' + b.e.n.toLocaleString() : '—'}</text>`;
   });
   s += '</svg>'; $('#tc-chart').outerHTML = s;
 
-  $('#tc-note').textContent = "Bars sum to 100% within each wave. Don't know / Refused are kept in the denominator. Ribbons connect equivalent answer bands across waves so the eye reads the trend; the n underneath each bar is the unweighted respondent count for that wave.";
+  const notAsked = bars.filter(b=>b.st==='unasked').map(b=>yearLabel(b.yr));
+  const tooFew   = bars.filter(b=>b.st==='thin').map(b=>yearLabel(b.yr));
+  $('#tc-note').textContent = "Bars sum to 100% within each wave. Don't know / Refused are kept in the denominator. Ribbons connect equivalent answer bands across waves so the eye reads the trend; the n underneath each bar is the unweighted respondent count for that wave."
+    + (notAsked.length ? ` Marked “not asked”: ${notAsked.join(', ')} — the current selection was surveyed in ${notAsked.length===1?'that wave':'those waves'} but was never put this question.` : '')
+    + (tooFew.length ? ` Marked “too few”: ${tooFew.join(', ')} — under ${MIN_BASE} answers, too thin to report.` : '')
+    + " The set of countries surveyed changes between waves, so part of any movement across the whole poll is a change in who was asked, not a change of mind — filter to one country to read a clean trend.";
 
   lastExport = { name:`wrp_trend_course_${ctrl.question}`,
     cols:['Wave', 'Answer', 'Percent'],
-    rows: bars.flatMap(b => b.segs.map(seg => [yearLabel(b.yr), seg.a.label, (seg.frac*100).toFixed(2)])) };
+    rows: bars.flatMap(b => b.ok
+      ? b.segs.map(seg => [yearLabel(b.yr), seg.a.label, (seg.frac*100).toFixed(2)])
+      : [[yearLabel(b.yr), 'not asked', '']]) };
 }
 
 /* ---------- Trends view 2: per-country change between two waves on one metric ---------- */
 function metricByCountryAndYear(metric, yearCode){
   const bd = col(DIM['countrynew'].col), yr = col(DIM['year'].col), w = WEIGHT, agg = new Map();
+  const finish=(scale)=>{ const out=new Map(), base=new Map();
+    agg.forEach((e,g)=>{ out.set(g, e[1] ? e[0]/e[1]*scale : NaN); base.set(g, e[2]); });
+    out.base=base; return out; };
   if(isMean(metric)){
     const v = col(metric.col);
     forEachRow(i=>{ if(yr[i] !== yearCode) return; const x = v[i]; if(x < 0) return; const g = bd[i]; if(g < 0) return;
-      let e = agg.get(g); if(!e){ e=[0,0]; agg.set(g,e); } e[0] += w[i] * (x/100); e[1] += w[i]; });
-    const out = new Map(); agg.forEach((e,g)=>out.set(g, e[1] ? e[0]/e[1] : NaN)); return out;
+      let e = agg.get(g); if(!e){ e=[0,0,0]; agg.set(g,e); } e[0] += w[i] * (x/100); e[1] += w[i]; e[2]++; });
+    return finish(1);
   }
   const q = col(metric.col), num = new Set(metric.num);
   forEachRow(i=>{ if(yr[i] !== yearCode) return; const a = q[i]; if(a < 0) return; const g = bd[i]; if(g < 0) return;
-    let e = agg.get(g); if(!e){ e=[0,0]; agg.set(g,e); } e[1] += w[i]; if(num.has(a)) e[0] += w[i]; });
-  const out = new Map(); agg.forEach((e,g)=>out.set(g, e[1] ? e[0]/e[1]*100 : NaN)); return out;
+    let e = agg.get(g); if(!e){ e=[0,0,0]; agg.set(g,e); } e[1] += w[i]; e[2]++; if(num.has(a)) e[0] += w[i]; });
+  return finish(100);
 }
 
 async function renderTrendMap(){
@@ -955,19 +1260,30 @@ async function renderTrendMap(){
 
   const a = metricByCountryAndYear(m, fromC), b = metricByCountryAndYear(m, toC);
   const deltas = new Map();
-  a.forEach((va, g)=>{ const vb = b.get(g); if(va==null || vb==null || isNaN(va) || isNaN(vb)) return; deltas.set(g, vb - va); });
+  let thin = 0;
+  a.forEach((va, g)=>{ const vb = b.get(g); if(va==null || vb==null || isNaN(va) || isNaN(vb)) return;
+    // Both ends need a reportable base: a change computed off a handful of
+    // answers in either wave is noise wearing the clothes of a trend.
+    if(baseOf(a,g)<MIN_BASE || baseOf(b,g)<MIN_BASE){ thin++; return; }
+    deltas.set(g, vb - va); });
   const iso2val = new Map(); deltas.forEach((d, idx)=>{ const iso = COUNTRIES[idx] && COUNTRIES[idx].iso3; if(iso) iso2val.set(iso, d); });
   const vals = [...iso2val.values()];
-  const maxAbs = Math.max(0.5, ...vals.map(Math.abs));
+  // The floor stops a wave with almost no movement from being drawn as if it
+  // were dramatic. It has to be in the metric's own units: percentage metrics
+  // are 0-100 here, index metrics 0-1, so a flat 0.5 floor meant every index
+  // change (typically 0.01-0.05, i.e. 1-5 points) landed inside the first 4% of
+  // the ramp and the whole map came out blank.
+  const maxAbs = Math.max(isMean(m) ? 0.005 : 0.5, ...vals.map(Math.abs));
 
   const DIVERGE = ['#0d6e6e', '#7fc5c3', '#f4eef0', '#e89cbf', '#9b0b50'];
   const colour = d => { const t = Math.max(-1, Math.min(1, d / maxAbs)); return rampColor(DIVERGE, (t + 1) / 2); };
 
   const world = await ensureWorld();
+  if(M[ctrl.metric1] !== m) return;   // wave switched while the topology loaded
   const svg = d3.select('#tm-svg'); svg.selectAll('*').remove();
   if(!world){ svg.append('text').attr('x', 360).attr('y', 190).attr('text-anchor','middle').attr('fill', '#6c6c78').text('Map unavailable (offline)'); }
   else{
-    const W = 720, H = 380, proj = d3.geoNaturalEarth1().fitExtent([[6,6],[W-6,H-6]], {type:'Sphere'}), path = d3.geoPath(proj);
+    const W = 720, H = 380, proj = EQUAL_EARTH().fitExtent([[6,6],[W-6,H-6]], {type:'Sphere'}), path = d3.geoPath(proj);
     svg.append('path').attr('class','map-sphere').attr('fill','#eef1f4').attr('d', path({type:'Sphere'}));
     svg.selectAll('path.c').data(world.features.filter(f=>pad3(f.id)!=='010')).enter().append('path')
       .attr('d', path).attr('class', f=>{ const iso = NUM2A3[pad3(f.id)]; return iso2val.has(iso) ? 'map-land' : 'map-land-nodata'; })
@@ -983,9 +1299,24 @@ async function renderTrendMap(){
     `<span class="bar" style="background:linear-gradient(to right,${DIVERGE.join(',')})"></span>` +
     `<span>${fmtDelta(maxAbs)}</span>` +
     `<span style="margin-left:1rem;color:var(--lrf-muted)">0 = no change</span>`;
-  $('#tm-note').textContent = isMean(m)
+  // A metric the build flagged as not comparable between waves - the published
+  // Worry and Experience indices, whose item set, answer base and scaling all
+  // change from wave to wave - produces a difference between two different
+  // measures. The figure is still drawn, because it is each wave's own headline
+  // number, but the caveat has to travel with it.
+  const notComparable = m.comparable === false;
+  // The full caveat sits in the note under the pickers (updateMetricNote); here
+  // we only need the reminder next to the figure itself.
+  $('#tm-note').textContent = (notComparable
+      ? `⚠ ${m.label.replace(/\s*\(0[–-]100\)\s*$/,'')} is built differently in each wave — see the note above the chart. `
+      : '')
+    + (isMean(m)
     ? `Change in ${m.label.replace(/\s*\(0[–-]100\)\s*$/,'')} between the two waves, on the 0–100 index scale. ${[...iso2val].length} countries with data in both waves.`
-    : `Change in percentage points between the two waves. ${[...iso2val].length} countries with data in both waves. A +5 pp shift means an extra 5 in 100 respondents now picking that answer.`;
+    : `Change in percentage points between the two waves. ${[...iso2val].length} countries with data in both waves. A +5 pp shift means an extra 5 in 100 respondents now picking that answer.`)
+    + ' Countries missing from one of the two waves, or not asked the question there, are left blank.'
+    + baseNote(thin, 'country');
+  const tmCard = document.querySelector('#view-trend-map .card');
+  if(tmCard) tmCard.classList.toggle('warn', notComparable);
 
   const keys = [...deltas.keys()].sort((a,b)=>deltas.get(b)-deltas.get(a));
   const rows = keys.map((g,i)=>{
@@ -1011,7 +1342,8 @@ async function renderTrendMap(){
 
   lastExport = { name:`wrp_change_${ctrl.metric1}_${fromC}_to_${toC}`,
     cols:['Country','ISO3', yLab(fromC), yLab(toC), 'delta'],
-    rows: keys.map(g=>[COUNTRIES[g].name, COUNTRIES[g].iso3||'', csvNum(m, a.get(g)), csvNum(m, b.get(g)), (deltas.get(g)).toFixed(3)]) };
+    rows: keys.map(g=>[COUNTRIES[g].name, COUNTRIES[g].iso3||'', csvNum(m, a.get(g)), csvNum(m, b.get(g)),
+                       (isMean(m) ? deltas.get(g)*100 : deltas.get(g)).toFixed(1)]) };
 }
 
 /* ---------- Dataset details: per-country wave coverage ---------- */
@@ -1019,7 +1351,7 @@ let COUNTRY_WAVES = null;
 async function ensureCountryWaves(){
   if(COUNTRY_WAVES) return COUNTRY_WAVES;
   try{
-    COUNTRY_WAVES = await fetch('data/country_waves.json', {cache:'no-store'}).then(r=>r.json());
+    COUNTRY_WAVES = await fetch(dv('data/country_waves.json'), {cache:'no-store'}).then(r=>r.json());
   }catch(e){ COUNTRY_WAVES = {waves:[], countries:[]}; }
   return COUNTRY_WAVES;
 }
@@ -1074,7 +1406,17 @@ async function renderDataset(){
   $('#ds-table').innerHTML = head + tbody + foot;
   const presentByWave = waves.map(w => ({w, c: list.filter(c => (c.by_wave||{})[w] && c.by_wave[w].n>0).length}));
   $('#ds-summary').textContent = `${list.length} countries across ${waves.length} waves — ${presentByWave.map(p=>`${p.c} in ${p.w}`).join(' · ')}`;
-  $('#ds-note').textContent = "Sample n = unweighted respondent count. Pop. (PROJWT) = sum of population-projection weights, which approximates the country's adult population for that wave. A '—' means the country was not surveyed in that wave.";
+  // This view has no manifest of its own, so the hero kept whatever the last
+  // wave loaded (or the markup's 2025 defaults) and read "140 countries ·
+  // 143,459 respondents" above a table headed 148 countries. Set it from the
+  // coverage data actually on screen.
+  const ctry = document.getElementById('stat-countries');
+  if(ctry) ctry.textContent = String(list.length);
+  const resp = document.getElementById('stat-respondents');
+  if(resp) resp.textContent = grandN.toLocaleString();
+  const wnote = document.getElementById('wave-note');
+  if(wnote) wnote.textContent = `${list.length} countries · ${grandN.toLocaleString()} respondents · ${waves.length} waves`;
+  $('#ds-note').textContent = "Sample n = unweighted respondent count. Pop. (PROJWT) = sum of population-projection weights, which approximates the country's adult population for that wave. A '—' means the country was not surveyed in that wave. Being in a wave is not the same as being asked everything in it: some questions went to only part of the sample, so a country can appear here and still carry no answers to a given item — China in 2021 is one such case.";
 
   const search = $('#ds-search');
   const apply = ()=>{ const q = (search.value || '').trim().toLowerCase();

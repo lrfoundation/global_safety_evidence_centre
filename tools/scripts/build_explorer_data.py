@@ -2,8 +2,14 @@
 """
 Build the World Risk Poll 2025 Data Explorer dataset.
 
-Reads tools/data/wrp_25.sav (SPSS microdata, PROJWT-weighted) and emits a compact
-columnar dataset the browser explorer loads once and aggregates live:
+Reads the harmonised 2025 wave file (build_wrp_waves.py output: the parquet for
+the data, the sibling .sav for labels) - the same source the other three waves
+use, so country names, weights and demographics carry identical names, codes
+and labels across the whole tool. That file also holds the corrected China
+survey and projection weights, which the older wrp_25.sav does not.
+
+Emits a compact columnar dataset the browser explorer loads once and
+aggregates live:
 
   tools/data/wrp_explorer.json     catalogue (dimensions, questions, metrics, countries)
                                    + binary manifest (column order, dtypes, byte offsets)
@@ -19,14 +25,41 @@ Encoding (smallest faithful form):
 
 Metric rule (verified against the Looker report): pct = weight(numerator codes)
 / weight(all non-missing for that variable, INCLUDING DK 98 and Refused 99).
+
+Set WRP_CLEAN_DIR to point at the 'Datafile cleaning/output' folder if it is
+not at the default location.
 """
 import json, gzip, struct, os, sys
 import numpy as np
+import pandas as pd
 import pyreadstat
+
+from wrp_indices import experience_index_2025
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.normpath(os.path.join(HERE, "..", "data"))
-SAV = os.path.join(DATA, "wrp_25.sav")
+
+# Harmonised, cleaned wave files (build_wrp_waves.py output). Same source as the
+# other three waves now use, so the demographics carry identical names, codes
+# and labels across the whole tool, and the corrected China weights come in with
+# the data rather than being patched on afterwards. Override with WRP_CLEAN_DIR.
+CLEAN_DIR = os.environ.get("WRP_CLEAN_DIR", r"D:\Repos\Foundation\Datafile cleaning\output")
+CLEAN_2025 = os.path.join(CLEAN_DIR, "WRP_2025", "WRP_2025.parquet")
+CLEAN_2025_SAV = os.path.join(CLEAN_DIR, "WRP_2025", "WRP_2025.sav")
+
+
+def load_2025():
+    """(df, value_labels) for the harmonised 2025 wave."""
+    for path in (CLEAN_2025, CLEAN_2025_SAV):
+        if not os.path.exists(path):
+            raise SystemExit(
+                f"Harmonised 2025 wave file not found at {path}. Point WRP_CLEAN_DIR at "
+                "the 'Datafile cleaning/output' folder, or re-run build_wrp_waves.py."
+            )
+    df = pd.read_parquet(CLEAN_2025)
+    _, meta = pyreadstat.read_sav(CLEAN_2025_SAV, metadataonly=True)
+    return df, {k: dict(v) for k, v in meta.variable_value_labels.items()}
+
 
 # ---- WRP data-viz palette (matches Chart/Map Studio "WRP set") ----
 POS_COLOURS = ["#e3076e", "#00a7b3", "#00785c", "#f07800", "#7a50de"]  # codes 1..5
@@ -59,16 +92,18 @@ EXPERIENCE = [  # 1=personally 2=know someone 3=both 4=No 98 99
     ("WP22447", "exp_mental_health", "Experienced harm: mental health"),
     ("WP22448", "exp_work", "Experienced harm: work"),
 ]
-TRUST = [  # 1=a lot 2=somewhat 3=not at all 98 99
-    # govt_cares is blended with authorities_care (WP22469) further below:
-    # WP22469 only carries data in Myanmar, where WP22231 is missing.
-    ("WP22231", "govt_cares", "Government / authorities care about your wellbeing"),
+TRUST = [  # 1=a lot 2=somewhat 3=not at all 99=DK/Refused
+    # WP22231_ALL is WP22231 with Myanmar and Vietnam folded in (their versions
+    # of the question sit in WP22469 and WP22525) and DK/Refused collapsed to
+    # 99. Verified as an exact superset: it agrees with WP22231 on every
+    # overlapping respondent once 98/99 are merged, and adds 2,003 answers the
+    # hand-rolled Myanmar-only blend this script used to do never reached.
+    ("WP22231_ALL", "govt_cares", "Government / authorities care about your wellbeing"),
     ("WP22232", "neighbours_care", "Neighbours care about your wellbeing"),
 ]
 BINARY = [  # (var, slug, label, yes_codes) — 1=Yes 2=No ...
     ("WP24213", "impacted_disaster", "Impacted by a disaster (past 5 yrs)", [1]),
     ("WP24198", "govt_prepared", "National government well prepared for a disaster", [1]),
-    ("WP24386", "govt_power_prepared", "Government in power well prepared for a disaster", [1]),
     ("WP24215", "able_action", "Able to act on an advance disaster warning", [1]),
     ("WP23345", "plan_known", "Household disaster plan known by all members 10+", [1]),
     ("WP22252", "could_protect", "Could protect self/family in a future disaster", [1]),
@@ -83,18 +118,37 @@ DISC = [
 ]
 WARN_VARS = ["WP24181", "WP24182", "WP24183", "WP24184", "WP24185", "WP24186", "WP24187", "WP24188"]
 GREATEST = ("WP22331", "greatest", "Greatest source of risk to daily safety")
+# Continuous 0-1 measures shown as 0-100. worry_index_published is what LRF
+# printed for 2025; the *_score family is recomputed from the items asked in
+# identical form in every wave, so those are the ones that trend - and they are
+# the same columns the other three waves now expose. LRF published no
+# experience index for 2025, so experience_score stands in for it here.
 INDICES = [
-    ("worry_index", "Worry Index"), ("experience_index", "Experience Index"),
+    ("worry_index_published", "Worry Index"),
+    ("experience_index", "Experience Index"),
+    ("worry_score", "Worry score, 5 common items"),
+    ("worry_score_core7", "Worry score, 7 items"),
+    ("experience_score", "Experience score, self or someone known"),
+    ("experience_score_self", "Experience score, personally"),
+    ("experience_score_core7", "Experience score, 7 items"),
     ("resilience_index", "Resilience Index"), ("resilience_idv", "Resilience: individual"),
     ("resilience_hhl", "Resilience: household"), ("resilience_com", "Resilience: community"),
     ("resilience_soc", "Resilience: society"),
 ]
-# dimensions usable as filter + breakdown: (key, var, label)
+# Slug the browser uses -> harmonised column. Identical to the other waves, so a
+# filter or breakdown chosen on one wave means the same thing on the next.
 DEMOG = [
-    ("gender", "WP1219", "Gender"), ("age_5", "WP1220RECODED_1", "Age (5 groups)"),
-    ("education", "WP3117", "Education level"), ("income_quintiles", "INCOME_5", "Income quintile"),
-    ("urban_rural", "DEGURBA", "Urban / rural"), ("employment", "EMP_2010", "Employment status"),
+    ("gender", "Gender", "Gender"), ("age_5", "AgeGroups5", "Age (5 groups)"),
+    ("education", "Education", "Education level"), ("income_quintiles", "INCOME_5", "Income quintile"),
+    ("urban_rural", "Urbanicity", "Urban / rural"), ("employment", "EMP_2010", "Employment status"),
 ]
+
+# Each wave's published indices are built its own way - waves 1-3 Rasch-weight
+# seven items, wave 4 takes a simple mean of ten - so they belong on their own
+# wave's page and must not be trended against each other. The flag rides along
+# in the manifest so the browser can say so where it matters.
+NOT_COMPARABLE = {"worry_index_published", "experience_index"}
+
 
 def slug_color(code, pos_index):
     if code in SPECIAL_COLOURS:
@@ -103,46 +157,42 @@ def slug_color(code, pos_index):
 
 def main():
     cat_vars = ([v for v, *_ in WORRY] + [v for v, *_ in EXPERIENCE] + [v for v, *_ in TRUST]
-                + ["WP22469"]  # authorities_care — folded into WP22231 below
                 + [v for v, *_ in BINARY] + [v for v, *_ in DISC] + [GREATEST[0]]
-                + ["WP1219", "WP1220RECODED_1", "INCOME_5", "DEGURBA", "EMP_2010",
-                   "RegionLRF", "wbi"] + WARN_VARS)
+                + [col for _, col, _ in DEMOG]
+                + ["GlobalRegion", "CountryIncomeLevel"] + WARN_VARS)
     idx_vars = [k for k, _ in INDICES]
-    need = list(dict.fromkeys(["WPID", "COUNTRYNEW", "COUNTRY_ISO3", "PROJWT"] + cat_vars + idx_vars))
-    print(f"Reading {len(need)} columns from wrp_25.sav ...")
-    df, meta = pyreadstat.read_sav(SAV, usecols=need)
+    print("Reading the harmonised 2025 wave ...")
+    df, vl = load_2025()
+    need = list(dict.fromkeys(["Country", "COUNTRY_ISO3", "PROJWT"] + cat_vars
+                              + [v for v in idx_vars if v != "experience_index"]))
+    missing = [c for c in need if c not in df.columns]
+    if missing:
+        raise SystemExit(f"WRP_2025.parquet is missing {missing}")
+    # LRF published no Experience Index for 2025, so the harmonised file leaves
+    # the column empty. Rebuild it from the ten experience items - see
+    # wrp_indices.py, which reproduces the wave-4 release's own column exactly.
+    df["experience_index"] = experience_index_2025(df)
     n = len(df)
-    vl = meta.variable_value_labels
-    lab = meta.column_names_to_labels
-    # Blend in full-coverage education from the fuller release: WP3117 covers all 140
-    # countries, whereas wrp_25's own WP9811 only covers 49. Joined per respondent on WPID.
-    FULL = os.path.join(DATA, "Lloyds_2025_022026_w_projection_weight.sav")
-    edu, _ = pyreadstat.read_sav(FULL, usecols=["WPID", "WP3117"])
-    df = df.merge(edu, on="WPID", how="left")
-    vl["WP3117"] = {1.0: "Elementary or less", 2.0: "Secondary / some tertiary", 3.0: "Completed tertiary (degree)"}
-    lab["WP3117"] = "Education level"
-    print(f"  {n:,} respondents | education (WP3117) coverage {df.WP3117.isin([1,2,3]).mean()*100:.0f}%, "
-          f"{df.groupby('COUNTRY_ISO3').WP3117.apply(lambda s: s.isin([1,2,3]).any()).sum()} countries")
-
-    # Blend authorities_care (WP22469, asked only in Myanmar) into government_cares (WP22231)
-    # so the combined item reads as "government / authorities care" across all 140 countries.
-    gov = df["WP22231"].to_numpy(); aut = df["WP22469"].to_numpy()
-    fill = np.isnan(gov) & ~np.isnan(aut)
-    gov_blend = gov.copy(); gov_blend[fill] = aut[fill]
-    df["WP22231"] = gov_blend
-    print(f"  blended WP22469 -> WP22231 for {int(fill.sum()):,} respondents")
+    print(f"  {n:,} respondents | {df['Country'].nunique()} countries | "
+          f"education coverage {df['Education'].notna().mean()*100:.0f}% | "
+          f"experience index coverage {df['experience_index'].notna().mean()*100:.0f}%")
 
     # ---- country index + iso ----
-    cdf = df[["COUNTRYNEW", "COUNTRY_ISO3"]].dropna(subset=["COUNTRYNEW"]).drop_duplicates("COUNTRYNEW")
-    cdf = cdf.sort_values("COUNTRYNEW")
-    countries = [{"name": r.COUNTRYNEW, "iso3": (r.COUNTRY_ISO3 if isinstance(r.COUNTRY_ISO3, str) else "")}
+    cdf = df[["Country", "COUNTRY_ISO3"]].dropna(subset=["Country"]).drop_duplicates("Country")
+    cdf = cdf.sort_values("Country")
+    countries = [{"name": r.Country, "iso3": (r.COUNTRY_ISO3 if isinstance(r.COUNTRY_ISO3, str) else "")}
                  for r in cdf.itertuples()]
+    if any(not c["iso3"] for c in countries):
+        raise SystemExit("some 2025 countries have no ISO3 - the map would drop them")
     cindex = {c["name"]: i for i, c in enumerate(countries)}
-    country_col = df["COUNTRYNEW"].map(cindex).fillna(-1).to_numpy(np.int16)
+    country_col = df["Country"].map(cindex).fillna(-1).to_numpy(np.int16)
 
     # ---- derived dimensions ----
     def derive_any(vars_):
-        sub = df[vars_].to_numpy()
+        # float64, not the parquet's nullable Int64: a multi-column .to_numpy()
+        # on nullable columns yields an object array of ints and pd.NA, and
+        # every comparison below then raises on the NAs.
+        sub = df[vars_].astype("float64").to_numpy()
         yes = np.any(sub == 1, axis=1)
         answered = np.any(np.isin(sub, [1, 2]), axis=1)
         out = np.full(n, -1, np.int8)
@@ -158,7 +208,7 @@ def main():
     def add_i8(key, arr):
         columns.append((key, np.asarray(arr, np.int8), "i8"))
     def enc_cat(var):
-        a = df[var].to_numpy()
+        a = df[var].astype("float64").to_numpy()
         out = np.full(n, -1, np.int8)
         m = ~np.isnan(a)
         out[m] = a[m].astype(np.int8)
@@ -168,15 +218,15 @@ def main():
     add_i8("any_form_discrimination", any_disc)
     for var in cat_vars:
         add_i8(var, enc_cat(var))
-    # blended education (WP3117): keep substantive codes 1/2/3, drop DK(4)/RF(5) -> missing
-    edu_arr = np.full(n, -1, np.int8); ev = df["WP3117"].to_numpy(); em = np.isin(ev, [1, 2, 3]); edu_arr[em] = ev[em].astype(np.int8)
-    columns.append(("WP3117", edu_arr, "i8"))
     # indices -> 0..100 int8
     for k, _ in INDICES:
-        a = df[k].to_numpy()
+        a = df[k].to_numpy(dtype=float)
         out = np.full(n, -1, np.int8)
         m = ~np.isnan(a)
-        out[m] = np.clip(np.rint(a[m] * 100), 0, 100).astype(np.int8)
+        vals = a[m]
+        if len(vals) and np.nanmax(vals) <= 1.5:
+            vals = vals * 100
+        out[m] = np.clip(np.rint(vals), 0, 100).astype(np.int8)
         columns.append((k, out, "i8"))
 
     # ---- build catalogues ----
@@ -241,15 +291,24 @@ def main():
                                       {"code": 2, "label": "No", "color": SPECIAL_COLOURS[98]}]})
         metrics.append({"key": f"{key}_yes", "col": key, "num": [1], "label": f"{arr_label} (%)"})
     # index metrics (continuous mean, displayed as 0–100)
+    # Metric slugs match the other three waves exactly: worry_index is the
+    # published index, worry_score / experience_score are the recomputed
+    # common-item ones. 2025 has no published experience index, so there is no
+    # experience_index metric here - experience_score is the measure to use.
+    INDEX_SLUG = {"worry_index_published": "worry_index"}
     for k, label in INDICES:
-        metrics.append({"key": k, "col": k, "kind": "mean", "label": f"{label} (0–100)"})
+        rec = {"key": INDEX_SLUG.get(k, k), "col": k, "kind": "mean",
+               "label": f"{label} (0-100)"}
+        if k in NOT_COMPARABLE:
+            rec["comparable"] = False
+        metrics.append(rec)
 
     # ---- dimensions (filter + breakdown) ----
     def dim_cats(var):
         return [{"code": a["code"], "label": a["label"]} for a in answers_for(var)]
     dimensions.append({"key": "countrynew", "col": "country", "label": "Country", "type": "country"})
-    dimensions.append({"key": "GlobalRegion", "col": "RegionLRF", "label": "Global region", "cats": dim_cats("RegionLRF")})
-    dimensions.append({"key": "CountryIncome", "col": "wbi", "label": "Country income group", "cats": dim_cats("wbi")})
+    dimensions.append({"key": "GlobalRegion", "col": "GlobalRegion", "label": "Global region", "cats": dim_cats("GlobalRegion")})
+    dimensions.append({"key": "CountryIncome", "col": "CountryIncomeLevel", "label": "Country income group", "cats": dim_cats("CountryIncomeLevel")})
     for key, var, label in DEMOG:
         dimensions.append({"key": key, "col": var, "label": label, "cats": dim_cats(var)})
     # Question-based filter dimensions — matched to the canonical 5×4 grid
@@ -274,13 +333,23 @@ def main():
         ("WP22228", "fin_res",                   "Financial resilience"),
         ("WP23345", "plan_known",                "Household disaster plan"),
         # — trust / care —
-        ("WP22231", "govt_cares",                "Government / authorities care"),
+        ("WP22231_ALL", "govt_cares",            "Government / authorities care"),
         ("WP22232", "neighbours_care",           "Neighbours care"),
     ][:11]:   # cap at 11 content slots so total = country + 8 demog + 11 = 20
         dimensions.append({"key": slug, "col": var, "label": label, "cats": dim_cats(var)})
 
+    # ---- catalogue sanity ----
+    for field, items in (("question", questions), ("metric", metrics),
+                         ("dimension", dimensions)):
+        keys = [x["key"] for x in items]
+        dupes = sorted({k for k in keys if keys.count(k) > 1})
+        if dupes:
+            raise SystemExit(f"duplicate {field} keys {dupes}")
+
     # ---- weight ----
-    weight = df["PROJWT"].fillna(0).to_numpy(np.float32)
+    if df["PROJWT"].isna().any():
+        raise SystemExit(f"{int(df['PROJWT'].isna().sum()):,} respondents have no PROJWT")
+    weight = df["PROJWT"].to_numpy(np.float32)
 
     # ---- pack binary (column-major) ----
     blob = bytearray()
@@ -321,8 +390,8 @@ def main():
 
     # ---- verification (metric = num / all-non-missing, weighted) ----
     def metric_pct(country, var, num):
-        a = df[df.COUNTRYNEW == country]
-        w = a["PROJWT"].to_numpy(); v = a[var].to_numpy()
+        a = df[df["Country"] == country]
+        w = a["PROJWT"].to_numpy(); v = a[var].astype("float64").to_numpy()
         den = w[~np.isnan(v)].sum()
         nu = w[np.isin(v, num)].sum()
         return nu / den * 100 if den else float("nan")

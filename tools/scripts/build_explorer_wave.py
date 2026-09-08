@@ -2,20 +2,34 @@
 """
 Build per-wave World Risk Poll explorer datasets.
 
-For each wave we read its OWN .sav (so every question that wave carries is
-exposed), blend PROJWT in from the trended file for waves that lack it, and
-emit a manifest the existing browser engine can load.
+Every wave is read from the harmonised wave files produced by
+build_wrp_waves.py - the parquet for the data, the sibling .sav (metadata only)
+for the variable and value labels. All four waves share one set of column
+names, codes and labels for country, weights and demographics, so a single
+config covers them and the per-wave blending this script used to do is gone:
 
-Sources:
-    data/19_wrp.sav         2019 wave (227 cols)
-    data/21_wrp.sav         2019+2021 — we filter to Year==2021
-    data/23_wrp.sav         2023 wave (63 cols, has PROJWT)
-    data/trended_wrp.sav    Cross-wave file (2019-2023) — used as the trended
-                            page source AND as the source of PROJWT for waves
-                            that lack it; we also append wrp_25.sav onto it.
-    data/wrp_25.sav         2025 (kept on its own pipeline in
-                            build_explorer_data.py; concatenated onto trended
-                            here as Year==2025).
+  * PROJWT ships with every wave, so there is no blending from the trended file
+    and no synthetic weight for the five 2019 countries that file omits
+    (Belarus, Jamaica, Lesotho, Rwanda, Turkmenistan, 4,718 respondents, whose
+    projected populations were 5x to 26x too large under the old fallback).
+  * COUNTRY_ISO3 ships with every wave, so there is no ISO3 blending and no
+    hand-maintained fallback table.
+  * The demographics carry identical names and codes in every wave, so a filter
+    chosen on one wave means the same thing on the next.
+
+The trended page stacks all four waves. 2019 kept the field questionnaire's
+L-codes, so those columns are renamed onto the WP numbers the later waves use
+(L_TO_WP_2019, verified respondent-by-respondent against Gallup's trended
+file), and the items whose source variable changed between waves are bridged
+onto common columns (BRIDGES).
+
+Sources (override the folder with WRP_CLEAN_DIR):
+    <WRP_CLEAN_DIR>/WRP_2019/WRP_2019.parquet  + .sav for labels
+    <WRP_CLEAN_DIR>/WRP_2021/WRP_2021.parquet  + .sav
+    <WRP_CLEAN_DIR>/WRP_2023/WRP_2023.parquet  + .sav
+    <WRP_CLEAN_DIR>/WRP_2025/WRP_2025.parquet  + .sav   (trended stack only;
+                            the single-wave 2025 page is built by
+                            build_explorer_data.py from the same file)
 
 Run:
     python scripts/build_explorer_wave.py --wave 2019
@@ -28,86 +42,209 @@ Outputs (per wave):
     data/wrp_explorer_<wave>.json
     data/wrp_explorer_<wave>.bin
     data/wrp_explorer_<wave>.bin.gz
+and, with --wave all, data/country_waves.json for the Dataset details tab.
 """
 import argparse, json, gzip, os, re
 import numpy as np
 import pandas as pd
 import pyreadstat
 
+from wrp_indices import experience_index_2025
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.normpath(os.path.join(HERE, "..", "data"))
+
+# Root of the harmonised wave files (build_wrp_waves.py output). Override when
+# the "Datafile cleaning/output" folder lives somewhere else.
+CLEAN_DIR = os.environ.get("WRP_CLEAN_DIR", r"D:\Repos\Foundation\Datafile cleaning\output")
 
 # ---- WRP data-viz palette (must match build_explorer_data.py / Chart Studio) ----
 POS_COLOURS    = ["#e3076e", "#00a7b3", "#00785c", "#f07800", "#7a50de"]
 SPECIAL_COLOURS = {97: "#d8d8de", 98: "#bdbdbd", 99: "#0d2240"}
 
 # ---------------------------------------------------------------------------
-# WAVE CONFIG — each wave knows where its data lives, which year (if any) it
-# needs to be filtered to, and what its demographic columns are called.
+# WAVE CONFIG - every wave now comes from the harmonised build_wrp_waves.py
+# output: WRP_<year>.parquet for the data, the sibling WRP_<year>.sav for the
+# variable and value labels. All four waves share one set of harmonised column
+# names (Country, COUNTRY_ISO3, PROJWT, Gender, Education, ...), so there is no
+# per-wave demographic map, no PROJWT blending and no ISO3 blending any more.
 # ---------------------------------------------------------------------------
-def cfg(sav, *, year_filter=None, country_col="Country", iso3_col="COUNTRY_ISO3",
-        weight_col="PROJWT", blend_projwt_from=None, demog=None, out=None,
-        include_year_dim=False, append_wrp25=False, label=None, lede=None):
-    return {"sav": sav, "year_filter": year_filter, "country_col": country_col,
-            "iso3_col": iso3_col, "weight_col": weight_col,
-            "blend_projwt_from": blend_projwt_from, "demog": demog or [],
-            "out": out, "include_year_dim": include_year_dim,
-            "append_wrp25": append_wrp25, "label": label, "lede": lede}
+def cfg(year, *, demog=None, out=None, include_year_dim=False, stack_all=False,
+        label=None, lede=None):
+    return {"year": year, "demog": demog or [], "out": out,
+            "include_year_dim": include_year_dim, "stack_all": stack_all,
+            "label": label, "lede": lede}
 
-# Each demographic = (slug,  source col,  user-facing label).
-# Slugs are the harmonised browser keys ('gender', 'age_5', …) the JS engine
-# expects so the same code renders every wave.
-# Order: country (auto, position 1) → region → country-income → gender → age →
-# education → income quintile → urban/rural → employment → wave-content.
-DEMOG_2019 = [
-    ("GlobalRegion",     "RegionReport", "Global region"),
-    ("CountryIncome",    "WBI",          "Country income group"),
-    ("gender",           "WP1219",       "Gender"),
-    ("age_5",            "AgeGroups",    "Age (groups)"),
-    ("education",        "Education",    "Education level"),
-    ("income_quintiles", "INCOME_5",     "Income quintile"),
-    ("urban_rural",      "Urbanicity",   "Urban / rural"),
-    ("employment",       "EMP_2010",     "Employment status"),
+# Each demographic = (slug, source col, user-facing label). Slugs are the
+# browser keys ('gender', 'age_5', ...) the JS engine expects, so the same code
+# renders every wave. One list now covers all four waves.
+# Order: country (auto, position 1) -> region -> country-income -> gender ->
+# age -> education -> income quintile -> urban/rural -> employment.
+DEMOG = [
+    ("GlobalRegion",     "GlobalRegion",       "Global region"),
+    ("CountryIncome",    "CountryIncomeLevel", "Country income group"),
+    ("gender",           "Gender",             "Gender"),
+    ("age_5",            "AgeGroups5",         "Age (5 groups)"),
+    ("education",        "Education",          "Education level"),
+    ("income_quintiles", "INCOME_5",           "Income quintile"),
+    ("urban_rural",      "Urbanicity",         "Urban / rural"),
+    ("employment",       "EMP_2010",           "Employment status"),
 ]
-DEMOG_2021 = [
-    ("GlobalRegion",     "GlobalRegion",            "Global region"),
-    ("CountryIncome",    "CountryIncomeLevel2021", "Country income group"),
-    ("gender",           "Gender",                  "Gender"),
-    ("age_5",            "AgeGroups4",              "Age (4 groups)"),
-    ("education",        "Education",               "Education level"),
-    ("income_quintiles", "INCOME_5",                "Income quintile"),
-    ("urban_rural",      "Urbanicity",              "Urban / rural"),
-    ("employment",       "EMP_2010",                "Employment status"),
-]
-DEMOG_2023 = [
-    ("GlobalRegion",     "GlobalRegion",            "Global region"),
-    ("CountryIncome",    "CountryIncomeLevel2023", "Country income group"),
-    ("gender",           "Gender",                  "Gender"),
-    ("age_5",            "AgeGroups5",              "Age (5 groups)"),
-    ("education",        "Education",               "Education level"),
-    ("income_quintiles", "INCOME_5",                "Income quintile"),
-    ("urban_rural",      "Urbanicity",              "Urban / rural"),
-    ("employment",       "EMP_2010",                "Employment status"),
-]
-# Trended/2025-appended share the same naming (post-rename) as 2023.
-DEMOG_TRENDED = DEMOG_2023
 
 WAVE_CONFIG = {
-    "2019":    cfg("19_wrp.sav", country_col="countrynew", iso3_col=None,
-                   weight_col=None, blend_projwt_from=("trended_wrp.sav", 2019),
-                   demog=DEMOG_2019, out="wrp_explorer_2019",
-                   label="2019",  lede="Explore the 2019 World Risk Poll — every question Lloyd's Register Foundation fielded that year, filterable by demographics. All figures are population-weighted."),
-    "2021":    cfg("21_wrp.sav", year_filter=("Year", 2021),
-                   weight_col="PROJWT_2021",
-                   demog=DEMOG_2021, out="wrp_explorer_2021",
+    "2019":    cfg(2019, demog=DEMOG, out="wrp_explorer_2019",
+                   label="2019",  lede="Explore the 2019 World Risk Poll - every question Lloyd's Register Foundation fielded that year, filterable by demographics. All figures are population-weighted."),
+    "2021":    cfg(2021, demog=DEMOG, out="wrp_explorer_2021",
                    label="2021",  lede="Explore the 2021 World Risk Poll across worry, experienced harm, disaster resilience, trust and discrimination. All figures are population-weighted."),
-    "2023":    cfg("23_wrp.sav",
-                   demog=DEMOG_2023, out="wrp_explorer_2023",
+    "2023":    cfg(2023, demog=DEMOG, out="wrp_explorer_2023",
                    label="2023",  lede="Explore the 2023 World Risk Poll across worry, experienced harm, disaster resilience, trust and discrimination. All figures are population-weighted."),
-    "trended": cfg("trended_wrp.sav", append_wrp25=True, include_year_dim=True,
-                   demog=DEMOG_TRENDED, out="wrp_explorer_trended",
-                   label="2019–2025", lede="Cross-wave view: every respondent from 2019, 2021, 2023 and 2025 in a single dataset. Use the survey-year filter or breakdown to see how worry, experienced harm and resilience have moved over time."),
+    "trended": cfg(None, stack_all=True, include_year_dim=True,
+                   demog=DEMOG, out="wrp_explorer_trended",
+                   label="2019-2025", lede="Cross-wave view: every respondent from 2019, 2021, 2023 and 2025 in a single dataset. Use the survey-year filter or breakdown to see how worry, experienced harm and resilience have moved over time."),
 }
+ALL_YEARS = (2019, 2021, 2023, 2025)
+
+# 2019 kept the field questionnaire's L-codes; from 2021 the same items carry
+# the WP numbers. Verified respondent-by-respondent against Gallup's own
+# trended file: for every pair below the two columns agree on more than 99.9%
+# of the 149,477 shared 2019 respondents. Applied only when stacking waves, so
+# the single-wave 2019 page keeps its native names and its own question wording.
+L_TO_WP_2019 = {
+    "L2":   "WP20711",   # feel safer than five years ago
+    "L3_A": "WP20713",   # greatest source of risk (2019 code frame)
+    "L5":   "WP20719",   # climate change a threat
+    "L6A":  "WP20720",   # worried about food
+    "L6B":  "WP20721",   # worried about water
+    "L6C":  "WP20722",   # worried about violent crime
+    "L6D":  "WP20723",   # worried about severe weather
+    "L6G":  "WP20726",   # worried about mental health
+}
+
+# Bridge variables built for the stacked file, so a question whose source
+# variable changed between waves still trends. Each entry is
+#   target: {year: (source var, {source code: bridged code})}
+# and the bridged codes are always 1 = yes, 2 = no, 99 = DK/Refused. This
+# reproduces the recodes in Gallup's trended file (checked against
+# harm_food_trended and disaster_experienced) and extends them to 2025, which
+# that file predates.
+_EXP_4CODE = {1: 1, 2: 1, 3: 1, 4: 2, 98: 99, 99: 99}   # 1/2/3 = any experience
+_YESNO = {1: 1, 2: 2, 98: 99, 99: 99}
+
+
+def _harm(l_code, wp_code):
+    return {2019: (l_code, _YESNO), 2021: (wp_code, _EXP_4CODE),
+            2023: (wp_code, _EXP_4CODE), 2025: (wp_code, _EXP_4CODE)}
+
+
+BRIDGES = {
+    "harm_food_trended":          _harm("L8A", "WP22442"),
+    "harm_water_trended":         _harm("L8B", "WP22443"),
+    "harm_crime_trended":         _harm("L8C", "WP22444"),
+    "harm_weather_trended":       _harm("L8D", "WP22445"),
+    "harm_mental_health_trended": _harm("L8G", "WP22447"),
+    "disaster_experienced": {2021: ("WP22245", _YESNO), 2023: ("WP23344", _YESNO),
+                             2025: ("WP24213", _YESNO)},
+    "disaster_plan":        {2021: ("WP22253", _YESNO), 2023: ("WP23345", _YESNO),
+                             2025: ("WP23345", _YESNO)},
+}
+BRIDGE_LABELS = {1: "Yes", 2: "No", 99: "DK/Refused"}
+
+# Each wave publishes its Worry and Experience indices its own way - the items
+# counted, what counts as having experienced harm, and the scaling all move
+# between waves (see wrp_indices.py for the definitions read off the data). So
+# the four figures are NOT on a common footing. They are carried on every wave, including the trended
+# stack, because that is what the tool is asked for, but the flag below travels
+# with them into the manifest so the browser can say so on the one view where
+# the difference actually bites (change between waves). To trend the underlying
+# idea, use worry_score / experience_score, which the harmonised files compute
+# the same way in every wave.
+NOT_COMPARABLE_VARS = {"worry_index_published", "experience_index_published"}
+
+TRENDED_EXCLUDE_VARS = {
+    # signed -1..+1; the Int8 0..100 index encoding would silently clamp every
+    # negative gap to zero.
+    "worry_exp_gap",
+}
+
+
+def wave_files(year):
+    """(parquet, sav) for one harmonised wave, or exit with a usable message."""
+    base = os.path.join(CLEAN_DIR, "WRP_%d" % year)
+    parquet = os.path.join(base, "WRP_%d.parquet" % year)
+    sav = os.path.join(base, "WRP_%d.sav" % year)
+    for path in (parquet, sav):
+        if not os.path.exists(path):
+            raise SystemExit(
+                f"Harmonised wave file not found at {path}. Point WRP_CLEAN_DIR at the "
+                "'Datafile cleaning/output' folder, or re-run build_wrp_waves.py."
+            )
+    return parquet, sav
+
+
+def load_wave(year):
+    """One harmonised wave: (df, value_labels, variable_labels).
+
+    Data comes from the parquet; the labels come from the sibling .sav, read
+    metadata-only, because the parquet stores bare numeric codes.
+    """
+    parquet, sav = wave_files(year)
+    df = pd.read_parquet(parquet)
+    _, meta = pyreadstat.read_sav(sav, metadataonly=True)
+    vl = {k: dict(v) for k, v in meta.variable_value_labels.items()}
+    lab = dict(meta.column_names_to_labels)
+    return df, vl, lab
+
+
+def add_bridges(df, year):
+    """Add the cross-wave bridge columns this wave can supply."""
+    made = []
+    for target, per_year in BRIDGES.items():
+        if year not in per_year:
+            continue
+        src, mapping = per_year[year]
+        if src not in df.columns:
+            continue
+        df[target] = df[src].map(mapping)
+        made.append(target)
+    return made
+
+
+def load_stacked():
+    """All four waves on one set of column names, for the trended page."""
+    frames, vl, lab = [], {}, {}
+    for year in ALL_YEARS:
+        d, v, l = load_wave(year)
+        if year == 2019:
+            d = d.rename(columns=L_TO_WP_2019)
+            v = {L_TO_WP_2019.get(k, k): x for k, x in v.items()}
+            l = {L_TO_WP_2019.get(k, k): x for k, x in l.items()}
+        made = add_bridges(d, year)
+        if year == 2025:
+            # The harmonised 2025 file leaves experience_index_published empty
+            # because LRF published none. Rebuild wave 4's own index from the
+            # ten items so the series reaches this wave too (wrp_indices.py).
+            d["experience_index_published"] = experience_index_2025(d)
+        d["Year"] = year
+        frames.append(d)
+        # Later waves win on wording; codes are unioned, so an answer band a
+        # later wave added (WP22247 gained codes 51/52 in 2023) is not lost.
+        for var, codes in v.items():
+            vl.setdefault(var, {}).update(codes)
+        lab.update(l)
+        extra = (", bridges: " + ", ".join(made)) if made else ""
+        print(f"  {year}: {len(d):,} respondents, {d['Country'].nunique()} countries{extra}")
+    for target in BRIDGES:
+        vl[target] = {float(k): v for k, v in BRIDGE_LABELS.items()}
+        lab.setdefault(target, target)
+    # Drop columns a frame has no data for at all (resilience in 2019, say)
+    # before concatenating: it keeps pandas from having to guess a dtype from
+    # an all-NA block, and the column still arrives from the waves that do
+    # carry it.
+    frames = [f.dropna(axis=1, how="all") for f in frames]
+    df = pd.concat(frames, ignore_index=True, sort=False)
+    print(f"  stacked: {len(df):,} respondents, {df['Country'].nunique()} countries")
+    return df, vl, lab
+
 
 # ---------------------------------------------------------------------------
 # CANONICAL FILTER ORDER — the .filters-grid renders 5 columns × 4 rows, so
@@ -127,7 +264,6 @@ FILTER_SLOTS = [
     # — climate / threat —
     ("climate_change_threat",   "WP20719",   "Climate change a threat"),
     ("climate_change_threat",   "L5",        "Climate change a threat"),
-    ("most_other_people_climate","WP24225",  "Most others: climate threat"),
     # — greatest source of risk —
     ("greatest_source",         "WP22331",   "Greatest source of risk"),
     ("greatest_source",         "WP20713",   "Greatest source of risk (2019 wording)"),
@@ -152,6 +288,7 @@ FILTER_SLOTS = [
     ("fin_res",                 "WP22228",   "Financial resilience"),
     ("plan_known",              "WP23345",   "Household disaster plan"),
     ("plan_known",              "disaster_plan", "Household disaster plan (trended)"),
+    ("most_other_people_climate","WP24225",  "Most others: climate threat"),
     # — trust / care —
     ("govt_cares",              "WP22231",   "Government / authorities care"),
     ("neighbours_care",         "WP22232",   "Neighbours care"),
@@ -247,13 +384,22 @@ KNOWN_QUESTIONS = [
     # ---- safer / safer than 5 yrs ago ----
     ("safer_5yr",           "WP20711", "worry",   "Feel safer than five years ago"),
     # ---- indices ----
-    ("worry_index",         "Worried.Index",     "index", "Worry Index (0–100)"),
-    ("experience_index",    "experience_index",  "index", "Experience Index (0–100)"),
-    ("resilience_index",    "resilience_index",  "index", "Resilience Index (0–100)"),
-    ("resilience_idv",      "resilience_idv_0_100_scale", "index", "Resilience: individual (0–100)"),
-    ("resilience_hhl",      "resilience_hhl_0_100_scale", "index", "Resilience: household (0–100)"),
-    ("resilience_com",      "resilience_com_0_100_scale", "index", "Resilience: community (0–100)"),
-    ("resilience_soc",      "resilience_soc_0_100_scale", "index", "Resilience: societal (0–100)"),
+    # Two families. The *_published pair is what LRF printed for that wave and
+    # belongs on the single-wave pages; the recomputed scores use the items
+    # asked in identical form in every wave and are the ones that trend, so
+    # only they survive the cross-wave filter (see TRENDED_EXCLUDE_VARS).
+    ("worry_index",           "worry_index_published",      "index", "Worry Index (0-100)"),
+    ("experience_index",      "experience_index_published", "index", "Experience Index (0-100)"),
+    ("worry_score",           "worry_score",                "index", "Worry score, 5 common items (0-100)"),
+    ("worry_score_core7",     "worry_score_core7",          "index", "Worry score, 7 items (0-100)"),
+    ("experience_score",      "experience_score",           "index", "Experience score, self or someone known (0-100)"),
+    ("experience_score_self", "experience_score_self",      "index", "Experience score, personally (0-100)"),
+    ("experience_score_core7","experience_score_core7",     "index", "Experience score, 7 items (0-100)"),
+    ("resilience_index",      "resilience_index",           "index", "Resilience Index (0-100)"),
+    ("resilience_idv",        "resilience_idv",             "index", "Resilience: individual (0-100)"),
+    ("resilience_hhl",        "resilience_hhl",             "index", "Resilience: household (0-100)"),
+    ("resilience_com",        "resilience_com",             "index", "Resilience: community (0-100)"),
+    ("resilience_soc",        "resilience_soc",             "index", "Resilience: societal (0-100)"),
 ]
 
 # Columns the auto-discovery pass should NOT register as substantive questions —
@@ -279,7 +425,27 @@ AUTO_DISCOVER_EXCLUDE = {
     "countries_in_all_waves", "countries_in_w3_trend", "resilience_waves",
     # Year
     "Year", "YEAR",
+    # harmonised block that is already exposed as a demographic dimension,
+    # a weight, an id or a score
+    "CountryIncomeLevel", "Urbanicity2", "AgeGroups", "FIELD_DATE", "IncomeFeelings",
+    "worry_score", "worry_score_core7", "worry_index_published",
+    "experience_score", "experience_score_self", "experience_score_core7",
+    "experience_index_published", "worry_exp_gap",
+    "resilience_index", "resilience_index_100",
+    "resilience_idv", "resilience_hhl", "resilience_com", "resilience_soc",
+    # 2023 fielding diagnostics, not survey content
+    "Q4_mean", "Q5_mean", "Q4_RMw_projwt_byusertime", "Q5_RMw_projwt_byusertime",
+    "Q4_mean_projwt_byusertime", "Q5_mean_projwt_byusertime",
+    # 2019 employment derivations (EMP_2010 is the one we expose)
+    "EMP_FTEMP", "EMP_FTEMP_POP", "EMP_LFPR", "EMP_UNDER", "EMP_UNEMP",
+    "EMP_WORK_HOURS",
 }
+
+# Per-country primary-sampling-unit variables (REGION_ALB, REGION2_IDN, ...).
+# There are hundreds and each is populated for one country only, so they are
+# never survey content. Matched by prefix rather than listed one by one.
+def is_psu_var(var):
+    return var.startswith("REGION") or var.startswith("Region")
 
 # Substantive answer codes (= not DK / Refused / N/A). Codes above 90 are
 # treated as missing for metric numerators across the codebase.
@@ -364,131 +530,21 @@ def short_label(slug, label, kind):
     return label
 
 
-# ---- WRP25 → trended-column rename (for the trended build's 2025 append) ----
-WRP25_RENAME = {
-    "WP1219":           "Gender",
-    "WP1220RECODED_1":  "AgeGroups5",
-    "WP3117":           "Education",
-    "DEGURBA":          "Urbanicity",
-    "RegionLRF":        "GlobalRegion",
-    "wbi":              "CountryIncomeLevel2023",
-    "COUNTRYNEW":       "Country",
-    "WPID":             "WPID_RANDOM",
-    "worry_index":      "Worried.Index",
-    "resilience_idv":   "resilience_idv_0_100_scale",
-    "resilience_hhl":   "resilience_hhl_0_100_scale",
-    "resilience_com":   "resilience_com_0_100_scale",
-    "resilience_soc":   "resilience_soc_0_100_scale",
-}
-
-
-def load_wrp25_for_trended():
-    src = os.path.join(DATA, "wrp_25.sav")
-    df25, m25 = pyreadstat.read_sav(src)
-    # If wrp_25 already has the target rename name (e.g. WPID_RANDOM), drop the
-    # source so the rename can't create a duplicate column.
-    for src_name, tgt_name in WRP25_RENAME.items():
-        if src_name in df25.columns and tgt_name in df25.columns and src_name != tgt_name:
-            df25 = df25.drop(columns=[src_name])
-    df25 = df25.rename(columns={k: v for k, v in WRP25_RENAME.items() if k in df25.columns})
-    # Education is stripped from wrp_25.sav — pull it from the full Lloyds release.
-    edu_path = os.path.join(DATA, "Lloyds_2025_022026_w_projection_weight.sav")
-    if "Education" not in df25.columns and os.path.exists(edu_path):
-        edu, _ = pyreadstat.read_sav(edu_path, usecols=["WPID", "WP3117"])
-        edu = edu.rename(columns={"WPID": "WPID_RANDOM", "WP3117": "Education"})
-        edu.loc[~edu["Education"].isin([1, 2, 3]), "Education"] = np.nan
-        df25 = df25.merge(edu, on="WPID_RANDOM", how="left")
-    df25["Year"] = 2025
-    return df25, m25
-
-
-def blend_projwt(df, source, year):
-    """Bring PROJWT in from another .sav (the trended one) on WPID_RANDOM.
-    Some respondents in the per-wave file aren't represented in the trended
-    file — for those rows, fall back to the per-wave WGT column scaled up to
-    typical PROJWT magnitude so their countries' bars don't collapse to zero.
-    """
-    src_path = os.path.join(DATA, source)
-    df_src, _ = pyreadstat.read_sav(src_path, usecols=["WPID_RANDOM", "Year", "PROJWT", "COUNTRY_ISO3"])
-    sub = df_src[df_src["Year"] == year][["WPID_RANDOM", "PROJWT", "COUNTRY_ISO3"]]
-    n_before = df["PROJWT"].notna().sum() if "PROJWT" in df.columns else 0
-    df = df.merge(sub, on="WPID_RANDOM", how="left", suffixes=("", "_blend"))
-    if "PROJWT" not in df.columns and "PROJWT_blend" in df.columns:
-        df = df.rename(columns={"PROJWT_blend": "PROJWT"})
-    if "COUNTRY_ISO3" not in df.columns and "COUNTRY_ISO3_blend" in df.columns:
-        df = df.rename(columns={"COUNTRY_ISO3_blend": "COUNTRY_ISO3"})
-    unmatched = df["PROJWT"].isna()
-    if unmatched.any():
-        # Some respondents in the per-wave file aren't in trended (e.g. five 2019
-        # countries — Belarus, Jamaica, Rwanda, Lesotho, Turkmenistan — that
-        # Gallup excluded from the trended file). Without a fallback they'd
-        # collapse to zero weight and the chart would show empty bar slots.
-        # If WGT is in the per-wave file we scale it to PROJWT magnitude;
-        # otherwise we give every unmatched row the mean PROJWT so per-country
-        # bars compute correctly. Cross-country aggregates for these countries
-        # then treat them at roughly average per-respondent weight.
-        countrycol = next((c for c in ("countrynew","Country") if c in df.columns), None)
-        countries_filled = df.loc[unmatched, countrycol].dropna().unique() if countrycol else []
-        mean_proj = df.loc[~unmatched, "PROJWT"].mean()
-        if "WGT" in df.columns and df.loc[unmatched, "WGT"].notna().any():
-            mean_wgt = df.loc[unmatched, "WGT"].mean()
-            df.loc[unmatched, "PROJWT"] = df.loc[unmatched, "WGT"] * (mean_proj / mean_wgt if mean_wgt else 1)
-            how = "scaled WGT"
-        else:
-            df.loc[unmatched, "PROJWT"] = mean_proj if mean_proj else 1.0
-            how = f"mean PROJWT ({mean_proj:.0f})"
-        print(f"  filled PROJWT with {how} for {int(unmatched.sum()):,} rows "
-              f"in {len(countries_filled)} countries not in {source}: {list(countries_filled)}")
-    print(f"  blended PROJWT from {source} (Year={year}): {df['PROJWT'].notna().sum():,} rows have weight (was {n_before:,})")
-    return df
-
-
 def build_for(wave):
     c = WAVE_CONFIG[wave]
-    src_path = os.path.join(DATA, c["sav"])
-    print(f"\n=== wave {wave}: reading {os.path.basename(src_path)} ===")
-    df, meta = pyreadstat.read_sav(src_path)
+    print(f"\n=== wave {wave}: reading harmonised wave file(s) ===")
+    if c["stack_all"]:
+        df, vl, lab = load_stacked()
+    else:
+        df, vl, lab = load_wave(c["year"])
+        print(f"  {len(df):,} respondents, {df['Country'].nunique()} countries")
 
-    if c["append_wrp25"]:
-        df25, _ = load_wrp25_for_trended()
-        df = pd.concat([df, df25], ignore_index=True, sort=False)
-        print(f"  appended wrp_25.sav as Year=2025: total {len(df):,} rows")
-
-    # year filter (e.g. 2021 lives in 21_wrp.sav which also has 2019 rows)
-    if c["year_filter"]:
-        col, yr = c["year_filter"]
-        df = df[df[col] == yr].reset_index(drop=True)
-        print(f"  filtered to {col}=={yr}: {len(df):,} rows")
-
-    # weight: either present, or blended from trended
-    weight_col = c["weight_col"]
-    if c["blend_projwt_from"]:
-        src, yr = c["blend_projwt_from"]
-        df = blend_projwt(df, src, yr)
-        weight_col = "PROJWT"
-    if weight_col not in df.columns:
-        raise SystemExit(f"wave {wave}: weight col '{weight_col}' not present after blend")
-
-    # ISO3 isn't always shipped in the per-wave file (the updated 19_wrp.sav
-    # and 21_wrp.sav both lack it). The map needs it for colouring countries —
-    # blend it from trended_wrp.sav on WPID_RANDOM.
-    if "COUNTRY_ISO3" not in df.columns and "WPID_RANDOM" in df.columns:
-        try:
-            wave_year = int(wave)
-        except (ValueError, TypeError):
-            wave_year = None
-        if wave_year:
-            iso_src, _ = pyreadstat.read_sav(
-                os.path.join(DATA, "trended_wrp.sav"),
-                usecols=["WPID_RANDOM", "Year", "COUNTRY_ISO3"])
-            iso_sub = iso_src[iso_src["Year"] == wave_year][["WPID_RANDOM", "COUNTRY_ISO3"]]
-            df = df.merge(iso_sub, on="WPID_RANDOM", how="left")
-            n_iso = int(df["COUNTRY_ISO3"].notna().sum()) if "COUNTRY_ISO3" in df.columns else 0
-            print(f"  blended COUNTRY_ISO3 from trended_wrp.sav: {n_iso:,} rows tagged with ISO3")
+    weight_col = "PROJWT"
+    if weight_col not in df.columns or df[weight_col].isna().any():
+        missing = int(df[weight_col].isna().sum()) if weight_col in df.columns else len(df)
+        raise SystemExit(f"wave {wave}: {missing:,} rows have no {weight_col}")
 
     n = len(df)
-    vl = meta.variable_value_labels
-    lab = meta.column_names_to_labels
 
     # For the trended page, restrict the catalogue to questions that actually
     # TREND — present in at least 2 of the waves at ≥5% non-missing. Anything
@@ -500,6 +556,8 @@ def build_for(wave):
         for var in df.columns:
             if var == "Year" or df[var].dtype.kind not in "fi":
                 continue
+            if var in TRENDED_EXCLUDE_VARS:
+                continue
             waves_present = sum(1 for yr in years
                                 if df.loc[df["Year"] == yr, var].notna().mean() >= 0.05)
             if waves_present >= 2:
@@ -508,32 +566,17 @@ def build_for(wave):
               f"at least 2 of {len(years)} waves {years}")
 
     # ---- country index ----
-    cname = c["country_col"]; ciso = c["iso3_col"]
-    if cname not in df.columns:
-        raise SystemExit(f"wave {wave}: country col '{cname}' not in source file")
-    if ciso and ciso not in df.columns:
-        ciso = None
-    # Accept ISO3 brought in via a blend step (so 2019 / 2021 maps work even
-    # though those files don't ship COUNTRY_ISO3 natively).
-    if not ciso and "COUNTRY_ISO3" in df.columns:
-        ciso = "COUNTRY_ISO3"
-    if ciso:
-        cdf = df[[cname, ciso]].dropna(subset=[cname]).drop_duplicates(cname).sort_values(cname)
-        countries = [{"name": r[0], "iso3": (r[1] if isinstance(r[1], str) else "")} for r in cdf.itertuples(index=False)]
-    else:
-        cdf = df[[cname]].dropna(subset=[cname]).drop_duplicates(cname).sort_values(cname)
-        countries = [{"name": r[0], "iso3": ""} for r in cdf.itertuples(index=False)]
-    # Manual fallback for countries that aren't in trended_wrp.sav (so the
-    # ISO3 blend leaves them blank): these are stable across waves.
-    ISO3_FALLBACK = {
-        "Belarus": "BLR", "Jamaica": "JAM", "Lesotho": "LSO",
-        "Rwanda": "RWA", "Turkmenistan": "TKM",
-    }
-    for c_obj in countries:
-        if not c_obj["iso3"] and c_obj["name"] in ISO3_FALLBACK:
-            c_obj["iso3"] = ISO3_FALLBACK[c_obj["name"]]
+    # Both columns are in the harmonised block of every wave file, fully
+    # populated, so the old per-wave country/ISO3 blending is gone.
+    cdf = (df[["Country", "COUNTRY_ISO3"]].dropna(subset=["Country"])
+             .drop_duplicates("Country").sort_values("Country"))
+    countries = [{"name": r[0], "iso3": (r[1] if isinstance(r[1], str) else "")}
+                 for r in cdf.itertuples(index=False)]
+    missing_iso = [x["name"] for x in countries if not x["iso3"]]
+    if missing_iso:
+        raise SystemExit(f"wave {wave}: no ISO3 for {missing_iso} - the map would drop them")
     cindex = {x["name"]: i for i, x in enumerate(countries)}
-    country_col_arr = df[cname].map(cindex).fillna(-1).to_numpy(np.int16)
+    country_col_arr = df["Country"].map(cindex).fillna(-1).to_numpy(np.int16)
     print(f"  {len(countries)} countries")
 
     # ---- catalogue: known + auto-discovered ----
@@ -558,8 +601,10 @@ def build_for(wave):
         if kind == "index":
             arr = encode_index(df[var].to_numpy())
             columns.append((var, arr, "i8"))
-            metrics.append({"key": slug, "col": var, "kind": "mean",
-                            "label": label})
+            rec = {"key": slug, "col": var, "kind": "mean", "label": label}
+            if var in NOT_COMPARABLE_VARS:
+                rec["comparable"] = False
+            metrics.append(rec)
             return
         arr = encode_cat(df[var].to_numpy())
         columns.append((var, arr, "i8"))
@@ -609,12 +654,21 @@ def build_for(wave):
             metrics.append({"key": "greatest_climate_2019", "col": var, "num": [16],
                             "label": "Climate/natural disasters named greatest daily risk (2019, %)"})
         elif kind == "auto":
-            # one metric per substantive answer
+            # one metric per substantive answer. The slug is the answer label
+            # truncated to 24 characters, so two long answers that share an
+            # opening phrase used to collide - the second metric then became
+            # unreachable and the dropdown showed the same key twice. Fall back
+            # to the answer code when that happens.
             short = label
+            taken = {mm["key"] for mm in metrics}
             for code in sub_codes:
                 a_lab = next(a["label"] for a in ans if a["code"] == code)
                 a_slug = re.sub(r"[^A-Za-z0-9]+", "_", str(a_lab))[:24].strip("_").lower() or f"c{code}"
-                metrics.append({"key": f"{slug}_{a_slug}", "col": var, "num": [code],
+                key = f"{slug}_{a_slug}"
+                if key in taken:
+                    key = f"{slug}_c{code}"
+                taken.add(key)
+                metrics.append({"key": key, "col": var, "num": [code],
                                 "label": f"{short} — {a_lab} (%)"})
 
     # 1) Manual catalogue first (better labels / slug names)
@@ -633,7 +687,7 @@ def build_for(wave):
     # 2) Auto-discover everything else that's categorical & populated
     used_slugs = {q["key"] for q in questions} | {m["key"] for m in metrics}
     for var in df.columns:
-        if var in seen_vars or var in AUTO_DISCOVER_EXCLUDE:
+        if var in seen_vars or var in AUTO_DISCOVER_EXCLUDE or is_psu_var(var):
             continue
         if var not in vl or len(vl[var]) < 2:
             continue
@@ -698,6 +752,11 @@ def build_for(wave):
             continue
         if df[src_col].notna().mean() * 100 < 1.0:
             continue
+        if cross_wave_vars is not None and src_col not in cross_wave_vars:
+            # On the trended page a filter that only bites on one wave costs a
+            # slot in a 20-slot grid and silently empties three of the four
+            # bars. Same rule as the questions: at least two waves.
+            continue
         if slug in dim_payload_added:
             continue
         if len(dimensions) >= DIM_CAP:
@@ -715,6 +774,16 @@ def build_for(wave):
         dim_payload_added.add(slug)
 
     print(f"  {len(dimensions)} dimensions  (5×4 grid + country)")
+
+    # ---- catalogue sanity: the browser keys questions, metrics and dimensions
+    # by slug, so a duplicate makes one of the pair unreachable and the URL
+    # ambiguous. Fail the build rather than ship it.
+    for field, items in (("question", questions), ("metric", metrics),
+                         ("dimension", dimensions)):
+        keys = [x["key"] for x in items]
+        dupes = sorted({k for k in keys if keys.count(k) > 1})
+        if dupes:
+            raise SystemExit(f"wave {wave}: duplicate {field} keys {dupes}")
 
     # ---- weight ----
     weight = df[weight_col].fillna(0).to_numpy(np.float32)
@@ -767,17 +836,30 @@ def build_for(wave):
 
 def build_country_waves_index():
     """Country-by-wave roll-up (sample n and PROJWT-weighted total per cell)
-    used by the explorer's Dataset details tab. The trended file carries
-    2019/2021/2023; we append wrp_25.sav to cover 2025 too. Written to
-    data/country_waves.json once."""
-    print("\n=== building data/country_waves.json (country × wave roll-up) ===")
-    df, _ = pyreadstat.read_sav(os.path.join(DATA, "trended_wrp.sav"),
-                                 usecols=["Country", "COUNTRY_ISO3", "Year", "PROJWT"])
-    df25_full, _ = pyreadstat.read_sav(os.path.join(DATA, "wrp_25.sav"),
-                                        usecols=["COUNTRYNEW", "COUNTRY_ISO3", "PROJWT"])
-    df25 = df25_full.rename(columns={"COUNTRYNEW": "Country"})
-    df25["Year"] = 2025
-    df = pd.concat([df, df25[["Country", "COUNTRY_ISO3", "Year", "PROJWT"]]], ignore_index=True)
+    used by the explorer's Dataset details tab. Written to
+    data/country_waves.json once.
+
+    Source: the four harmonised wave files (build_wrp_waves.py output), one per
+    wave. This used to read trended_wrp.sav, which drops the respondents Gallup
+    left out of the cross-wave file - the tab then reported 137 countries in
+    2019 and 120 in 2021, while the wave datasets the explorer actually loads
+    hold 142 and 121. Reading the per-wave files makes the coverage table agree
+    with the waves it describes.
+    """
+    print("\n=== building data/country_waves.json (country x wave roll-up) ===")
+    frames = []
+    for year in (2019, 2021, 2023, 2025):
+        path = os.path.join(CLEAN_DIR, f"WRP_{year}", f"WRP_{year}.parquet")
+        if not os.path.exists(path):
+            raise SystemExit(
+                f"Harmonised wave file not found at {path}. Point WRP_CLEAN_DIR at the "
+                "'Datafile cleaning/output' folder, or re-run build_wrp_waves.py."
+            )
+        part = pd.read_parquet(path, columns=["Country", "COUNTRY_ISO3", "PROJWT"])
+        part["Year"] = year
+        print(f"  {year}: {len(part):,} respondents, {part['Country'].nunique()} countries")
+        frames.append(part)
+    df = pd.concat(frames, ignore_index=True)
     df = df.dropna(subset=["Country", "Year"])
     df["Year"] = df["Year"].astype(int)
 
