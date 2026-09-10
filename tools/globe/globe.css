@@ -1,0 +1,223 @@
+/* ============================================================
+   Respondent Globe — Lloyd's Register Foundation / GSEC
+
+   Loads on top of ../lrf-theme.css. The shared theme is light-only;
+   this is the first dark surface in the suite, so it re-points the
+   LRF tokens at a dark palette rather than fighting the theme's
+   selectors. Everything inherited — header, hero, footer — then
+   comes along on its own.
+
+   Foundation Fuchsia #e5006e is unchanged: it is the accent on dark
+   exactly as it is on cream, and it matches the logo's hardcoded
+   path fills.
+   ============================================================ */
+
+:root {
+  color-scheme: dark;
+
+  --lrf-bg:         #07080f;  /* deep space, with a blue lean */
+  --lrf-white:      #0e1018;  /* raised surface — header/footer inherit this */
+  --lrf-cream:      #141826;  /* recessed second surface */
+  --lrf-ink:        #f2f2f5;  /* text inverts */
+  --lrf-ink-soft:   #b9bcc9;
+  --lrf-muted:      #7c8296;
+  --lrf-line:       #23273a;
+
+  /* --lrf-pink / --lrf-pink-dark deliberately unchanged. */
+  /* --lrf-pink-light was a pale wash for the input focus ring; this page
+     has no form controls, so it is repurposed as the pink that stays
+     legible on dark (6.9:1) for small text. #e5006e is only 4.3:1 here,
+     so it is reserved for accents, large figures and rules. */
+  --lrf-pink-light: #ff5ba0;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.50);
+  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.70);
+
+  --glass:      rgba(14, 16, 24, 0.86);
+  --glass-line: rgba(255, 255, 255, 0.10);
+  --glow:       0 0 28px rgba(229, 0, 110, 0.35);
+}
+
+body { background: var(--lrf-bg); }
+
+/* The shared theme draws these against a cream page. */
+header.site { border-bottom-color: var(--lrf-line); }
+.hero { border-bottom-color: var(--lrf-line); }
+footer.site, footer { border-top-color: var(--lrf-line); background: var(--lrf-bg); }
+
+/* Trim the chrome hard: this is a showpiece, and the globe should be fully
+   visible on a 1080p screen without anyone having to scroll for it. The
+   shared theme's 72px h1 and 46ch lede cost ~150px between them. */
+.hero { padding-top: 1.1rem; padding-bottom: 1.1rem; }
+.hero h1 { font-size: clamp(30px, 3.3vw, 46px); line-height: 1.04; }
+.hero p.lede { font-size: 14.5px; line-height: 1.45; max-width: 66ch; margin-top: 0.4rem; }
+.hero .eyebrow { margin-bottom: 0.3rem; }
+header.site { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+
+/* ---------- Stage ---------- */
+main { max-width: var(--max-w); margin: 0 auto; padding: 1.25rem 2rem 2.5rem; }
+
+.stage {
+  position: relative;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, #0d1020 0%, #07080f 72%);
+  border: 1px solid var(--lrf-line);
+  border-radius: var(--r);
+  height: min(calc(100vh - 300px), 860px);
+  min-height: 430px;
+  overflow: hidden;
+}
+.stage:fullscreen { height: 100vh; border: none; border-radius: 0; }
+
+#globe-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#globe-canvas.dragging { cursor: grabbing; }
+#globe-canvas.over-dot { cursor: pointer; }
+
+/* Reticle: the hairline from the highlighted dot to the card. */
+#reticle { position: absolute; inset: 0; z-index: 28; pointer-events: none; }
+
+/* ---------- Loading ---------- */
+.loading {
+  position: absolute; inset: 0; z-index: 40;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(7, 8, 15, 0.72);
+  backdrop-filter: blur(2px);
+  transition: opacity 0.6s ease;
+}
+.loading.done { opacity: 0; pointer-events: none; }
+.loading-inner { width: min(340px, 70%); text-align: center; }
+.loading-label { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; margin-bottom: 0.9rem; color: var(--lrf-ink); }
+.loading-bar { height: 2px; background: var(--lrf-line); border-radius: 2px; overflow: hidden; }
+.loading-fill { height: 100%; width: 0%; background: var(--lrf-pink); box-shadow: var(--glow); transition: width 0.3s ease; }
+.loading-sub { margin-top: 0.7rem; font-size: 11px; color: var(--lrf-muted); font-variant-numeric: tabular-nums; }
+.loading.err .loading-label { color: var(--lrf-pink-light); }
+.loading.err .loading-bar { display: none; }
+
+/* ---------- Respondent card ---------- */
+.card {
+  position: absolute; top: 1.5rem; right: 1.5rem; z-index: 30;
+  width: min(380px, calc(100% - 3rem));
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-line);
+  border-left: 3px solid var(--lrf-pink);
+  border-radius: var(--r);
+  padding: 1.3rem 1.45rem 1.15rem;
+  box-shadow: var(--shadow-lg);
+  max-height: calc(100% - 3rem);
+  overflow-y: auto;
+  animation: cardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+.card.leaving { animation: cardOut 0.32s ease forwards; }
+@keyframes cardOut { to { opacity: 0; transform: translateY(-8px); } }
+
+.card-close {
+  position: absolute; top: 0.5rem; right: 0.65rem;
+  background: none; border: none; color: var(--lrf-muted);
+  font-size: 21px; line-height: 1; cursor: pointer; padding: 2px 5px;
+}
+.card-close:hover { color: var(--lrf-ink); }
+
+.card-eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; color: var(--lrf-pink-light); margin-bottom: 0.35rem; }
+.card-name { font-size: 27px; font-weight: 800; line-height: 1.12; letter-spacing: -0.025em; color: var(--lrf-ink); }
+.card-club { font-size: 11px; color: var(--lrf-muted); margin-top: 0.15rem; }
+.card-demo { font-size: 12.5px; color: var(--lrf-ink-soft); margin-top: 0.55rem; padding-top: 0.55rem; border-top: 1px solid var(--lrf-line); }
+
+.card-quote { font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-size: 16.5px; line-height: 1.5; color: var(--lrf-ink); margin: 0.85rem 0 0.1rem; }
+.card-quote b { font-style: normal; font-weight: 600; }
+
+.card-rows { margin-top: 0.95rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.qrow { display: grid; grid-template-columns: 3px 1fr; gap: 0.65rem; align-items: start; }
+.qchip { width: 3px; height: 100%; min-height: 26px; border-radius: 2px; }
+.qlabel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 700; color: var(--lrf-muted); }
+.qans { font-size: 14px; color: var(--lrf-ink); line-height: 1.35; margin-top: 1px; }
+
+.card-meters { margin-top: 1.05rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.meter-head { display: flex; justify-content: space-between; margin-bottom: 4px; color: var(--lrf-muted); text-transform: uppercase; letter-spacing: 0.09em; font-weight: 700; font-size: 10px; }
+.meter-head b { color: var(--lrf-ink); font-variant-numeric: tabular-nums; }
+.meter-track { height: 4px; background: var(--lrf-line); border-radius: 3px; position: relative; overflow: hidden; }
+.meter-fill { height: 100%; background: var(--lrf-pink); border-radius: 3px; transition: width 0.6s cubic-bezier(0.16,1,0.3,1); }
+
+.card-note { margin-top: 1.05rem; padding-top: 0.7rem; border-top: 1px solid var(--lrf-line); font-size: 10.5px; line-height: 1.5; color: var(--lrf-muted); font-style: italic; }
+
+/* ---------- HUD ---------- */
+.hud {
+  position: absolute; left: 1.5rem; right: 1.5rem; bottom: 1.25rem; z-index: 25;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+}
+.hud-waves { display: flex; gap: 2px; background: var(--glass); backdrop-filter: blur(10px); border: 1px solid var(--glass-line); border-radius: var(--r); padding: 2px; }
+.wave-btn {
+  background: none; border: none; color: var(--lrf-muted); cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.03em;
+  padding: 0.45rem 0.85rem; border-radius: 2px; transition: all 0.18s ease;
+  font-variant-numeric: tabular-nums;
+}
+.wave-btn:hover { color: var(--lrf-ink); }
+.wave-btn.on { background: var(--lrf-pink); color: #fff; }
+
+.hud-controls { display: flex; gap: 0.45rem; }
+.hud-btn {
+  background: var(--glass); backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-line); color: var(--lrf-ink-soft);
+  font-family: inherit; font-size: 11.5px; font-weight: 700;
+  padding: 0.5rem 0.85rem; border-radius: var(--r); cursor: pointer; transition: all 0.18s ease;
+}
+.hud-btn:hover { border-color: var(--lrf-pink); color: var(--lrf-ink); }
+.hud-btn.off { color: var(--lrf-muted); }
+.hud-btn:focus-visible, .wave-btn:focus-visible, .card-close:focus-visible {
+  outline: 2px solid var(--lrf-pink-light); outline-offset: 2px;
+}
+
+.stage-hint {
+  position: absolute; top: 1.5rem; left: 1.5rem; z-index: 20;
+  font-size: 11px; color: var(--lrf-muted); letter-spacing: 0.02em;
+  transition: opacity 0.6s ease; pointer-events: none; max-width: 30ch;
+}
+.stage-hint.hide { opacity: 0; }
+
+/* The placement caveat. Permanent, because the picture invites the wrong
+   reading: dots are area-uniform inside a country, so empty tundra looks
+   as populated as a capital city. */
+.stage-caveat {
+  position: absolute; left: 1.5rem; bottom: 4.6rem; z-index: 20;
+  font-size: 10.5px; color: var(--lrf-muted); max-width: 34ch; line-height: 1.45;
+  pointer-events: none;
+}
+
+.pill {
+  position: absolute; left: 50%; bottom: 1.35rem; transform: translateX(-50%) translateY(150%);
+  z-index: 26; background: var(--lrf-pink); color: #fff;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em;
+  padding: 0.5rem 1rem; border-radius: var(--r);
+  transition: transform 0.28s cubic-bezier(0.16,1,0.3,1); box-shadow: var(--shadow-md);
+}
+.pill.show { transform: translateX(-50%) translateY(0); }
+
+/* ---------- Footer (multi-column colophon; not in the shared theme) ---------- */
+.footer-inner { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 3rem; }
+footer h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 1rem; color: var(--lrf-ink); }
+footer ul { list-style: none; }
+footer li { margin-bottom: 0.5rem; font-size: 14px; color: var(--lrf-ink-soft); }
+footer .colophon { font-size: 13px; line-height: 1.6; color: var(--lrf-ink-soft); }
+footer .colophon strong { color: var(--lrf-ink); font-weight: 800; }
+.dq { margin-top: 0.6rem; font-size: 11px; color: var(--lrf-muted); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 900px) {
+  main { padding: 1rem 1.25rem 2rem; }
+  .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
+  .stage { height: min(calc(100vh - 260px), 640px); }
+  .card { top: auto; bottom: 5.2rem; left: 1rem; right: 1rem; width: auto; }
+  .hud { left: 1rem; right: 1rem; bottom: 1rem; }
+  .stage-hint, .stage-caveat { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: none; }
+  .meter-fill { transition: none; }
+}
+
+@media print { .stage { display: none; } }
